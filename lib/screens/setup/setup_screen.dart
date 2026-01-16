@@ -1,0 +1,208 @@
+import 'package:flutter/material.dart';
+import '../../widgets/pin_keypad.dart';
+import '../../core/routes/app_routes.dart';
+
+enum SetupStep {
+  realPin,
+  confirmRealPin,
+  decoyPin,
+  confirmDecoyPin,
+}
+
+class SetupScreen extends StatefulWidget {
+  const SetupScreen({super.key});
+
+  @override
+  State<SetupScreen> createState() => _SetupScreenState();
+}
+
+class _SetupScreenState extends State<SetupScreen> {
+  SetupStep step = SetupStep.realPin;
+
+  String realPin = '';
+  String confirmRealPin = '';
+  String decoyPin = '';
+  String confirmDecoyPin = '';
+
+  void _onKeyPress(String value) {
+    setState(() {
+      switch (step) {
+        case SetupStep.realPin:
+          if (realPin.length < 4) {
+            realPin += value;
+            if (realPin.length == 4) {
+              step = SetupStep.confirmRealPin;
+            }
+          }
+          break;
+
+        case SetupStep.confirmRealPin:
+          if (confirmRealPin.length < 4) {
+            confirmRealPin += value;
+            if (confirmRealPin.length == 4) {
+              if (confirmRealPin != realPin) {
+                _showError('Real PINs do not match');
+                confirmRealPin = '';
+              } else {
+                step = SetupStep.decoyPin;
+              }
+            }
+          }
+          break;
+
+        case SetupStep.decoyPin:
+          if (decoyPin.length < 4) {
+            decoyPin += value;
+            if (decoyPin.length == 4) {
+              step = SetupStep.confirmDecoyPin;
+            }
+          }
+          break;
+
+        case SetupStep.confirmDecoyPin:
+          if (confirmDecoyPin.length < 4) {
+            confirmDecoyPin += value;
+            if (confirmDecoyPin.length == 4) {
+              if (confirmDecoyPin != decoyPin) {
+                _showError('Decoy PINs do not match');
+                confirmDecoyPin = '';
+              } else {
+                _finishSetup();
+              }
+            }
+          }
+          break;
+      }
+    });
+  }
+
+  void _onDelete() {
+    setState(() {
+      switch (step) {
+        case SetupStep.realPin:
+          if (realPin.isNotEmpty) {
+            realPin = realPin.substring(0, realPin.length - 1);
+          }
+          break;
+
+        case SetupStep.confirmRealPin:
+          if (confirmRealPin.isNotEmpty) {
+            confirmRealPin =
+                confirmRealPin.substring(0, confirmRealPin.length - 1);
+          }
+          break;
+
+        case SetupStep.decoyPin:
+          if (decoyPin.isNotEmpty) {
+            decoyPin = decoyPin.substring(0, decoyPin.length - 1);
+          }
+          break;
+
+        case SetupStep.confirmDecoyPin:
+          if (confirmDecoyPin.isNotEmpty) {
+            confirmDecoyPin =
+                confirmDecoyPin.substring(0, confirmDecoyPin.length - 1);
+          }
+          break;
+      }
+    });
+  }
+
+  void _finishSetup() {
+    // TEMP: later we will store securely
+    Navigator.pushReplacementNamed(context, AppRoutes.lock);
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
+  String get title {
+    switch (step) {
+      case SetupStep.realPin:
+        return 'Set Your Real PIN';
+      case SetupStep.confirmRealPin:
+        return 'Confirm Real PIN';
+      case SetupStep.decoyPin:
+        return 'Set Your Decoy PIN';
+      case SetupStep.confirmDecoyPin:
+        return 'Confirm Decoy PIN';
+    }
+  }
+
+  String get subtitle {
+    switch (step) {
+      case SetupStep.realPin:
+        return 'This PIN unlocks your real dashboard';
+      case SetupStep.confirmRealPin:
+        return 'Re-enter your real PIN to confirm';
+      case SetupStep.decoyPin:
+        return 'This PIN shows a fake dashboard';
+      case SetupStep.confirmDecoyPin:
+        return 'Re-enter your decoy PIN to confirm';
+    }
+  }
+
+  String get currentPin {
+    switch (step) {
+      case SetupStep.realPin:
+        return realPin;
+      case SetupStep.confirmRealPin:
+        return confirmRealPin;
+      case SetupStep.decoyPin:
+        return decoyPin;
+      case SetupStep.confirmDecoyPin:
+        return confirmDecoyPin;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.shield, size: 60, color: Colors.cyan),
+            const SizedBox(height: 16),
+            Text(title,
+                style:
+                    const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            Text(subtitle, style: const TextStyle(color: Colors.white70)),
+            const SizedBox(height: 30),
+
+            // PIN DOTS
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(
+                4,
+                (index) => Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 6),
+                  width: 18,
+                  height: 18,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: index < currentPin.length
+                        ? Colors.cyan
+                        : Colors.grey.shade700,
+                  ),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 30),
+
+            PinKeypad(
+              onKeyPressed: _onKeyPress,
+              onDelete: _onDelete,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
