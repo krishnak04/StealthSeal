@@ -1,13 +1,10 @@
 import 'package:flutter/material.dart';
 import '../../widgets/pin_keypad.dart';
 import '../../core/routes/app_routes.dart';
+import 'package:hive/hive.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-enum SetupStep {
-  realPin,
-  confirmRealPin,
-  decoyPin,
-  confirmDecoyPin,
-}
+enum SetupStep { realPin, confirmRealPin, decoyPin, confirmDecoyPin }
 
 class SetupScreen extends StatefulWidget {
   const SetupScreen({super.key});
@@ -67,6 +64,7 @@ class _SetupScreenState extends State<SetupScreen> {
                 _showError('Decoy PINs do not match');
                 confirmDecoyPin = '';
               } else {
+                // Corrected: Call the method instead of defining it inside switch
                 _finishSetup();
               }
             }
@@ -87,8 +85,10 @@ class _SetupScreenState extends State<SetupScreen> {
 
         case SetupStep.confirmRealPin:
           if (confirmRealPin.isNotEmpty) {
-            confirmRealPin =
-                confirmRealPin.substring(0, confirmRealPin.length - 1);
+            confirmRealPin = confirmRealPin.substring(
+              0,
+              confirmRealPin.length - 1,
+            );
           }
           break;
 
@@ -100,23 +100,32 @@ class _SetupScreenState extends State<SetupScreen> {
 
         case SetupStep.confirmDecoyPin:
           if (confirmDecoyPin.isNotEmpty) {
-            confirmDecoyPin =
-                confirmDecoyPin.substring(0, confirmDecoyPin.length - 1);
+            confirmDecoyPin = confirmDecoyPin.substring(
+              0,
+              confirmDecoyPin.length - 1,
+            );
           }
           break;
       }
     });
   }
 
-  void _finishSetup() {
-    // TEMP: later we will store securely
+  // Corrected implementation of your storage method
+  void _finishSetup() async {
+    final supabase = Supabase.instance.client;
+
+    await supabase.from('user_security').insert({
+      'real_pin': realPin,
+      'decoy_pin': decoyPin,
+    });
+
     Navigator.pushReplacementNamed(context, AppRoutes.lock);
   }
 
   void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   String get title {
@@ -161,6 +170,7 @@ class _SetupScreenState extends State<SetupScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFF050505),
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24),
         child: Column(
@@ -168,9 +178,14 @@ class _SetupScreenState extends State<SetupScreen> {
           children: [
             const Icon(Icons.shield, size: 60, color: Colors.cyan),
             const SizedBox(height: 16),
-            Text(title,
-                style:
-                    const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
             const SizedBox(height: 8),
             Text(subtitle, style: const TextStyle(color: Colors.white70)),
             const SizedBox(height: 30),
@@ -196,10 +211,7 @@ class _SetupScreenState extends State<SetupScreen> {
 
             const SizedBox(height: 30),
 
-            PinKeypad(
-              onKeyPressed: _onKeyPress,
-              onDelete: _onDelete,
-            ),
+            PinKeypad(onKeyPressed: _onKeyPress, onDelete: _onDelete),
           ],
         ),
       ),
