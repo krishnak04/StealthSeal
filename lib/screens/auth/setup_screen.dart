@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../widgets/pin_keypad.dart';
 import '../../core/routes/app_routes.dart';
-import 'package:hive/hive.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 enum SetupStep { realPin, confirmRealPin, decoyPin, confirmDecoyPin }
@@ -20,8 +19,12 @@ class _SetupScreenState extends State<SetupScreen> {
   String confirmRealPin = '';
   String decoyPin = '';
   String confirmDecoyPin = '';
+  
+  bool _isSaving = false; // Added to prevent double taps while saving
 
   void _onKeyPress(String value) {
+    if (_isSaving) return; // Ignore input while saving
+
     setState(() {
       switch (step) {
         case SetupStep.realPin:
@@ -64,7 +67,7 @@ class _SetupScreenState extends State<SetupScreen> {
                 _showError('Decoy PINs do not match');
                 confirmDecoyPin = '';
               } else {
-                // Corrected: Call the method instead of defining it inside switch
+                // Corrected: Just call the method here
                 _finishSetup();
               }
             }
@@ -75,6 +78,8 @@ class _SetupScreenState extends State<SetupScreen> {
   }
 
   void _onDelete() {
+    if (_isSaving) return;
+
     setState(() {
       switch (step) {
         case SetupStep.realPin:
@@ -111,21 +116,41 @@ class _SetupScreenState extends State<SetupScreen> {
   }
 
   // Corrected implementation of your storage method
-  void _finishSetup() async {
-    final supabase = Supabase.instance.client;
-
-    await supabase.from('user_security').insert({
-      'real_pin': realPin,
-      'decoy_pin': decoyPin,
+  Future<void> _finishSetup() async {
+    setState(() {
+      _isSaving = true;
     });
 
-    Navigator.pushReplacementNamed(context, AppRoutes.lock);
+    try {
+      final supabase = Supabase.instance.client;
+
+      await supabase.from('user_security').insert({
+        'real_pin': realPin,
+        'decoy_pin': decoyPin,
+        // Ideally add 'created_at': DateTime.now().toIso8601String() if your DB requires it
+      });
+
+      if (!mounted) return;
+      Navigator.pushReplacementNamed(context, AppRoutes.lock);
+      
+    } catch (e) {
+      debugPrint('Error saving PINs: $e');
+      if (mounted) {
+        _showError('Failed to save settings. Please try again.');
+        setState(() {
+          _isSaving = false;
+        });
+      }
+    }
   }
 
   void _showError(String message) {
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    ).showSnackBar(SnackBar(
+      content: Text(message),
+      backgroundColor: Colors.redAccent,
+    ));
   }
 
   String get title {
@@ -211,7 +236,10 @@ class _SetupScreenState extends State<SetupScreen> {
 
             const SizedBox(height: 30),
 
-            PinKeypad(onKeyPressed: _onKeyPress, onDelete: _onDelete),
+            // If saving, show spinner, otherwise show keypad
+            _isSaving 
+                ? const CircularProgressIndicator(color: Colors.cyan)
+                : PinKeypad(onKeyPressed: _onKeyPress, onDelete: _onDelete),
           ],
         ),
       ),

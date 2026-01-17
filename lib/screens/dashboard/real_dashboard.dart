@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:hive/hive.dart';
+import '../security/intruder_logs_screen.dart';
+import '../../core/security/panic_service.dart';
+import '../../core/routes/app_routes.dart';
 
 class RealDashboard extends StatelessWidget {
   const RealDashboard({super.key});
@@ -17,15 +21,21 @@ class RealDashboard extends StatelessWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.camera_alt_outlined),
-            onPressed: () {},
+            onPressed: () {
+              // Quick access to logs or camera logic
+            },
           ),
           IconButton(
             icon: const Icon(Icons.settings_outlined),
-            onPressed: () {},
+            onPressed: () {
+              // Navigate to settings
+            },
           ),
           IconButton(
             icon: const Icon(Icons.lock_outline),
-            onPressed: () {},
+            onPressed: () {
+              // Lock app immediately
+            },
           ),
         ],
       ),
@@ -36,9 +46,10 @@ class RealDashboard extends StatelessWidget {
           children: [
             _securityStatusCard(),
             const SizedBox(height: 20),
-            _quickActionsCard(),
+            // Pass context for navigation
+            _quickActionsCard(context),
             const SizedBox(height: 20),
-            _emergencyCard(),
+            _emergencyCard(context),
           ],
         ),
       ),
@@ -62,10 +73,23 @@ class RealDashboard extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
           _statusItem('0', 'Apps Locked', Colors.cyan),
-          _statusItem('0', 'Intruders', Colors.redAccent),
+          _statusItem(
+            getIntruderCount().toString(),
+            'Intruders',
+            Colors.redAccent,
+          ),
         ],
       ),
     );
+  }
+
+  int getIntruderCount() {
+    // Ensure the box is open in main.dart before calling this
+    if (!Hive.isBoxOpen('securityBox')) return 0;
+    
+    final box = Hive.box('securityBox');
+    final List logs = box.get('intruderLogs', defaultValue: []);
+    return logs.length; // ✅ TOTAL attempts
   }
 
   Widget _statusItem(String value, String label, Color color) {
@@ -86,7 +110,7 @@ class RealDashboard extends StatelessWidget {
   }
 
   // ⚡ Quick Actions
-  Widget _quickActionsCard() {
+  Widget _quickActionsCard(BuildContext context) {
     return _cardContainer(
       title: 'Quick Actions',
       children: [
@@ -94,29 +118,51 @@ class RealDashboard extends StatelessWidget {
           icon: Icons.apps,
           label: 'Manage App Locks',
           iconColor: Colors.cyan,
+          onTap: () {}, // Placeholder for future logic
         ),
         _actionTile(
           icon: Icons.camera_alt,
           label: 'Intruder Logs',
           iconColor: Colors.redAccent,
-          badge: '0',
+          badge: getIntruderCount().toString(), // Updated to show real count
+          // Correctly placed navigation logic
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const IntruderLogsScreen(),
+              ),
+            );
+          },
         ),
         _actionTile(
           icon: Icons.settings,
           label: 'Settings',
           iconColor: Colors.grey,
+          onTap: () {}, // Placeholder for future logic
         ),
       ],
     );
   }
 
   // 🚨 Emergency
-  Widget _emergencyCard() {
+  Widget _emergencyCard(BuildContext context) {
     return _cardContainer(
       title: 'Emergency',
       children: [
         ElevatedButton.icon(
-          onPressed: () {},
+          onPressed: () {
+            // Activate Panic Service
+            PanicService.activate();
+
+            // Show feedback
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Panic Mode Activated!'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          },
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.red,
             minimumSize: const Size(double.infinity, 50),
@@ -124,8 +170,9 @@ class RealDashboard extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
             ),
           ),
-          icon: const Icon(Icons.warning),
-          label: const Text('Activate Panic Lock'),
+          icon: const Icon(Icons.warning, color: Colors.white),
+          label: const Text('Activate Panic Lock',
+              style: TextStyle(color: Colors.white)),
         ),
         const SizedBox(height: 8),
         const Text(
@@ -166,6 +213,7 @@ class RealDashboard extends StatelessWidget {
     required IconData icon,
     required String label,
     required Color iconColor,
+    required VoidCallback onTap,
     String? badge,
   }) {
     return ListTile(
@@ -176,19 +224,17 @@ class RealDashboard extends StatelessWidget {
         children: [
           if (badge != null)
             Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
                 color: Colors.red,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Text(badge,
-                  style: const TextStyle(fontSize: 12)),
+              child: Text(badge, style: const TextStyle(fontSize: 12)),
             ),
           const Icon(Icons.chevron_right),
         ],
       ),
-      onTap: () {},
+      onTap: onTap,
     );
   }
 }
