@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../widgets/pin_keypad.dart';
 import '../../core/routes/app_routes.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:hive/hive.dart';
 
 enum SetupStep { realPin, confirmRealPin, decoyPin, confirmDecoyPin }
 
@@ -131,6 +132,9 @@ class _SetupScreenState extends State<SetupScreen> {
         // Ideally add 'created_at': DateTime.now().toIso8601String() if your DB requires it
       });
 
+      final box = Hive.box('securityBox');
+      box.put('isPinSetupDone', true);
+
       if (!mounted) return;
       Navigator.pushReplacementNamed(context, AppRoutes.biometricSetup);
       
@@ -196,6 +200,7 @@ class _SetupScreenState extends State<SetupScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      
       backgroundColor: const Color(0xFF050505),
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24),

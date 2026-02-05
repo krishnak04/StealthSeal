@@ -134,8 +134,13 @@ class _LockScreenState extends State<LockScreen> {
       }
       Navigator.pushReplacementNamed(context, AppRoutes.realDashboard);
     } else {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message), backgroundColor: Colors.redAccent),
+        SnackBar(
+          content: Text(message),
+          backgroundColor: Colors.redAccent,
+          duration: const Duration(seconds: 2),
+        ),
       );
     }
     setState(() => enteredPin = '');
@@ -144,28 +149,26 @@ class _LockScreenState extends State<LockScreen> {
   Future<void> _handleWrongPin() async {
     failedAttempts++;
 
+    // Show Toast immediately for wrong PIN
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          failedAttempts >= 3
+              ? 'Unauthorized access. Intruder captured.'
+              : 'Wrong PIN (${3 - failedAttempts} attempts left)',
+        ),
+        backgroundColor:
+            failedAttempts >= 3 ? Colors.white : Colors.orangeAccent,
+        duration: const Duration(seconds: 1),
+      ),
+    );
+
+    // Capture intruder in background if needed (doesn't block Toast)
     if (failedAttempts >= 3) {
       failedAttempts = 0;
-
-     await IntruderService.captureIntruderSelfie(
-     enteredPin: enteredPin,
-     );
-
-      await Future.delayed(const Duration(milliseconds: 300));
-
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Unauthorized access. Intruder captured.'),
-          backgroundColor: Colors.white,
-        ),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Wrong PIN (${3 - failedAttempts} attempts left)'),
-          backgroundColor: Colors.orangeAccent,
-        ),
+      await IntruderService.captureIntruderSelfie(
+        enteredPin: enteredPin,
       );
     }
   }
@@ -179,8 +182,12 @@ class _LockScreenState extends State<LockScreen> {
       if (PanicService.isActive() ||
           TimeLockService.isNightLockActive() ||
           await LocationLockService.isOutsideTrustedLocation()) {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('PIN required due to security lock')),
+          const SnackBar(
+            content: Text('PIN required due to security lock'),
+            duration: Duration(seconds: 2),
+          ),
         );
         return;
       }
