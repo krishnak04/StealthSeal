@@ -127,11 +127,12 @@ class _SetupScreenState extends State<SetupScreen> {
       await supabase.from('user_security').insert({
         'real_pin': realPin,
         'decoy_pin': decoyPin,
+        'biometric_enabled': false, // Default to false, will be updated in biometric setup
         // Ideally add 'created_at': DateTime.now().toIso8601String() if your DB requires it
       });
 
       if (!mounted) return;
-      Navigator.pushReplacementNamed(context, AppRoutes.lock);
+      Navigator.pushReplacementNamed(context, AppRoutes.biometricSetup);
       
     } catch (e) {
       debugPrint('Error saving PINs: $e');

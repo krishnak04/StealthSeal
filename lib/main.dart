@@ -1,36 +1,41 @@
-
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:device_preview/device_preview.dart';
+import 'package:stealthseal/core/security/time_lock_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-// Local imports
+// Core imports
 import 'core/theme/app_theme.dart';
 import 'core/routes/app_routes.dart';
+
+// Screens
 import 'screens/splash/splash_screen.dart';
 import 'screens/auth/setup_screen.dart';
 import 'screens/auth/lock_screen.dart';
+import 'screens/auth/biometric_setup_screen.dart';
 import 'screens/dashboard/real_dashboard.dart';
 import 'screens/dashboard/fake_dashboard.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
-  // Initialize Hive
-  await Hive.initFlutter();
-  await Hive.openBox('securityBox'); // This must be inside main(), not outside.
 
-  // Initialize Supabase
-  // I have replaced the keys with placeholders for security. 
-  // Please paste your actual keys back in here.
+  // 🔹 Initialize Hive
+  await Hive.initFlutter();
+
+  // 🔹 OPEN boxes (this was the main bug)
+  await Hive.openBox('securityBox'); // intruder logs
+  await Hive.openBox('security');    // night lock, biometric, flags
+
+  // 🔹 Initialize Supabase
   await Supabase.initialize(
     url: 'https://aixxkzjrxqwnriygxaev.supabase.co',
-    anonKey:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFpeHhrempyeHF3bnJpeWd4YWV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg1NTY1NDcsImV4cCI6MjA4NDEzMjU0N30.6JuYjvtebNe5ojy9zuEK4T_TnyDsnw48rWr-1a8g3VI',
+    anonKey:
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFpeHhrempyeHF3bnJpeWd4YWV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg1NTY1NDcsImV4cCI6MjA4NDEzMjU0N30.6JuYjvtebNe5ojy9zuEK4T_TnyDsnw48rWr-1a8g3VI',
   );
 
   runApp(
     DevicePreview(
-      enabled: true, // Set to false for release builds
+      enabled: true, // set false for release
       builder: (_) => const StealthSealApp(),
     ),
   );
@@ -42,7 +47,7 @@ class StealthSealApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      useInheritedMediaQuery: true, // Required for DevicePreview
+      useInheritedMediaQuery: true,
       locale: DevicePreview.locale(context),
       builder: DevicePreview.appBuilder,
       debugShowCheckedModeBanner: false,
@@ -51,9 +56,11 @@ class StealthSealApp extends StatelessWidget {
       routes: {
         AppRoutes.splash: (_) => const SplashScreen(),
         AppRoutes.setup: (_) => const SetupScreen(),
+        AppRoutes.biometricSetup: (_) => const BiometricSetupScreen(),
         AppRoutes.lock: (_) => const LockScreen(),
         AppRoutes.realDashboard: (_) => const RealDashboard(),
         AppRoutes.fakeDashboard: (_) => const FakeDashboard(),
+        AppRoutes.timeLockService: (_) => const TimeLockScreen(),
       },
     );
   }

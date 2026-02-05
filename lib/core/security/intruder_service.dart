@@ -5,19 +5,18 @@ import 'package:hive/hive.dart';
 import 'package:path_provider/path_provider.dart';
 
 class IntruderService {
-  /// Captures an intruder selfie using the front camera
-  /// and stores the image path + timestamp in Hive
-  static Future<void> captureIntruderSelfie() async {
+  /// Capture intruder selfie and store metadata safely
+  static Future<void> captureIntruderSelfie({
+    String reason = 'Captured Intruder Image',
+    String? enteredPin,
+  }) async {
     try {
-      // 1️⃣ Get available cameras
       final cameras = await availableCameras();
 
-      // 2️⃣ Select front camera
       final frontCamera = cameras.firstWhere(
         (camera) => camera.lensDirection == CameraLensDirection.front,
       );
 
-      // 3️⃣ Initialize camera controller
       final controller = CameraController(
         frontCamera,
         ResolutionPreset.low,
@@ -26,32 +25,29 @@ class IntruderService {
 
       await controller.initialize();
 
-      // 4️⃣ Prepare file path
       final directory = await getApplicationDocumentsDirectory();
       final imagePath =
           '${directory.path}/intruder_${DateTime.now().millisecondsSinceEpoch}.jpg';
 
-      // 5️⃣ Capture image
       final XFile picture = await controller.takePicture();
-      final File imageFile = File(picture.path);
-      await imageFile.copy(imagePath);
+      await File(picture.path).copy(imagePath);
 
-      // 6️⃣ Dispose camera
       await controller.dispose();
 
-      // 7️⃣ Save log in Hive
+      // ✅ SAVE FULL METADATA
       final box = Hive.box('securityBox');
-      final List intruderLogs =
-          box.get('intruderLogs', defaultValue: []);
+      final List logs = box.get('intruderLogs', defaultValue: []);
 
-      intruderLogs.add({
+      logs.add({
         'imagePath': imagePath,
         'timestamp': DateTime.now().toIso8601String(),
+        'reason': reason,
+        'enteredPin': enteredPin ?? '***',
       });
 
-      await box.put('intruderLogs', intruderLogs);
+      await box.put('intruderLogs', logs);
     } catch (e) {
-      // ❌ Fail silently (important for lock screen UX)
+      // Fail silently to avoid lock-screen crash
       print('IntruderService Error: $e');
     }
   }
