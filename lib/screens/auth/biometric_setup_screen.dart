@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/routes/app_routes.dart';
 import '../../core/security/biometric_service.dart';
+import '../../core/services/user_identifier_service.dart';
 
 class BiometricSetupScreen extends StatefulWidget {
   const BiometricSetupScreen({super.key});
@@ -68,18 +69,17 @@ class _BiometricSetupScreenState extends State<BiometricSetupScreen> {
         return;
       }
 
+      // 🆔 Get user ID
+      final userId = await UserIdentifierService.getUserId();
+      debugPrint('📱 Registering biometric for user: $userId');
+
       // Save biometric settings to Supabase
       final supabase = Supabase.instance.client;
-      final user = supabase.auth.currentUser;
 
-      if (user == null) {
-        throw Exception('User not authenticated');
-      }
-
-      // Update user_security table with biometric enabled
+      // ✅ Update by user ID (not auth user)
       await supabase.from('user_security').update({
         'biometric_enabled': true,
-      }).eq('id', user.id);
+      }).eq('id', userId);
 
       // Enable biometric in local service
       BiometricService.enable();
@@ -119,15 +119,17 @@ class _BiometricSetupScreenState extends State<BiometricSetupScreen> {
       // Ensure biometric is disabled
       BiometricService.disable();
 
+      // 🆔 Get user ID
+      final userId = await UserIdentifierService.getUserId();
+      debugPrint('⏭️ Skipping biometric for user: $userId');
+
       // Update database to disable biometric
       final supabase = Supabase.instance.client;
-      final user = supabase.auth.currentUser;
 
-      if (user != null) {
-        await supabase.from('user_security').update({
-          'biometric_enabled': false,
-        }).eq('id', user.id);
-      }
+      // ✅ Update by user ID (not auth user)
+      await supabase.from('user_security').update({
+        'biometric_enabled': false,
+      }).eq('id', userId);
 
       if (!mounted) return;
       Navigator.pushReplacementNamed(context, AppRoutes.lock);

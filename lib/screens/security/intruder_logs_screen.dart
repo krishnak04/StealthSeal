@@ -93,7 +93,7 @@ class _IntruderLogsScreenState extends State<IntruderLogsScreen> {
                             ),
                             child: imageExists
                                 ? Image.file(
-                                    File(imagePath!),
+                                    File(imagePath),
                                     width: double.infinity,
                                     fit: BoxFit.cover,
                                   )

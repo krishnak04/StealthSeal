@@ -7,6 +7,7 @@ import '../../core/security/panic_service.dart';
 import '../../core/security/biometric_service.dart';
 import '../../core/security/time_lock_service.dart';
 import '../../core/security/location_lock_service.dart';
+import '../../core/services/user_identifier_service.dart';
 
 class LockScreen extends StatefulWidget {
   const LockScreen({super.key});
@@ -43,13 +44,17 @@ class _LockScreenState extends State<LockScreen> {
 
   Future<void> _loadPins() async {
     try {
+      // 🆔 Get the unique user ID
+      final userId = await UserIdentifierService.getUserId();
+      debugPrint('🔑 Loading PINs for user: $userId');
+
       final supabase = Supabase.instance.client;
 
+      // ✅ Query by specific user ID (not global broadcast)
       final data = await supabase
           .from('user_security')
           .select()
-          .order('created_at', ascending: false)
-          .limit(1)
+          .eq('id', userId)  // Query for THIS user only
           .maybeSingle();
 
       if (!mounted) return;
@@ -58,6 +63,9 @@ class _LockScreenState extends State<LockScreen> {
         if (data != null) {
           realPin = data['real_pin'];
           decoyPin = data['decoy_pin'];
+          debugPrint('✅ PINs loaded successfully for user: $userId');
+        } else {
+          debugPrint('⚠️ No PIN data found for user: $userId');
         }
         _isLoading = false;
       });

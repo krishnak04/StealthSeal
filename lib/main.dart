@@ -7,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 // Core imports
 import 'core/theme/app_theme.dart';
 import 'core/routes/app_routes.dart';
+import 'core/services/user_identifier_service.dart';
 
 // Screens
 import 'screens/splash/splash_screen.dart';
@@ -25,6 +26,10 @@ void main() async {
   // 🔹 OPEN boxes (this was the main bug)
   await Hive.openBox('securityBox'); // intruder logs
   await Hive.openBox('security');    // night lock, biometric, flags
+  await Hive.openBox('userBox');     // user identification
+
+  // 🔹 Initialize User Identifier Service
+  await UserIdentifierService.initialize();
 
   // 🔹 Initialize Supabase
   await Supabase.initialize(
@@ -35,7 +40,7 @@ void main() async {
 
   runApp(
     DevicePreview(
-      enabled: true, // set false for release
+      enabled: false, // DISABLED FOR DEBUGGING - set true for release
       builder: (_) => const StealthSealApp(),
     ),
   );

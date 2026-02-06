@@ -3,6 +3,7 @@ import '../../widgets/pin_keypad.dart';
 import '../../core/routes/app_routes.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:hive/hive.dart';
+import '../../core/services/user_identifier_service.dart';
 
 enum SetupStep { realPin, confirmRealPin, decoyPin, confirmDecoyPin }
 
@@ -123,14 +124,21 @@ class _SetupScreenState extends State<SetupScreen> {
     });
 
     try {
+      // 🆔 Get the unique user ID
+      final userId = await UserIdentifierService.getUserId();
+      debugPrint('💾 Saving PINs for user: $userId');
+
       final supabase = Supabase.instance.client;
 
       await supabase.from('user_security').insert({
+        'id': userId,  // ✅ Insert the unique user ID
         'real_pin': realPin,
         'decoy_pin': decoyPin,
         'biometric_enabled': false, // Default to false, will be updated in biometric setup
         // Ideally add 'created_at': DateTime.now().toIso8601String() if your DB requires it
       });
+
+      debugPrint('✅ PINs saved successfully for user: $userId');
 
       final box = Hive.box('securityBox');
       box.put('isPinSetupDone', true);
