@@ -57,13 +57,13 @@ class _BiometricSetupScreenState extends State<BiometricSetupScreen> {
 
     try {
       // Attempt biometric authentication
-      final isAuthenticated = await BiometricService.authenticate();
+      final response = await BiometricService.authenticate();
 
-      if (!isAuthenticated) {
+      if (response['success'] != true) {
         if (mounted) {
           setState(() {
             _isRegistering = false;
-            _statusMessage = 'Biometric authentication cancelled';
+            _statusMessage = response['message'] ?? 'Biometric authentication failed';
           });
         }
         return;

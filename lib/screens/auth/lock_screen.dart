@@ -22,6 +22,8 @@ class _LockScreenState extends State<LockScreen> {
   String? decoyPin;
   bool _isLoading = true;
   int failedAttempts = 0;
+  bool _biometricEnabled = false;  // Track biometric status in widget state
+  bool _biometricSupported = false;  // Track device support
 
   @override
   void initState() {
@@ -46,7 +48,7 @@ class _LockScreenState extends State<LockScreen> {
     try {
       // 🆔 Get the unique user ID
       final userId = await UserIdentifierService.getUserId();
-      debugPrint('🔑 Loading PINs for user: $userId');
+      debugPrint('🔑 Loading PINs and security flags for user: $userId');
 
       final supabase = Supabase.instance.client;
 
@@ -59,13 +61,33 @@ class _LockScreenState extends State<LockScreen> {
 
       if (!mounted) return;
 
+      // 🔐 Check if biometric is supported on this device
+      final isSupported = await BiometricService.isSupported();
+      
+      // Load and sync biometric_enabled flag from Supabase
+      bool biometricEnabled = false;
+      if (data != null) {
+        biometricEnabled = data['biometric_enabled'] as bool? ?? false;
+        if (biometricEnabled) {
+          BiometricService.enable();
+          debugPrint('✅ Biometric enabled from Supabase for user: $userId');
+        } else {
+          BiometricService.disable();
+          debugPrint('❌ Biometric disabled for user: $userId');
+        }
+      }
+
       setState(() {
         if (data != null) {
           realPin = data['real_pin'];
           decoyPin = data['decoy_pin'];
-          debugPrint('✅ PINs loaded successfully for user: $userId');
+          _biometricEnabled = biometricEnabled;
+          _biometricSupported = isSupported;
+          debugPrint('✅ PINs and security flags loaded successfully for user: $userId');
         } else {
           debugPrint('⚠️ No PIN data found for user: $userId');
+          _biometricEnabled = false;
+          _biometricSupported = isSupported;
         }
         _isLoading = false;
       });
@@ -184,9 +206,26 @@ class _LockScreenState extends State<LockScreen> {
   // ✅ BIOMETRIC AUTH
   Future<void> _authenticateWithBiometrics() async {
     try {
-      final ok = await BiometricService.authenticate();
-      if (!ok || !mounted) return;
+      final response = await BiometricService.authenticate();
+      
+      if (!mounted) return;
 
+      debugPrint('🔐 Biometric response: $response');
+
+      // Check if authentication was successful
+      if (response['success'] != true) {
+        // Show error message to user
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(response['message'] ?? 'Biometric authentication failed'),
+            backgroundColor: Colors.orangeAccent,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+        return;
+      }
+
+      // Check security locks even if biometric succeeds
       if (PanicService.isActive() ||
           TimeLockService.isNightLockActive() ||
           await LocationLockService.isOutsideTrustedLocation()) {
@@ -200,9 +239,18 @@ class _LockScreenState extends State<LockScreen> {
         return;
       }
 
+      // 🎉 Biometric successful and no locks - go to real dashboard
       Navigator.pushReplacementNamed(context, AppRoutes.realDashboard);
     } catch (e) {
-      debugPrint('Biometric error: $e');
+      debugPrint('❌ Biometric error: $e');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: $e'),
+          backgroundColor: Colors.redAccent,
+          duration: const Duration(seconds: 2),
+        ),
+      );
     }
   }
 
@@ -307,21 +355,185 @@ class _LockScreenState extends State<LockScreen> {
   }
 
   Widget _biometricButton() {
-    return FutureBuilder<bool>(
-      future: BiometricService.isSupported(),
-      builder: (_, snap) {
-        if (snap.data == true &&
-            BiometricService.isEnabled() &&
-            !PanicService.isActive() &&
-            !TimeLockService.isNightLockActive()) {
-          return IconButton(
-            icon: const Icon(Icons.fingerprint, size: 36),
-            color: Colors.cyan,
-            onPressed: _authenticateWithBiometrics,
-          );
+    // Show biometric button only if:
+    // 1. Device supports biometric
+    // 2. User has biometric enabled
+    // 3. No security locks are active
+    if (_biometricSupported &&
+        _biometricEnabled &&
+        !PanicService.isActive() &&
+        !TimeLockService.isNightLockActive()) {
+      return GestureDetector(
+        onTap: _authenticateWithBiometrics,
+        onLongPress: _showBiometricTroubleshooting,
+        child: Column(
+          children: [
+            IconButton(
+              icon: const Icon(Icons.fingerprint, size: 36),
+              color: Colors.cyan,
+              onPressed: _authenticateWithBiometrics,
+            ),
+            const Text(
+              'Tap to unlock\nLong-press for help',
+              style: TextStyle(
+                fontSize: 10,
+                color: Colors.cyan,
+                height: 1.2,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      );
+    }
+    return const SizedBox.shrink();
+  }
+
+  /// Show troubleshooting options for in-display fingerprint sensors
+  void _showBiometricTroubleshooting() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A1A),
+        title: const Text(
+          'In-Display Fingerprint Help',
+          style: TextStyle(color: Colors.cyan),
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _troubleshootingSection(
+                'Tips for Using In-Display Fingerprint:',
+                [
+                  '✓ Make sure the screen is ON and display is not locked',
+                  '✓ Press firmly on the fingerprint sensor area',
+                  '✓ Ensure your finger is clean and dry',
+                  '✓ Try different fingers if one doesn\'t work',
+                  '✓ Use a steady, downward pressure',
+                ],
+              ),
+              const SizedBox(height: 16),
+              _troubleshootingSection(
+                'If Still Not Working:',
+                [
+                  '✓ Go to phone Settings → Biometrics',
+                  '✓ Delete and re-enroll your fingerprint',
+                  '✓ Test biometric in device settings first',
+                  '✓ Restart the app and try again',
+                  '✓ Use PIN unlock as fallback',
+                ],
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: _testBiometricSensor,
+            child: const Text(
+              'Test Sensor',
+              style: TextStyle(color: Colors.cyan),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text(
+              'Close',
+              style: TextStyle(color: Colors.grey),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Test biometric sensor and show available biometric types
+  Future<void> _testBiometricSensor() async {
+    try {
+      final available = await BiometricService.getAvailableBiometrics();
+      final isSupported = await BiometricService.isSupported();
+      
+      if (!mounted) return;
+
+      String biometricInfo = 'Device Support: ${isSupported ? 'YES ✓' : 'NO ✗'}\n\n';
+      biometricInfo += 'Available Biometric Types:\n';
+      
+      if (available.isEmpty) {
+        biometricInfo += '❌ No biometric sensors detected\n\n';
+        biometricInfo += 'Action: Enroll biometric in device settings';
+      } else {
+        for (var bio in available) {
+          biometricInfo += '✓ $bio\n';
         }
-        return const SizedBox.shrink();
-      },
+        biometricInfo += '\nStatus: ✅ Your device supports biometric authentication';
+      }
+
+      if (!mounted) return;
+      
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: const Color(0xFF1A1A1A),
+          title: const Text(
+            'Biometric Sensor Info',
+            style: TextStyle(color: Colors.cyan),
+          ),
+          content: Text(
+            biometricInfo,
+            style: const TextStyle(color: Colors.white70, fontFamily: 'monospace'),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text(
+                'Close',
+                style: TextStyle(color: Colors.grey),
+              ),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      debugPrint('❌ Error testing biometric sensor: $e');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: $e'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    }
+  }
+
+  /// Widget to show troubleshooting sections
+  Widget _troubleshootingSection(String title, List<String> items) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            color: Colors.cyan,
+            fontWeight: FontWeight.bold,
+            fontSize: 12,
+          ),
+        ),
+        const SizedBox(height: 8),
+        ...items.map(
+          (item) => Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: Text(
+              item,
+              style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 11,
+                height: 1.4,
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
