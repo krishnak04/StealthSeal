@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../security/intruder_logs_screen.dart';
 import '../../core/security/panic_service.dart';
 import '../../core/routes/app_routes.dart';
@@ -7,6 +8,7 @@ import '../../core/security/time_lock_service.dart';
 import 'package:geolocator/geolocator.dart';
 import '../../core/security/location_lock_service.dart';
 import '../../core/security/biometric_service.dart';
+import '../../core/services/user_identifier_service.dart';
 
 class RealDashboard extends StatefulWidget {
   const RealDashboard({super.key});
@@ -144,6 +146,7 @@ class _RealDashboardState extends State<RealDashboard> {
           value: BiometricService.isEnabled(),
           onChanged: (value) async {
             if (value) {
+              // ENABLE BIOMETRIC
               final supported = await BiometricService.isSupported();
               if (!supported) {
                 if (mounted) {
@@ -151,14 +154,79 @@ class _RealDashboardState extends State<RealDashboard> {
                     const SnackBar(
                       content:
                           Text('Biometric not supported on this device'),
+                      backgroundColor: Colors.redAccent,
                     ),
                   );
                 }
                 return;
               }
+              
+              // Enable locally
               BiometricService.enable();
+              
+              // 🔐 Update database too
+              try {
+                final userId = await UserIdentifierService.getUserId();
+                final supabase = Supabase.instance.client;
+                await supabase.from('user_security').update({
+                  'biometric_enabled': true,
+                }).eq('id', userId);
+                debugPrint('✅ Biometric enabled in database for user: $userId');
+                
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('✅ Biometric unlocking enabled'),
+                      backgroundColor: Color.fromARGB(255, 255, 255, 255),
+                      duration: Duration(seconds: 1),
+                    ),
+                  );
+                }
+              } catch (e) {
+                debugPrint('❌ Error updating biometric in database: $e');
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('❌ Error: $e'),
+                      backgroundColor: Colors.redAccent,
+                    ),
+                  );
+                }
+              }
             } else {
+              // DISABLE BIOMETRIC
+              // Disable locally
               BiometricService.disable();
+              
+              // 🔐 Update database too
+              try {
+                final userId = await UserIdentifierService.getUserId();
+                final supabase = Supabase.instance.client;
+                await supabase.from('user_security').update({
+                  'biometric_enabled': false,
+                }).eq('id', userId);
+                debugPrint('✅ Biometric disabled in database for user: $userId');
+                
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('❌ Biometric unlocking disabled'),
+                      backgroundColor: Color.fromARGB(255, 255, 255, 255),
+                      duration: Duration(seconds: 1),
+                    ),
+                  );
+                }
+              } catch (e) {
+                debugPrint('❌ Error updating biometric in database: $e');
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('❌ Error: $e'),
+                      backgroundColor: Colors.redAccent,
+                    ),
+                  );
+                }
+              }
             }
 
             setState(() {});
