@@ -115,15 +115,36 @@ class BiometricService {
       final isSupported = await _auth.isDeviceSupported();
       print('Step 3 - Device is supported: $isSupported');
 
-      // Step 4: Attempt authentication with optimized settings for in-display sensors
+      // Step 3.5: Determine what biometrics are available
+      final hasFingerprint = availableBiometrics.contains(BiometricType.fingerprint);
+      final hasFace = availableBiometrics.contains(BiometricType.face);
+      
+      print('Step 3.5 - Has Fingerprint: $hasFingerprint, Has Face: $hasFace');
+      
+      // Create appropriate reason message based on available biometrics
+      String reasonMessage = 'Authenticate with ';
+      if (hasFingerprint && hasFace) {
+        reasonMessage += 'your fingerprint or face';
+      } else if (hasFace) {
+        reasonMessage += 'your face';
+      } else if (hasFingerprint) {
+        reasonMessage += 'your fingerprint';
+      } else {
+        reasonMessage += 'biometric';
+      }
+      reasonMessage += ' to unlock StealthSeal';
+
+      // Step 4: Attempt authentication with optimized settings for all biometric types
       print('✅ Step 4 - Attempting biometric authentication...');
+      print('   Reason: $reasonMessage');
       
       final result = await _auth.authenticate(
-        localizedReason: 'Scan your fingerprint to unlock StealthSeal',
+        localizedReason: reasonMessage,
         options: const AuthenticationOptions(
           stickyAuth: false,           // Don't keep auth dialog open
           useErrorDialogs: true,       // Show native error dialogs
           sensitiveTransaction: true,  // Explicit user confirmation
+          biometricOnly: false,        // Allow both biometric and device credentials
         ),
       );
       
@@ -158,7 +179,7 @@ class BiometricService {
       } else if (exceptionStr.contains('hw_unavailable') || 
                  exceptionStr.contains('hardware unavailable') ||
                  exceptionStr.contains('sensor not available')) {
-        errorMessage = 'Biometric sensor unavailable. Check if your device has a working fingerprint sensor.';
+        errorMessage = 'Biometric sensor unavailable. Check if your device has a working biometric sensor (fingerprint/face).';
         errorCode = 'HW_UNAVAILABLE';
       } else if (exceptionStr.contains('user_canceled') || 
                  exceptionStr.contains('cancelled')) {

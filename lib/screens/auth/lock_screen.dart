@@ -389,14 +389,14 @@ class _LockScreenState extends State<LockScreen> {
     return const SizedBox.shrink();
   }
 
-  /// Show troubleshooting options for in-display fingerprint sensors
+  /// Show troubleshooting options for biometric authentication (fingerprint & face)
   void _showBiometricTroubleshooting() {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1A1A1A),
         title: const Text(
-          'In-Display Fingerprint Help',
+          'Biometric Authentication Help',
           style: TextStyle(color: Colors.cyan),
         ),
         content: SingleChildScrollView(
@@ -405,13 +405,14 @@ class _LockScreenState extends State<LockScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _troubleshootingSection(
-                'Tips for Using In-Display Fingerprint:',
+                'Tips for Using Biometric:',
                 [
                   '✓ Make sure the screen is ON and display is not locked',
-                  '✓ Press firmly on the fingerprint sensor area',
-                  '✓ Ensure your finger is clean and dry',
-                  '✓ Try different fingers if one doesn\'t work',
-                  '✓ Use a steady, downward pressure',
+                  '✓ For Fingerprint: Press firmly on the sensor area',
+                  '✓ For Face: Position your face clearly in view',
+                  '✓ Ensure good lighting for face recognition',
+                  '✓ Keep your face/finger clean and dry',
+                  '✓ Try multiple times if one attempt fails',
                 ],
               ),
               const SizedBox(height: 16),
