@@ -271,7 +271,7 @@ class _IntruderLogsScreenState extends State<IntruderLogsScreen> {
               Padding(
                 padding: const EdgeInsets.all(16),
                 child: Text(
-                  '🚨 Delete Intruder Record',
+                  ' Delete Intruder Record',
                   style: const TextStyle(
                     color: Colors.redAccent,
                     fontSize: 16,
@@ -438,12 +438,12 @@ class _IntruderLogsScreenState extends State<IntruderLogsScreen> {
                             SnackBar(
                               content: const Row(
                                 children: [
-                                  Icon(Icons.check_circle, color: Colors.white),
+                                  Icon(Icons.check_circle, color: Color.fromARGB(255, 24, 20, 20)),
                                   SizedBox(width: 12),
                                   Text('Intruder record deleted'),
                                 ],
                               ),
-                              backgroundColor: Colors.redAccent,
+                              backgroundColor: const Color.fromARGB(255, 216, 90, 90),
                               duration: const Duration(seconds: 2),
                             ),
                           );

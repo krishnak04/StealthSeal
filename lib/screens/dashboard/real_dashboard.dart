@@ -465,7 +465,7 @@ class _RealDashboardState extends State<RealDashboard>
       ),
       _ActionItemData(
         icon: Icons.apps,
-        label: 'App Locks',
+        label: 'Manage App Locks',
         description: 'Manage protected apps',
         color: Colors.cyan,
         onTap: () {},
@@ -794,7 +794,7 @@ Widget _buildAnimatedSwitchTile(_ActionItemData action) {
                     Navigator.pop(context);
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                        content: Text('🚨 Panic Mode Activated!'),
+                        content: Text(' Panic Mode Activated!'),
                         backgroundColor: Colors.red,
                         duration: Duration(seconds: 2),
                       ),
