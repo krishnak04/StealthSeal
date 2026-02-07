@@ -78,69 +78,102 @@ class _IntruderLogsScreenState extends State<IntruderLogsScreen> {
                   ),
                   onLongPress: () =>
                       _confirmDelete(context, log),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      color: Colors.grey.shade900,
-                    ),
-                    child: Column(
-                      children: [
-                        Expanded(
-                          child: ClipRRect(
-                            borderRadius:
-                                const BorderRadius.vertical(
-                              top: Radius.circular(12),
+                  child: Stack(
+                    children: [
+                      Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          color: Colors.grey.shade900,
+                        ),
+                        child: Column(
+                          children: [
+                            Expanded(
+                              child: ClipRRect(
+                                borderRadius:
+                                    const BorderRadius.vertical(
+                                  top: Radius.circular(12),
+                                ),
+                                child: imageExists
+                                    ? Image.file(
+                                        File(imagePath),
+                                        width: double.infinity,
+                                        fit: BoxFit.cover,
+                                      )
+                                    : const Center(
+                                        child: Icon(
+                                          Icons.person_off,
+                                          color: Colors.white54,
+                                        ),
+                                      ),
+                              ),
                             ),
-                            child: imageExists
-                                ? Image.file(
-                                    File(imagePath),
-                                    width: double.infinity,
-                                    fit: BoxFit.cover,
-                                  )
-                                : const Center(
-                                    child: Icon(
-                                      Icons.person_off,
-                                      color: Colors.white54,
+                            Padding(
+                              padding: const EdgeInsets.all(8),
+                              child: Column(
+                                crossAxisAlignment:
+                                    CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    reason,
+                                    style: const TextStyle(
+                                      color: Colors.redAccent,
+                                      fontSize: 12,
                                     ),
                                   ),
-                          ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    time != null
+                                        ? '${time.day}/${time.month}/${time.year} '
+                                          '${time.hour}:${time.minute.toString().padLeft(2, '0')}'
+                                        : 'Time unavailable',
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.white70,
+                                    ),
+                                  ),
+                                  Text(
+                                    'PIN: $pin',
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.white70,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
-                        Padding(
-                          padding: const EdgeInsets.all(8),
-                          child: Column(
-                            crossAxisAlignment:
-                                CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                reason,
-                                style: const TextStyle(
-                                  color: Colors.redAccent,
-                                  fontSize: 12,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                time != null
-                                    ? '${time.day}/${time.month}/${time.year} '
-                                      '${time.hour}:${time.minute.toString().padLeft(2, '0')}'
-                                    : 'Time unavailable',
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  color: Colors.white70,
-                                ),
-                              ),
-                              Text(
-                                'PIN: $pin',
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  color: Colors.white70,
-                                ),
+                      ),
+                      // 🗑️ Delete Button in Top-Right Corner
+                      Positioned(
+                        top: 8,
+                        right: 8,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.redAccent.withOpacity(0.9),
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.redAccent.withOpacity(0.5),
+                                blurRadius: 8,
+                                spreadRadius: 1,
                               ),
                             ],
                           ),
+                          child: IconButton(
+                            icon: const Icon(
+                              Icons.delete_rounded,
+                              color: Colors.white,
+                              size: 18,
+                            ),
+                            onPressed: () =>
+                                _confirmDelete(context, log),
+                            padding: const EdgeInsets.all(6),
+                            constraints: const BoxConstraints(),
+                          ),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 );
               },
