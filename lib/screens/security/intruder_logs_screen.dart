@@ -254,181 +254,217 @@ class _IntruderLogsScreenState extends State<IntruderLogsScreen> {
 
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (_) => Dialog(
         backgroundColor: Colors.grey.shade900,
-        title: const Text(
-          '🚨 Delete Intruder Record',
-          style: TextStyle(color: Colors.redAccent),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
         ),
-        content: SingleChildScrollView(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(
+            maxWidth: 350,
+            maxHeight: 550,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 📸 Show the intruder image in real-time
-              if (imageExists)
-                Container(
-                  margin: const EdgeInsets.only(bottom: 16),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: Colors.redAccent,
-                      width: 2,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.redAccent.withOpacity(0.3),
-                        blurRadius: 10,
-                        spreadRadius: 2,
-                      ),
-                    ],
+              // Header
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text(
+                  '🚨 Delete Intruder Record',
+                  style: const TextStyle(
+                    color: Colors.redAccent,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
                   ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
-                    child: Image.file(
-                      File(imagePath),
-                      width: double.infinity,
-                      height: 250,
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                )
-              else
-                Container(
-                  margin: const EdgeInsets.only(bottom: 16),
-                  width: double.infinity,
-                  height: 250,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    color: Colors.grey.shade800,
-                    border: Border.all(
-                      color: Colors.redAccent,
-                      width: 2,
-                    ),
-                  ),
-                  child: const Center(
-                    child: Icon(
-                      Icons.image_not_supported,
-                      size: 60,
-                      color: Colors.white54,
-                    ),
-                  ),
+                  textAlign: TextAlign.center,
                 ),
+              ),
               
-              // 📋 Intruder Details
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.redAccent.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.redAccent.withOpacity(0.3)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.warning_rounded,
-                          color: Colors.redAccent,
-                          size: 20,
-                        ),
-                        const SizedBox(width: 8),
-                        const Expanded(
-                          child: Text(
-                            'Captured Intruder Image',
-                            style: TextStyle(
+              // Scrollable Content
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // 📸 Show the intruder image in real-time (reduced height)
+                      if (imageExists)
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 16),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
                               color: Colors.redAccent,
-                              fontWeight: FontWeight.bold,
+                              width: 2,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.redAccent.withOpacity(0.3),
+                                blurRadius: 10,
+                                spreadRadius: 2,
+                              ),
+                            ],
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(10),
+                            child: Image.file(
+                              File(imagePath),
+                              width: double.infinity,
+                              height: 180,
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                        )
+                      else
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 16),
+                          width: double.infinity,
+                          height: 180,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            color: Colors.grey.shade800,
+                            border: Border.all(
+                              color: Colors.redAccent,
+                              width: 2,
+                            ),
+                          ),
+                          child: const Center(
+                            child: Icon(
+                              Icons.image_not_supported,
+                              size: 60,
+                              color: Colors.white54,
                             ),
                           ),
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'PIN Entered: $pin',
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 12,
+                      
+                      // 📋 Intruder Details
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.redAccent.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.redAccent.withOpacity(0.3)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(
+                                  Icons.warning_rounded,
+                                  color: Colors.redAccent,
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 8),
+                                const Expanded(
+                                  child: Text(
+                                    'Captured Intruder Image',
+                                    style: TextStyle(
+                                      color: Colors.redAccent,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'PIN Entered: $pin',
+                              style: const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 12,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Time: ${time != null ? '${time.day}/${time.month}/${time.year} ${time.hour}:${time.minute.toString().padLeft(2, '0')}' : 'N/A'}',
+                              style: const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      
+                      const SizedBox(height: 12),
+                      const Text(
+                        'Are you sure you want to permanently delete this intruder record?',
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              
+              // Action Buttons
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text(
+                        'Cancel',
+                        style: TextStyle(color: Colors.cyan),
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Time: ${time != null ? '${time.day}/${time.month}/${time.year} ${time.hour}:${time.minute.toString().padLeft(2, '0')}' : 'N/A'}',
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 12,
+                    ElevatedButton(
+                      onPressed: () async {
+                        final box = Hive.box('securityBox');
+                        final List logs = box.get('intruderLogs', defaultValue: []);
+
+                        if (log['imagePath'] != null) {
+                          final file = File(log['imagePath']);
+                          if (file.existsSync()) {
+                            await file.delete();
+                          }
+                        }
+
+                        logs.remove(log);
+                        await box.put('intruderLogs', logs);
+
+                        if (mounted) {
+                          Navigator.pop(context);
+                          
+                          // Show deletion confirmation
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: const Row(
+                                children: [
+                                  Icon(Icons.check_circle, color: Colors.white),
+                                  SizedBox(width: 12),
+                                  Text('Intruder record deleted'),
+                                ],
+                              ),
+                              backgroundColor: Colors.redAccent,
+                              duration: const Duration(seconds: 2),
+                            ),
+                          );
+                          
+                          setState(() {});
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.redAccent,
+                      ),
+                      child: const Text(
+                        'Delete',
+                        style: TextStyle(color: Colors.white),
                       ),
                     ),
                   ],
                 ),
               ),
-              
-              const SizedBox(height: 12),
-              const Text(
-                'Are you sure you want to permanently delete this intruder record?',
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 12,
-                ),
-              ),
             ],
           ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text(
-              'Cancel',
-              style: TextStyle(color: Colors.cyan),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              final box = Hive.box('securityBox');
-              final List logs = box.get('intruderLogs', defaultValue: []);
-
-              if (log['imagePath'] != null) {
-                final file = File(log['imagePath']);
-                if (file.existsSync()) {
-                  await file.delete();
-                }
-              }
-
-              logs.remove(log);
-              await box.put('intruderLogs', logs);
-
-              if (mounted) {
-                Navigator.pop(context);
-                
-                // Show deletion confirmation with image flash
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: const Row(
-                      children: [
-                        Icon(Icons.check_circle, color: Colors.white),
-                        SizedBox(width: 12),
-                        Text('Intruder record deleted'),
-                      ],
-                    ),
-                    backgroundColor: Colors.redAccent,
-                    duration: const Duration(seconds: 2),
-                  ),
-                );
-                
-                setState(() {});
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.redAccent,
-            ),
-            child: const Text(
-              'Delete',
-              style: TextStyle(color: Colors.white),
-            ),
-          ),
-        ],
       ),
     );
   }
