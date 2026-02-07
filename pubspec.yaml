@@ -45,7 +45,6 @@ dependencies:
   geolocator: ^10.1.0
   intl: ^0.20.2
   uuid: ^4.0.0
-  device_apps: ^2.2.0
 
 
 
