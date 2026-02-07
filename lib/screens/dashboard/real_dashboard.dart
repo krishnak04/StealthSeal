@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../security/intruder_logs_screen.dart';
+import '../security/app_lock_management_screen.dart';
 import '../../core/security/panic_service.dart';
 import '../../core/routes/app_routes.dart';
 import '../../core/security/time_lock_service.dart';
@@ -468,7 +469,14 @@ class _RealDashboardState extends State<RealDashboard>
         label: 'Manage App Locks',
         description: 'Manage protected apps',
         color: Colors.cyan,
-        onTap: () {},
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const AppLockManagementScreen(),
+            ),
+          );
+        },
       ),
       _ActionItemData(
         icon: Icons.schedule,
