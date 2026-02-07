@@ -176,7 +176,7 @@ class _RealDashboardState extends State<RealDashboard> {
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      content: Text('✅ Biometric unlocking enabled'),
+                      content: Text('Biometric unlocking enabled'),
                       backgroundColor: Color.fromARGB(255, 255, 255, 255),
                       duration: Duration(seconds: 1),
                     ),
@@ -210,7 +210,7 @@ class _RealDashboardState extends State<RealDashboard> {
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      content: Text('❌ Biometric unlocking disabled'),
+                      content: Text('Biometric unlocking disabled'),
                       backgroundColor: Color.fromARGB(255, 255, 255, 255),
                       duration: Duration(seconds: 1),
                     ),

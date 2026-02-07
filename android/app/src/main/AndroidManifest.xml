@@ -13,6 +13,17 @@
     <uses-feature
         android:name="android.hardware.camera.front"
         android:required="false" />
+    
+    <!-- ✅ Biometric features -->
+    <uses-feature
+        android:name="android.hardware.biometrics.face"
+        android:required="false" />
+    <uses-feature
+        android:name="android.hardware.biometrics.fingerprint"
+        android:required="false" />
+    <uses-feature
+        android:name="android.hardware.biometrics"
+        android:required="false" />
 
     <application
         android:label="stealthseal"

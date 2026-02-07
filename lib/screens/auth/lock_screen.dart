@@ -454,6 +454,8 @@ class _LockScreenState extends State<LockScreen> {
     try {
       final available = await BiometricService.getAvailableBiometrics();
       final isSupported = await BiometricService.isSupported();
+      final faceSupported = await BiometricService.isFaceSupported();
+      final fingerprintSupported = await BiometricService.isFingerprintSupported();
       
       if (!mounted) return;
 
@@ -467,6 +469,9 @@ class _LockScreenState extends State<LockScreen> {
         for (var bio in available) {
           biometricInfo += '✓ $bio\n';
         }
+        biometricInfo += '\nDetailed Status:\n';
+        biometricInfo += 'Face Recognition: ${faceSupported ? '✅ ENABLED' : '❌ NOT AVAILABLE'}\n';
+        biometricInfo += 'Fingerprint: ${fingerprintSupported ? '✅ ENABLED' : '❌ NOT AVAILABLE'}\n';
         biometricInfo += '\nStatus: ✅ Your device supports biometric authentication';
       }
 

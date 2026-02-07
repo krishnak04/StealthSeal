@@ -80,6 +80,43 @@ class BiometricService {
     }
   }
 
+  /// Check if face recognition is available on device
+  static Future<bool> isFaceSupported() async {
+    try {
+      final available = await _auth.getAvailableBiometrics();
+      final hasFace = available.contains(BiometricType.face);
+      print('🔍 Face Recognition Check: $hasFace');
+      if (hasFace) {
+        print('   ✅ FaceID/Face Unlock is available on this device');
+      } else {
+        print('   ❌ Face recognition not available');
+        print('      Available: $available');
+      }
+      return hasFace;
+    } catch (e) {
+      print('❌ Error checking face support: $e');
+      return false;
+    }
+  }
+
+  /// Check if fingerprint is available on device
+  static Future<bool> isFingerprintSupported() async {
+    try {
+      final available = await _auth.getAvailableBiometrics();
+      final hasFingerprint = available.contains(BiometricType.fingerprint);
+      print('🔍 Fingerprint Check: $hasFingerprint');
+      if (hasFingerprint) {
+        print('   ✅ Fingerprint is available on this device');
+      } else {
+        print('   ❌ Fingerprint not available');
+      }
+      return hasFingerprint;
+    } catch (e) {
+      print('❌ Error checking fingerprint support: $e');
+      return false;
+    }
+  }
+
   // ===== Authenticate =====
   static Future<Map<String, dynamic>> authenticate() async {
     try {

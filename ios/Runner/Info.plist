@@ -45,5 +45,14 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<!-- ✅ Face ID Permission (CRITICAL for iOS face recognition) -->
+	<key>NSFaceIDUsageDescription</key>
+	<string>StealthSeal uses Face ID to securely unlock your app and protect your data</string>
+	<!-- ✅ Touch ID & Face ID Permission -->
+	<key>NSBiometricsUsageDescription</key>
+	<string>StealthSeal uses biometric authentication to securely unlock your account</string>
+	<!-- ✅ Camera Permission (for additional security features) -->
+	<key>NSCameraUsageDescription</key>
+	<string>StealthSeal uses the camera to capture unauthorized access attempts for security purposes</string>
 </dict>
 </plist>
