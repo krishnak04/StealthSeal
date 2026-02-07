@@ -22,7 +22,6 @@ class _RealDashboardState extends State<RealDashboard>
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
-  int _animatedItemIndex = 0;
 
   @override
   void initState() {
@@ -106,7 +105,6 @@ class _RealDashboardState extends State<RealDashboard>
   // 🎯 Animated AppBar
   PreferredSizeWidget _buildAnimatedAppBar() {
     return AppBar(
-      floating: true,
       elevation: 8,
       backgroundColor: Colors.black.withOpacity(0.7),
       flexibleSpace: Container(
@@ -413,7 +411,7 @@ class _RealDashboardState extends State<RealDashboard>
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
-                    content: Text('✅ Biometric unlocking enabled'),
+                    content: Text(' Biometric unlocking enabled'),
                     backgroundColor: Colors.green,
                     duration: Duration(seconds: 1),
                   ),
@@ -444,8 +442,8 @@ class _RealDashboardState extends State<RealDashboard>
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
-                    content: Text('✅ Biometric unlocking disabled'),
-                    backgroundColor: Colors.green,
+                    content: Text(' Biometric unlocking disabled'),
+                    backgroundColor: Color.fromARGB(255, 255, 21, 0),
                     duration: Duration(seconds: 1),
                   ),
                 );

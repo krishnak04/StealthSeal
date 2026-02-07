@@ -86,7 +86,6 @@ class _FakeDashboardState extends State<FakeDashboard>
   // 🎯 Animated AppBar
   PreferredSizeWidget _buildAnimatedAppBar() {
     return AppBar(
-      floating: true,
       elevation: 8,
       backgroundColor: Colors.black.withOpacity(0.7),
       flexibleSpace: Container(
@@ -571,4 +570,4 @@ class _FakeActionData {
     required this.description,
     required this.color,
     this.badge,
-  });
+  });}
