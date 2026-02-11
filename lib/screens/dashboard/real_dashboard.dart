@@ -20,31 +20,34 @@ class RealDashboard extends StatefulWidget {
 
 class _RealDashboardState extends State<RealDashboard>
     with SingleTickerProviderStateMixin {
-  late AnimationController _animationController;
-  late Animation<double> _fadeAnimation;
-  late Animation<Offset> _slideAnimation;
+  late AnimationController _controller;
+  late List<Animation<double>> _cardAnimations;
 
   @override
   void initState() {
     super.initState();
 
-    // Initialize animation controller
-    _animationController = AnimationController(
-      duration: const Duration(milliseconds: 1200),
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 1500),
       vsync: this,
     );
 
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
+    // Staggered card animations
+    _cardAnimations = List.generate(
+      5,
+      (index) => Tween<double>(begin: 0.0, end: 1.0).animate(
+        CurvedAnimation(
+          parent: _controller,
+          curve: Interval(
+            index * 0.1,
+            (index * 0.1) + 0.4,
+            curve: Curves.easeOutCubic,
+          ),
+        ),
+      ),
     );
 
-    _slideAnimation = Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero)
-        .animate(
-      CurvedAnimation(parent: _animationController, curve: Curves.easeOutCubic),
-    );
-
-    // Start animation
-    _animationController.forward();
+    _controller.forward();
 
     // 🔐 Enforce Night Lock immediately
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -56,7 +59,7 @@ class _RealDashboardState extends State<RealDashboard>
 
   @override
   void dispose() {
-    _animationController.dispose();
+    _controller.dispose();
     super.dispose();
   }
 
@@ -64,7 +67,7 @@ class _RealDashboardState extends State<RealDashboard>
   Widget build(BuildContext context) {
     return Scaffold(
       extendBodyBehindAppBar: true,
-      appBar: _buildAnimatedAppBar(),
+      appBar: _buildAppBar(),
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -77,34 +80,30 @@ class _RealDashboardState extends State<RealDashboard>
             ],
           ),
         ),
-        child: FadeTransition(
-          opacity: _fadeAnimation,
-          child: SlideTransition(
-            position: _slideAnimation,
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(16, 90, 16, 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildWelcomeCard(),
-                  const SizedBox(height: 24),
-                  _buildSecurityStatusCard(),
-                  const SizedBox(height: 24),
-                  _buildQuickActionsCard(context),
-                  const SizedBox(height: 24),
-                  _buildEmergencyCard(context),
-                  const SizedBox(height: 20),
-                ],
-              ),
-            ),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(16, 90, 16, 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildAnimatedCard(0, _buildWelcomeCard()),
+              const SizedBox(height: 24),
+              _buildAnimatedCard(1, _buildSecurityStatusCard()),
+              const SizedBox(height: 24),
+              _buildAnimatedCard(2, _buildSecurityHealthCard()),
+              const SizedBox(height: 24),
+              _buildAnimatedCard(3, _buildQuickActionsCard(context)),
+              const SizedBox(height: 24),
+              _buildAnimatedCard(4, _buildEmergencyCard(context)),
+              const SizedBox(height: 20),
+            ],
           ),
         ),
       ),
     );
   }
 
-  // 🎯 Animated AppBar
-  PreferredSizeWidget _buildAnimatedAppBar() {
+  // 🎯 AppBar
+  PreferredSizeWidget _buildAppBar() {
     return AppBar(
       elevation: 8,
       backgroundColor: Colors.black.withOpacity(0.7),
@@ -126,130 +125,256 @@ class _RealDashboardState extends State<RealDashboard>
       ),
       title: Row(
         children: [
-          TweenAnimationBuilder(
-            tween: Tween<double>(begin: 0, end: 1),
-            duration: const Duration(milliseconds: 800),
-            builder: (context, value, child) {
-              return Transform.scale(
-                scale: value,
-                child: const Icon(Icons.shield, color: Colors.cyan),
-              );
-            },
-          ),
+          const Icon(Icons.shield, color: Colors.cyan),
           const SizedBox(width: 12),
-          TweenAnimationBuilder(
-            tween: Tween<double>(begin: 0, end: 1),
-            duration: const Duration(milliseconds: 1000),
-            builder: (context, value, child) {
-              return Opacity(
-                opacity: value,
-                child: const Text(
-                  'StealthSeal',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-              );
-            },
+          const Text(
+            'StealthSeal',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
           ),
         ],
       ),
       actions: [
-        _buildAnimatedIconButton(Icons.camera_alt_outlined, 0),
-        _buildAnimatedIconButton(Icons.settings_outlined, 1),
-        _buildAnimatedIconButton(Icons.lock_outline, 2, onTap: () {
-          Navigator.pushReplacementNamed(context, AppRoutes.lock);
-        }),
+        IconButton(
+          icon: const Icon(Icons.camera_alt_outlined, color: Colors.cyan),
+          onPressed: () {},
+        ),
+        IconButton(
+          icon: const Icon(Icons.settings_outlined, color: Colors.cyan),
+          onPressed: () {},
+        ),
+        IconButton(
+          icon: const Icon(Icons.lock_outline, color: Colors.cyan),
+          onPressed: () {
+            Navigator.pushReplacementNamed(context, AppRoutes.lock);
+          },
+        ),
       ],
     );
   }
 
-  Widget _buildAnimatedIconButton(IconData icon, int index,
-      {VoidCallback? onTap}) {
-    return TweenAnimationBuilder(
-      tween: Tween<double>(begin: 0, end: 1),
-      duration: Duration(milliseconds: 600 + (index * 100)),
-      builder: (context, value, child) {
-        return Transform.scale(
-          scale: value,
-          child: IconButton(
-            icon: Icon(icon, color: Colors.cyan),
-            onPressed: onTap ?? () {},
-          ),
-        );
-      },
+
+
+  // 👋 Welcome Card
+  Widget _buildAnimatedCard(int index, Widget child) {
+    return FadeTransition(
+      opacity: _cardAnimations[index],
+      child: Transform.translate(
+        offset: Offset(0, 20 * (1 - _cardAnimations[index].value)),
+        child: child,
+      ),
     );
   }
 
-  // 👋 Welcome Card with Animation
   Widget _buildWelcomeCard() {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            Colors.cyan.withOpacity(0.15),
-            Colors.blue.withOpacity(0.05),
+            Colors.cyan.withOpacity(0.2),
+            Colors.blue.withOpacity(0.08),
           ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: Colors.cyan.withOpacity(0.3),
-          width: 1.5,
+          color: Colors.cyan.withOpacity(0.4),
+          width: 2,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.cyan.withOpacity(0.1),
-            blurRadius: 20,
-            spreadRadius: 0,
+            color: Colors.cyan.withOpacity(0.15),
+            blurRadius: 25,
+            spreadRadius: 2,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          TweenAnimationBuilder(
-            tween: Tween<double>(begin: 0, end: 1),
-            duration: const Duration(milliseconds: 800),
-            builder: (context, value, child) {
-              return Opacity(
-                opacity: value,
-                child: const Text(
-                  'Welcome Back',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-              );
-            },
+          const Text(
+            'Welcome Back',
+            style: TextStyle(
+              fontSize: 26,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+              letterSpacing: 0.5,
+            ),
           ),
-          const SizedBox(height: 8),
-          TweenAnimationBuilder(
-            tween: Tween<double>(begin: 0, end: 1),
-            duration: const Duration(milliseconds: 1000),
-            builder: (context, value, child) {
-              return Opacity(
-                opacity: value,
-                child: Text(
-                  'Your security dashboard is active and monitoring',
+          const SizedBox(height: 12),
+          Text(
+            'Your security dashboard is active and monitoring',
+            style: TextStyle(
+              color: Colors.cyan.withOpacity(0.8),
+              fontSize: 14,
+              height: 1.5,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.green.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: Colors.green.withOpacity(0.5),
+              ),
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.check_circle, color: Colors.green, size: 18),
+                SizedBox(width: 8),
+                Text(
+                  'All Systems Secure',
                   style: TextStyle(
-                    color: Colors.cyan.withOpacity(0.7),
-                    fontSize: 14,
+                    color: Colors.green,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 12,
                   ),
                 ),
-              );
-            },
+              ],
+            ),
           ),
         ],
       ),
     );
   }
 
-  // 🔐 Security Status Card with Animated Indicators
+  // �️ Security Health Card (New Feature)
+  Widget _buildSecurityHealthCard() {
+    final panicActive = PanicService.isActive();
+    final nightLockActive = TimeLockService.isNightLockActive();
+    final biometricEnabled = BiometricService.isEnabled();
+
+    int securityScore = 0;
+    if (biometricEnabled) securityScore += 25;
+    if (nightLockActive) securityScore += 25;
+    if (panicActive) securityScore += 25;
+    securityScore += 25; // Base score
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            Colors.deepPurple.withOpacity(0.15),
+            Colors.indigo.withOpacity(0.08),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: Colors.deepPurple.withOpacity(0.3),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.deepPurple.withOpacity(0.12),
+            blurRadius: 20,
+            spreadRadius: 1,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Security Health',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.green.withOpacity(0.25),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  '$securityScore%',
+                  style: const TextStyle(
+                    color: Colors.green,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: LinearProgressIndicator(
+              value: securityScore / 100,
+              minHeight: 8,
+              backgroundColor: Colors.white.withOpacity(0.1),
+              valueColor: AlwaysStoppedAnimation(
+                securityScore >= 75 ? Colors.green : Colors.orange,
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _buildHealthBadge('Biometric', biometricEnabled, Icons.fingerprint),
+              _buildHealthBadge('Night Lock', nightLockActive, Icons.nights_stay),
+              _buildHealthBadge('Panic Ready', panicActive, Icons.warning),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHealthBadge(String label, bool active, IconData icon) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: (active ? Colors.green : Colors.grey).withOpacity(0.2),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: (active ? Colors.green : Colors.grey).withOpacity(0.5),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            size: 14,
+            color: active ? Colors.green : Colors.grey,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              color: active ? Colors.green : Colors.grey,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // �🔐 Security Status Card
   Widget _buildSecurityStatusCard() {
     return Container(
       padding: const EdgeInsets.all(20),
@@ -290,19 +415,17 @@ class _RealDashboardState extends State<RealDashboard>
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildAnimatedStatusItem('0', 'Apps Locked', Colors.cyan, 0),
-              _buildAnimatedStatusItem(
+              _buildStatusItem('0', 'Apps Locked', Colors.cyan),
+              _buildStatusItem(
                 getIntruderCount().toString(),
                 'Intruders',
                 Colors.redAccent,
-                1,
               ),
               if (TimeLockService.isNightLockActive())
-                _buildAnimatedStatusItem(
+                _buildStatusItem(
                   'ON',
                   'Night Lock',
                   Colors.orangeAccent,
-                  2,
                 ),
             ],
           ),
@@ -311,58 +434,45 @@ class _RealDashboardState extends State<RealDashboard>
     );
   }
 
-  Widget _buildAnimatedStatusItem(
-      String value, String label, Color color, int delay) {
-    return TweenAnimationBuilder(
-      tween: Tween<double>(begin: 0, end: 1),
-      duration: Duration(milliseconds: 600 + (delay * 150)),
-      builder: (context, animValue, child) {
-        return Transform.scale(
-          scale: animValue,
-          child: Opacity(
-            opacity: animValue,
-            child: Column(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: color.withOpacity(0.15),
-                    border: Border.all(
-                      color: color.withOpacity(0.4),
-                      width: 2,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: color.withOpacity(0.2),
-                        blurRadius: 10,
-                        spreadRadius: 0,
-                      ),
-                    ],
-                  ),
-                  child: Text(
-                    value,
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: color,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  label,
-                  style: const TextStyle(
-                    color: Colors.white70,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
+  Widget _buildStatusItem(String value, String label, Color color) {
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: color.withOpacity(0.15),
+            border: Border.all(
+              color: color.withOpacity(0.4),
+              width: 2,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: color.withOpacity(0.2),
+                blurRadius: 10,
+                spreadRadius: 0,
+              ),
+            ],
+          ),
+          child: Text(
+            value,
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: color,
             ),
           ),
-        );
-      },
+        ),
+        const SizedBox(height: 8),
+        Text(
+          label,
+          style: const TextStyle(
+            color: Colors.white70,
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
     );
   }
 
@@ -546,20 +656,23 @@ class _RealDashboardState extends State<RealDashboard>
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            Colors.blue.withOpacity(0.05),
-            Colors.cyan.withOpacity(0.05),
+            Colors.blue.withOpacity(0.08),
+            Colors.cyan.withOpacity(0.06),
           ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: Colors.cyan.withOpacity(0.2),
+          color: Colors.cyan.withOpacity(0.3),
           width: 1.5,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.cyan.withOpacity(0.08),
-            blurRadius: 15,
-            spreadRadius: 0,
+            color: Colors.cyan.withOpacity(0.12),
+            blurRadius: 20,
+            spreadRadius: 1,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
@@ -572,6 +685,7 @@ class _RealDashboardState extends State<RealDashboard>
               fontSize: 16,
               fontWeight: FontWeight.bold,
               color: Colors.white,
+              letterSpacing: 0.3,
             ),
           ),
           const SizedBox(height: 16),
@@ -580,23 +694,9 @@ class _RealDashboardState extends State<RealDashboard>
             physics: const NeverScrollableScrollPhysics(),
             itemCount: actions.length,
             itemBuilder: (context, index) {
-              return TweenAnimationBuilder(
-                tween: Tween<double>(begin: 0, end: 1),
-                duration: Duration(milliseconds: 400 + (index * 100)),
-                curve: Curves.easeOutCubic,
-                builder: (context, value, child) {
-                  return Transform.translate(
-                    offset: Offset(0, (1 - value) * 20),
-                    child: Opacity(
-                      opacity: value,
-                      child: child,
-                    ),
-                  );
-                },
-                child: actions[index].isSwitch
-                    ? _buildAnimatedSwitchTile(actions[index])
-                    : _buildAnimatedActionTile(actions[index]),
-              );
+              return actions[index].isSwitch
+                  ? _buildSwitchTile(actions[index])
+                  : _buildActionTile(actions[index]);
             },
           ),
         ],
@@ -604,21 +704,29 @@ class _RealDashboardState extends State<RealDashboard>
     );
   }
 
-Widget _buildAnimatedSwitchTile(_ActionItemData action) {
+Widget _buildSwitchTile(_ActionItemData action) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            action.color.withOpacity(0.1),
+            action.color.withOpacity(0.12),
             Colors.transparent,
           ],
         ),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: action.color.withOpacity(0.2),
-          width: 1,
+          color: action.color.withOpacity(0.3),
+          width: 1.5,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: action.color.withOpacity(0.08),
+            blurRadius: 10,
+            spreadRadius: 0,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: SwitchListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 12),
@@ -639,7 +747,7 @@ Widget _buildAnimatedSwitchTile(_ActionItemData action) {
     );
   }
 
-  Widget _buildAnimatedActionTile(_ActionItemData action) {
+  Widget _buildActionTile(_ActionItemData action) {
     return GestureDetector(
       onTap: action.onTap,
       child: Container(
@@ -648,15 +756,23 @@ Widget _buildAnimatedSwitchTile(_ActionItemData action) {
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [
-              action.color.withOpacity(0.1),
+              action.color.withOpacity(0.12),
               Colors.transparent,
             ],
           ),
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: action.color.withOpacity(0.2),
-            width: 1,
+            color: action.color.withOpacity(0.3),
+            width: 1.5,
           ),
+          boxShadow: [
+            BoxShadow(
+              color: action.color.withOpacity(0.1),
+              blurRadius: 12,
+              spreadRadius: 0,
+              offset: const Offset(0, 3),
+            ),
+          ],
         ),
         child: Row(
           children: [
@@ -718,22 +834,23 @@ Widget _buildAnimatedSwitchTile(_ActionItemData action) {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            Colors.red.withOpacity(0.12),
-            Colors.orange.withOpacity(0.05),
+            Colors.red.withOpacity(0.15),
+            Colors.orange.withOpacity(0.07),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: Colors.red.withOpacity(0.25),
-          width: 1.5,
+          color: Colors.red.withOpacity(0.35),
+          width: 2,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.red.withOpacity(0.1),
-            blurRadius: 15,
-            spreadRadius: 0,
+            color: Colors.red.withOpacity(0.15),
+            blurRadius: 22,
+            spreadRadius: 2,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
@@ -742,27 +859,36 @@ Widget _buildAnimatedSwitchTile(_ActionItemData action) {
         children: [
           Row(
             children: [
-              Icon(Icons.warning_rounded, color: Colors.red.shade400),
-              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(Icons.warning_rounded, color: Colors.red.shade300, size: 24),
+              ),
+              const SizedBox(width: 12),
               const Text(
                 'Emergency Panic',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
                   color: Colors.white,
+                  letterSpacing: 0.3,
                 ),
               ),
             ],
           ),
+          const SizedBox(height: 16),
+          _buildPanicButton(context),
           const SizedBox(height: 14),
-          _buildAnimatedPanicButton(context),
-          const SizedBox(height: 12),
           Text(
             'Instantly locks all apps and displays security overlay. Only real PIN allows unlock.',
             style: TextStyle(
-              color: Colors.white.withOpacity(0.7),
+              color: Colors.white.withOpacity(0.75),
               fontSize: 13,
-              height: 1.4,
+              height: 1.5,
+              fontWeight: FontWeight.w400,
             ),
           ),
         ],
@@ -770,7 +896,7 @@ Widget _buildAnimatedSwitchTile(_ActionItemData action) {
     );
   }
 
-  Widget _buildAnimatedPanicButton(BuildContext context) {
+  Widget _buildPanicButton(BuildContext context) {
     return SizedBox(
       width: double.infinity,
       height: 56,
@@ -781,35 +907,68 @@ Widget _buildAnimatedSwitchTile(_ActionItemData action) {
             barrierDismissible: false,
             builder: (context) => AlertDialog(
               backgroundColor: Colors.grey.shade900,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+                side: const BorderSide(
+                  color: Colors.red,
+                  width: 1.5,
+                ),
+              ),
               title: const Text('Confirm Panic Mode',
-                  style: TextStyle(color: Colors.white)),
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                  )),
               content: const Text(
                 'Activate panic mode? Your app will lock immediately and only respond to the real PIN.',
-                style: TextStyle(color: Colors.white70),
+                style: TextStyle(
+                  color: Colors.white70,
+                  height: 1.5,
+                ),
               ),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(context),
                   child: const Text('Cancel',
-                      style: TextStyle(color: Colors.cyan)),
+                      style: TextStyle(
+                        color: Colors.cyan,
+                        fontWeight: FontWeight.w600,
+                      )),
                 ),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red,
+                    backgroundColor: Colors.red.shade600,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
                   onPressed: () {
                     PanicService.activate();
                     Navigator.pop(context);
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(' Panic Mode Activated!'),
-                        backgroundColor: Colors.red,
-                        duration: Duration(seconds: 2),
+                      SnackBar(
+                        content: const Text(
+                          ' Panic Mode Activated!',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                        backgroundColor: Colors.red.shade600,
+                        duration: const Duration(seconds: 2),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          side: const BorderSide(color: Colors.red),
+                        ),
                       ),
                     );
                   },
                   child: const Text('Activate',
-                      style: TextStyle(color: Colors.white)),
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                      )),
                 ),
               ],
             ),
@@ -817,19 +976,20 @@ Widget _buildAnimatedSwitchTile(_ActionItemData action) {
         },
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.red.shade600,
-          elevation: 8,
+          elevation: 10,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),
           ),
-          shadowColor: Colors.red.withOpacity(0.5),
+          shadowColor: Colors.red.withOpacity(0.6),
         ),
-        icon: const Icon(Icons.warning, color: Colors.white),
+        icon: const Icon(Icons.warning_rounded, color: Colors.white, size: 22),
         label: const Text(
           'Activate Panic Lock',
           style: TextStyle(
             color: Colors.white,
             fontWeight: FontWeight.bold,
             fontSize: 16,
+            letterSpacing: 0.3,
           ),
         ),
       ),
