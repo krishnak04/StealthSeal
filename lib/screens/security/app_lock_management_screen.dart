@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
+import '../../core/theme/theme_config.dart';
 
 class AppData {
   final String packageName;
@@ -98,7 +99,7 @@ class _AppLockManagementScreenState extends State<AppLockManagementScreen> {
               ),
             ],
           ),
-          backgroundColor: isLocked ? Colors.redAccent : Colors.green,
+          backgroundColor: isLocked ? ThemeConfig.errorColor(context) : ThemeConfig.successColor(context),
           duration: const Duration(seconds: 1),
         ),
       );
@@ -118,22 +119,22 @@ class _AppLockManagementScreenState extends State<AppLockManagementScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'Manage App Locks',
           style: TextStyle(
-            color: Colors.white,
+            color: ThemeConfig.textPrimary(context),
             fontWeight: FontWeight.bold,
             fontSize: 18,
           ),
         ),
         elevation: 0,
-        backgroundColor: const Color(0xFF0a0e27),
+        backgroundColor: ThemeConfig.appBarBackground(context),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Colors.cyan),
+          icon: Icon(Icons.arrow_back_ios, color: ThemeConfig.accentColor(context)),
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      backgroundColor: const Color(0xFF0a0e27),
+      backgroundColor: ThemeConfig.backgroundColor(context),
       body: ListView(
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 0),
         children: [
@@ -207,88 +208,90 @@ class _AppLockManagementScreenState extends State<AppLockManagementScreen> {
         ...apps.map((app) {
           final isLocked = _lockedApps.contains(app.packageName);
           
-          return GestureDetector(
-            onTap: () => _toggleAppLock(app.packageName),
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-              decoration: BoxDecoration(
-                color: Colors.grey.shade900,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: isLocked ? Colors.redAccent.withOpacity(0.3) : Colors.white.withOpacity(0.1),
-                  width: 1,
+          return Builder(
+            builder: (context) => GestureDetector(
+              onTap: () => _toggleAppLock(app.packageName),
+              child: Container(
+                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                decoration: BoxDecoration(
+                  color: ThemeConfig.surfaceColor(context),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: isLocked ? ThemeConfig.errorColor(context).withOpacity(0.3) : ThemeConfig.borderColor(context),
+                    width: 1,
+                  ),
                 ),
-              ),
-              child: Row(
-                children: [
-                  // App Icon
-                  Container(
-                    width: 56,
-                    height: 56,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      color: Colors.grey.shade800,
-                      border: Border.all(
-                        color: Colors.white.withOpacity(0.1),
-                        width: 1,
+                child: Row(
+                  children: [
+                    // App Icon
+                    Container(
+                      width: 56,
+                      height: 56,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        color: ThemeConfig.inputBackground(context),
+                        border: Border.all(
+                          color: ThemeConfig.borderColor(context),
+                          width: 1,
+                        ),
+                      ),
+                      child: Icon(
+                        app.icon,
+                        color: isLocked ? ThemeConfig.errorColor(context) : ThemeConfig.accentColor(context),
+                        size: 32,
                       ),
                     ),
-                    child: Icon(
-                      app.icon,
-                      color: isLocked ? Colors.redAccent : Colors.cyan,
-                      size: 32,
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  
-                  // App Name and Type
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          app.appName,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 15,
+                    const SizedBox(width: 14),
+                    
+                    // App Name and Type
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            app.appName,
+                            style: TextStyle(
+                              color: ThemeConfig.textPrimary(context),
+                              fontWeight: FontWeight.w600,
+                              fontSize: 15,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          app.appType,
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.6),
-                            fontSize: 12,
+                          const SizedBox(height: 4),
+                          Text(
+                            app.appType,
+                            style: TextStyle(
+                              color: ThemeConfig.textSecondary(context),
+                              fontSize: 12,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  
-                  // Lock Icon
-                  Container(
-                    decoration: BoxDecoration(
-                      color: isLocked
-                          ? Colors.redAccent.withOpacity(0.15)
-                          : Colors.transparent,
-                      borderRadius: BorderRadius.circular(8),
+                    const SizedBox(width: 12),
+                    
+                    // Lock Icon
+                    Container(
+                      decoration: BoxDecoration(
+                        color: isLocked
+                            ? ThemeConfig.errorColor(context).withOpacity(0.15)
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      padding: const EdgeInsets.all(8),
+                      child: Icon(
+                        isLocked ? Icons.lock : Icons.lock_open,
+                        color: isLocked ? ThemeConfig.errorColor(context) : ThemeConfig.textSecondary(context),
+                        size: 22,
+                      ),
                     ),
-                    padding: const EdgeInsets.all(8),
-                    child: Icon(
-                      isLocked ? Icons.lock : Icons.lock_open,
-                      color: isLocked ? Colors.redAccent : Colors.white.withOpacity(0.5),
-                      size: 22,
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           );

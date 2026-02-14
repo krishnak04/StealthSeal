@@ -9,7 +9,6 @@ import '../../core/security/time_lock_service.dart';
 import '../../core/security/location_lock_service.dart';
 import '../../core/services/user_identifier_service.dart';
 import '../../core/theme/theme_config.dart';
-import '../../core/theme/theme_service.dart';
 
 class LockScreen extends StatefulWidget {
   const LockScreen({super.key});
