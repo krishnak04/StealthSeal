@@ -8,6 +8,8 @@ import '../../core/security/biometric_service.dart';
 import '../../core/security/time_lock_service.dart';
 import '../../core/security/location_lock_service.dart';
 import '../../core/services/user_identifier_service.dart';
+import '../../core/theme/theme_config.dart';
+import '../../core/theme/theme_service.dart';
 
 class LockScreen extends StatefulWidget {
   const LockScreen({super.key});
@@ -197,7 +199,7 @@ class _LockScreenState extends State<LockScreen>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(message),
-          backgroundColor: Colors.redAccent,
+          backgroundColor: ThemeConfig.errorColor(context),
           duration: const Duration(seconds: 2),
         ),
       );
@@ -218,7 +220,7 @@ class _LockScreenState extends State<LockScreen>
               : 'Wrong PIN (${3 - failedAttempts} attempts left)',
         ),
         backgroundColor:
-            failedAttempts >= 3 ? Colors.white : Colors.orangeAccent,
+            failedAttempts >= 3 ? ThemeConfig.errorColor(context) : ThemeConfig.accentColor(context).withOpacity(0.8),
         duration: const Duration(seconds: 1),
       ),
     );
@@ -247,7 +249,7 @@ class _LockScreenState extends State<LockScreen>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(response['message'] ?? 'Biometric authentication failed'),
-            backgroundColor: Colors.orangeAccent,
+            backgroundColor: ThemeConfig.accentColor(context).withOpacity(0.8),
             duration: const Duration(seconds: 3),
           ),
         );
@@ -260,9 +262,10 @@ class _LockScreenState extends State<LockScreen>
           await LocationLockService.isOutsideTrustedLocation()) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('PIN required due to security lock'),
-            duration: Duration(seconds: 2),
+          SnackBar(
+            content: const Text('PIN required due to security lock'),
+            backgroundColor: ThemeConfig.accentColor(context).withOpacity(0.8),
+            duration: const Duration(seconds: 2),
           ),
         );
         return;
@@ -291,15 +294,25 @@ class _LockScreenState extends State<LockScreen>
         resizeToAvoidBottomInset: false,
         body: Container(
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                const Color(0xFF0a0e27).withOpacity(0.98),
-                const Color(0xFF1a1a3e).withOpacity(0.98),
-                const Color(0xFF0f0f2e).withOpacity(0.98),
-              ],
-            ),
+            gradient: Theme.of(context).brightness == Brightness.light
+                ? LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Colors.white,
+                      Colors.grey[50]!,
+                      Colors.white,
+                    ],
+                  )
+                : LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      const Color(0xFF0a0e27).withOpacity(0.98),
+                      const Color(0xFF1a1a3e).withOpacity(0.98),
+                      const Color(0xFF0f0f2e).withOpacity(0.98),
+                    ],
+                  ),
           ),
           child: _isLoading
               ? const Center(
@@ -338,12 +351,12 @@ class _LockScreenState extends State<LockScreen>
                               builder: (context, value, child) {
                                 return Opacity(
                                   opacity: value,
-                                  child: const Text(
+                                  child: Text(
                                     'Enter the PIN',
                                     style: TextStyle(
                                       fontSize: 28,
                                       fontWeight: FontWeight.bold,
-                                      color: Colors.white,
+                                      color: ThemeConfig.textPrimary(context),
                                       letterSpacing: 1.2,
                                     ),
                                   ),
@@ -357,11 +370,11 @@ class _LockScreenState extends State<LockScreen>
                               builder: (context, value, child) {
                                 return Opacity(
                                   opacity: value,
-                                  child: const Text(
+                                  child: Text(
                                     'Unlock to access StealthSeal',
                                     style: TextStyle(
                                       fontSize: 14,
-                                      color: Colors.white70,
+                                      color: ThemeConfig.textSecondary(context),
                                     ),
                                   ),
                                 );
@@ -420,26 +433,26 @@ class _LockScreenState extends State<LockScreen>
               shape: BoxShape.circle,
               gradient: LinearGradient(
                 colors: [
-                  Colors.cyan.withOpacity(0.3),
-                  Colors.blue.withOpacity(0.1),
+                  ThemeConfig.accentColor(context).withOpacity(0.3),
+                  ThemeConfig.accentColor(context).withOpacity(0.1),
                 ],
               ),
               border: Border.all(
-                color: Colors.cyan.withOpacity(0.5),
+                color: ThemeConfig.accentColor(context).withOpacity(0.5),
                 width: 2,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.cyan.withOpacity(0.3),
+                  color: ThemeConfig.accentColor(context).withOpacity(0.3),
                   blurRadius: 20,
                   spreadRadius: 5,
                 ),
               ],
             ),
-            child: const Icon(
+            child: Icon(
               Icons.lock,
               size: 60,
-              color: Colors.cyan,
+              color: ThemeConfig.accentColor(context),
             ),
           ),
         );
@@ -494,37 +507,44 @@ class _LockScreenState extends State<LockScreen>
           child: child,
         );
       },
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: List.generate(
-          4,
-          (i) => Container(
-            margin: const EdgeInsets.symmetric(horizontal: 8),
-            width: 20,
-            height: 20,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: i < enteredPin.length
-                  ? Colors.cyan
-                  : Colors.grey.shade700.withOpacity(0.5),
-              border: Border.all(
-                color: i < enteredPin.length
-                    ? Colors.cyan.withOpacity(0.6)
-                    : Colors.grey.shade600.withOpacity(0.3),
-                width: 2,
+      child: Builder(
+        builder: (context) {
+          final accentColor = ThemeConfig.accentColor(context);
+          final isDark = Theme.of(context).brightness == Brightness.dark;
+          
+          return Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(
+              4,
+              (i) => Container(
+                margin: const EdgeInsets.symmetric(horizontal: 8),
+                width: 20,
+                height: 20,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: i < enteredPin.length
+                      ? accentColor
+                      : (isDark ? Colors.grey.shade700.withOpacity(0.5) : Colors.grey[300]!.withOpacity(0.7)),
+                  border: Border.all(
+                    color: i < enteredPin.length
+                        ? accentColor.withOpacity(0.6)
+                        : (isDark ? Colors.grey.shade600.withOpacity(0.3) : Colors.grey[400]!.withOpacity(0.3)),
+                    width: 2,
+                  ),
+                  boxShadow: i < enteredPin.length
+                      ? [
+                          BoxShadow(
+                            color: accentColor.withOpacity(0.4),
+                            blurRadius: 10,
+                            spreadRadius: 2,
+                          ),
+                        ]
+                      : [],
+                ),
               ),
-              boxShadow: i < enteredPin.length
-                  ? [
-                      BoxShadow(
-                        color: Colors.cyan.withOpacity(0.4),
-                        blurRadius: 10,
-                        spreadRadius: 2,
-                      ),
-                    ]
-                  : [],
             ),
-          ),
-        ),
+          );
+        },
       ),
     );
   }
@@ -547,44 +567,50 @@ class _LockScreenState extends State<LockScreen>
             ),
           );
         },
-        child: GestureDetector(
-          onTap: _authenticateWithBiometrics,
-          onLongPress: _showBiometricTroubleshooting,
-          child: Column(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: LinearGradient(
-                    colors: [
-                      Colors.cyan.withOpacity(0.2),
-                      Colors.blue.withOpacity(0.1),
-                    ],
+        child: Builder(
+          builder: (context) {
+            final accentColor = ThemeConfig.accentColor(context);
+            
+            return GestureDetector(
+              onTap: _authenticateWithBiometrics,
+              onLongPress: _showBiometricTroubleshooting,
+              child: Column(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: LinearGradient(
+                        colors: [
+                          accentColor.withOpacity(0.2),
+                          accentColor.withOpacity(0.1),
+                        ],
+                      ),
+                      border: Border.all(
+                        color: accentColor.withOpacity(0.4),
+                        width: 2,
+                      ),
+                    ),
+                    child: IconButton(
+                      icon: const Icon(Icons.fingerprint, size: 40),
+                      color: accentColor,
+                      onPressed: _authenticateWithBiometrics,
+                    ),
                   ),
-                  border: Border.all(
-                    color: Colors.cyan.withOpacity(0.4),
-                    width: 2,
+                  const SizedBox(height: 12),
+                  Text(
+                    'Tap to unlock\nLong-press for help',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: accentColor,
+                      height: 1.3,
+                    ),
+                    textAlign: TextAlign.center,
                   ),
-                ),
-                child: IconButton(
-                  icon: const Icon(Icons.fingerprint, size: 40),
-                  color: Colors.cyan,
-                  onPressed: _authenticateWithBiometrics,
-                ),
+                ],
               ),
-              const SizedBox(height: 12),
-              const Text(
-                'Tap to unlock\nLong-press for help',
-                style: TextStyle(
-                  fontSize: 11,
-                  color: Colors.cyan,
-                  height: 1.3,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
+            );
+          },
         ),
       );
     }
@@ -596,10 +622,10 @@ class _LockScreenState extends State<LockScreen>
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A1A),
-        title: const Text(
+        backgroundColor: ThemeConfig.cardColor(context),
+        title: Text(
           'Biometric Authentication Help',
-          style: TextStyle(color: Colors.cyan),
+          style: TextStyle(color: ThemeConfig.accentColor(ctx)),
         ),
         content: SingleChildScrollView(
           child: Column(
@@ -616,6 +642,7 @@ class _LockScreenState extends State<LockScreen>
                   '✓ Keep your face/finger clean and dry',
                   '✓ Try multiple times if one attempt fails',
                 ],
+                ctx,
               ),
               const SizedBox(height: 16),
               _troubleshootingSection(
@@ -627,6 +654,7 @@ class _LockScreenState extends State<LockScreen>
                   '✓ Restart the app and try again',
                   '✓ Use PIN unlock as fallback',
                 ],
+                ctx,
               ),
             ],
           ),
@@ -634,16 +662,16 @@ class _LockScreenState extends State<LockScreen>
         actions: [
           TextButton(
             onPressed: _testBiometricSensor,
-            child: const Text(
+            child: Text(
               'Test Sensor',
-              style: TextStyle(color: Colors.cyan),
+              style: TextStyle(color: ThemeConfig.accentColor(ctx)),
             ),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text(
+            child: Text(
               'Close',
-              style: TextStyle(color: Colors.grey),
+              style: TextStyle(color: ThemeConfig.accentColor(ctx)),
             ),
           ),
         ],
@@ -682,21 +710,21 @@ class _LockScreenState extends State<LockScreen>
       showDialog(
         context: context,
         builder: (ctx) => AlertDialog(
-          backgroundColor: const Color(0xFF1A1A1A),
-          title: const Text(
+          backgroundColor: ThemeConfig.cardColor(ctx),
+          title: Text(
             'Biometric Sensor Info',
-            style: TextStyle(color: Colors.cyan),
+            style: TextStyle(color: ThemeConfig.accentColor(ctx)),
           ),
           content: Text(
             biometricInfo,
-            style: const TextStyle(color: Colors.white70, fontFamily: 'monospace'),
+            style: TextStyle(color: ThemeConfig.textSecondary(ctx), fontFamily: 'monospace'),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text(
+              child: Text(
                 'Close',
-                style: TextStyle(color: Colors.grey),
+                style: TextStyle(color: ThemeConfig.accentColor(ctx)),
               ),
             ),
           ],
@@ -708,21 +736,21 @@ class _LockScreenState extends State<LockScreen>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error: $e'),
-          backgroundColor: Colors.redAccent,
+          backgroundColor: ThemeConfig.errorColor(context),
         ),
       );
     }
   }
 
   /// Widget to show troubleshooting sections
-  Widget _troubleshootingSection(String title, List<String> items) {
+  Widget _troubleshootingSection(String title, List<String> items, BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           title,
-          style: const TextStyle(
-            color: Colors.cyan,
+          style: TextStyle(
+            color: ThemeConfig.accentColor(context),
             fontWeight: FontWeight.bold,
             fontSize: 12,
           ),
@@ -733,8 +761,8 @@ class _LockScreenState extends State<LockScreen>
             padding: const EdgeInsets.only(bottom: 6),
             child: Text(
               item,
-              style: const TextStyle(
-                color: Colors.white70,
+              style: TextStyle(
+                color: ThemeConfig.textSecondary(context),
                 fontSize: 11,
                 height: 1.4,
               ),

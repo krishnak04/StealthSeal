@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
-import 'package:intl/intl.dart';
+import '../../core/theme/theme_config.dart';
 
 class IntruderLogsScreen extends StatefulWidget {
   const IntruderLogsScreen({super.key});
@@ -14,166 +14,144 @@ class _IntruderLogsScreenState extends State<IntruderLogsScreen> {
   @override
   Widget build(BuildContext context) {
     final box = Hive.box('securityBox');
-    late String currentTime;
-    late String currentDate;
     final List logs = box.get('intruderLogs', defaultValue: []);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Intruder Logs')),
+      appBar: AppBar(
+        title: const Text('Intruder Logs'),
+        backgroundColor: ThemeConfig.appBarBackground(context),
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
+      backgroundColor: ThemeConfig.backgroundColor(context),
       body: logs.isEmpty
-          ? const Center(
+          ? Center(
               child: Text(
                 'No intruders detected',
-                style: TextStyle(color: Colors.white70),
+                style: TextStyle(color: ThemeConfig.textSecondary(context)),
               ),
             )
-          : GridView.builder(
+          : ListView.builder(
               padding: const EdgeInsets.all(16),
               itemCount: logs.length,
-              gridDelegate:
-                  const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-              ),
               itemBuilder: (context, index) {
                 final log = logs[index];
-
                 final String? imagePath = log['imagePath'];
-                final String reason =
-                    log['reason'] ?? 'Captured Intruder Image';
-                final String pin =
-                    log['enteredPin']?.toString() ?? '***';
-                final String timestamp =
-                    log['timestamp'] ?? '';
+                final String reason = log['reason'] ?? 'Failed Attempt';
+                final String pin = log['enteredPin']?.toString() ?? '***';
+                final String timestamp = log['timestamp'] ?? '';
 
                 DateTime? time;
                 try {
-
                   time = DateTime.parse(timestamp);
-               currentDate =   DateFormat('dd/MM/yyyy').format(time);
-
-              currentTime =  DateFormat('h:mm a').format(time);
-
-
-                                 
-                  debugPrint('Parsed time: $time');
                 } catch (_) {
                   time = null;
                 }
 
-                final bool imageExists =
-                    imagePath != null &&
-                        File(imagePath).existsSync();
+                final bool imageExists = imagePath != null && File(imagePath).existsSync();
+                final timeStr = time != null
+                    ? '${time.day}/${time.month}/${time.year}, ${time.hour}:${time.minute.toString().padLeft(2, '0')}:${time.second.toString().padLeft(2, '0')} ${time.hour >= 12 ? 'pm' : 'am'}'
+                    : 'Time unavailable';
 
                 return GestureDetector(
-                  onTap: () => _showFullImage(
-                    context,
-                    imagePath,
-                    reason,
-                    pin,
-                            currentTime,
-                            currentDate,
-
-                  ),
-                  onLongPress: () =>
-                      _confirmDelete(context, log),
-                  child: Stack(
-                    children: [
-                      Container(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(12),
-                          color: Colors.grey.shade900,
+                  onTap: () => _showFullImage(context, imagePath, reason, pin, timeStr),
+                  onLongPress: () => _confirmDelete(context, log),
+                  child: Container(
+                    margin: const EdgeInsets.only(bottom: 16),
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: ThemeConfig.surfaceColor(context),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        // Image
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: Container(
+                            width: 80,
+                            height: 80,
+                            color: ThemeConfig.inputBackground(context),
+                            child: imageExists
+                                ? Image.file(
+                                    File(imagePath),
+                                    fit: BoxFit.cover,
+                                  )
+                                : Center(
+                                    child: Icon(
+                                      Icons.person_off,
+                                      color: ThemeConfig.textSecondary(context),
+                                      size: 32,
+                                    ),
+                                  ),
+                          ),
                         ),
-                        child: Column(
-                          children: [
-                            Expanded(
-                              child: ClipRRect(
-                                borderRadius:
-                                    const BorderRadius.vertical(
-                                  top: Radius.circular(12),
+                        const SizedBox(width: 14),
+                        // Details
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                reason,
+                                style: TextStyle(
+                                  color: ThemeConfig.textPrimary(context),
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
                                 ),
-                                child: imageExists
-                                    ? Image.file(
-                                        File(imagePath),
-                                        width: double.infinity,
-                                        fit: BoxFit.cover,
-                                      )
-                                    : const Center(
-                                        child: Icon(
-                                          Icons.person_off,
-                                          color: Colors.white54,
-                                        ),
-                                      ),
                               ),
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.all(8),
-                              child: Column(
-                                crossAxisAlignment:
-                                    CrossAxisAlignment.start,
+                              const SizedBox(height: 6),
+                              Row(
                                 children: [
+                                  Icon(Icons.access_time, size: 12, color: ThemeConfig.textSecondary(context)),
+                                  const SizedBox(width: 4),
                                   Text(
-                                    reason,
-                                    style: const TextStyle(
-                                      color: Colors.redAccent,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    time != null
-                                        ? '${time.day}/${time.month}/${time.year} '
-                                          '${time.hour}:${time.minute.toString().padLeft(2, '0')}'
-                                        : 'Time unavailable',
-                                    style: const TextStyle(
+                                    timeStr,
+                                    style: TextStyle(
+                                      color: ThemeConfig.textSecondary(context),
                                       fontSize: 11,
-                                      color: Colors.white70,
-                                    ),
-                                  ),
-                                  Text(
-                                    'PIN: $pin',
-                                    style: const TextStyle(
-                                      fontSize: 11,
-                                      color: Colors.white70,
                                     ),
                                   ),
                                 ],
                               ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      // 🗑️ Delete Button in Top-Right Corner
-                      Positioned(
-                        top: 8,
-                        right: 8,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: Colors.redAccent.withOpacity(0.9),
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.redAccent.withOpacity(0.5),
-                                blurRadius: 8,
-                                spreadRadius: 1,
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  Icon(Icons.lock, size: 12, color: ThemeConfig.textSecondary(context)),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'PIN: $pin',
+                                    style: TextStyle(
+                                      color: ThemeConfig.textSecondary(context),
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ],
                           ),
-                          child: IconButton(
-                            icon: const Icon(
-                              Icons.delete_rounded,
+                        ),
+                        // New Badge
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: ThemeConfig.errorColor(context),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Text(
+                            'New',
+                            style: TextStyle(
                               color: Colors.white,
-                              size: 18,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
                             ),
-                            onPressed: () =>
-                                _confirmDelete(context, log),
-                            padding: const EdgeInsets.all(6),
-                            constraints: const BoxConstraints(),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 );
               },
@@ -186,48 +164,34 @@ class _IntruderLogsScreenState extends State<IntruderLogsScreen> {
     String? imagePath,
     String reason,
     String pin,
-   String currentTime,
-   String currentDate,
+    String timeStr,
   ) {
     showDialog(
       context: context,
       builder: (_) => Dialog(
-        backgroundColor: Colors.black,
+        backgroundColor: ThemeConfig.cardColor(context),
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment:
-                CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (imagePath != null &&
-                  File(imagePath).existsSync())
+              if (imagePath != null && File(imagePath).existsSync())
                 Image.file(File(imagePath)),
               const SizedBox(height: 10),
               Text(
                 reason,
-                style: const TextStyle(
-                  color: Colors.redAccent,
-                  fontSize: 12,
-                ),
+                style: TextStyle(color: ThemeConfig.errorColor(context), fontSize: 12),
               ),
               const SizedBox(height: 6),
               Text(
                 'PIN: $pin',
-                style: const TextStyle(
-                  color: Colors.white70,
-                  fontSize: 12,
-                ),
+                style: TextStyle(color: ThemeConfig.textSecondary(context), fontSize: 12),
               ),
               const SizedBox(height: 6),
               Text(
-           
-                'Time : $currentDate , $currentTime'
-                  ,
-                style: const TextStyle(
-                  color: Colors.white70,
-                  fontSize: 12,
-                ),
+                'Time: $timeStr',
+                style: TextStyle(color: ThemeConfig.textSecondary(context), fontSize: 12),
               ),
             ],
           ),
@@ -254,8 +218,8 @@ class _IntruderLogsScreenState extends State<IntruderLogsScreen> {
 
     showDialog(
       context: context,
-      builder: (_) => Dialog(
-        backgroundColor: Colors.grey.shade900,
+      builder: (ctx) => Dialog(
+        backgroundColor: ThemeConfig.cardColor(ctx),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
         ),
@@ -271,9 +235,9 @@ class _IntruderLogsScreenState extends State<IntruderLogsScreen> {
               Padding(
                 padding: const EdgeInsets.all(16),
                 child: Text(
-                  ' Delete Intruder Record',
-                  style: const TextStyle(
-                    color: Colors.redAccent,
+                  'Delete Intruder Record',
+                  style: TextStyle(
+                    color: ThemeConfig.errorColor(ctx),
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                   ),
@@ -296,12 +260,12 @@ class _IntruderLogsScreenState extends State<IntruderLogsScreen> {
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                              color: Colors.redAccent,
+                              color: ThemeConfig.errorColor(ctx),
                               width: 2,
                             ),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.redAccent.withOpacity(0.3),
+                                color: ThemeConfig.errorColor(ctx).withOpacity(0.3),
                                 blurRadius: 10,
                                 spreadRadius: 2,
                               ),
@@ -324,9 +288,9 @@ class _IntruderLogsScreenState extends State<IntruderLogsScreen> {
                           height: 180,
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(12),
-                            color: Colors.grey.shade800,
+                            color: ThemeConfig.surfaceColor(ctx),
                             border: Border.all(
-                              color: Colors.redAccent,
+                              color: ThemeConfig.errorColor(ctx),
                               width: 2,
                             ),
                           ),
@@ -343,26 +307,26 @@ class _IntruderLogsScreenState extends State<IntruderLogsScreen> {
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: Colors.redAccent.withOpacity(0.1),
+                          color: ThemeConfig.errorColor(ctx).withOpacity(0.1),
                           borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.redAccent.withOpacity(0.3)),
+                          border: Border.all(color: ThemeConfig.errorColor(ctx).withOpacity(0.3)),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Row(
                               children: [
-                                const Icon(
+                                Icon(
                                   Icons.warning_rounded,
-                                  color: Colors.redAccent,
+                                  color: ThemeConfig.errorColor(ctx),
                                   size: 20,
                                 ),
                                 const SizedBox(width: 8),
-                                const Expanded(
+                                Expanded(
                                   child: Text(
                                     'Captured Intruder Image',
                                     style: TextStyle(
-                                      color: Colors.redAccent,
+                                      color: ThemeConfig.errorColor(ctx),
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
@@ -372,16 +336,16 @@ class _IntruderLogsScreenState extends State<IntruderLogsScreen> {
                             const SizedBox(height: 8),
                             Text(
                               'PIN Entered: $pin',
-                              style: const TextStyle(
-                                color: Colors.white70,
+                              style: TextStyle(
+                                color: ThemeConfig.textSecondary(ctx),
                                 fontSize: 12,
                               ),
                             ),
                             const SizedBox(height: 4),
                             Text(
                               'Time: ${time != null ? '${time.day}/${time.month}/${time.year} ${time.hour}:${time.minute.toString().padLeft(2, '0')}' : 'N/A'}',
-                              style: const TextStyle(
-                                color: Colors.white70,
+                              style: TextStyle(
+                                color: ThemeConfig.textSecondary(ctx),
                                 fontSize: 12,
                               ),
                             ),
@@ -390,10 +354,10 @@ class _IntruderLogsScreenState extends State<IntruderLogsScreen> {
                       ),
                       
                       const SizedBox(height: 12),
-                      const Text(
+                      Text(
                         'Are you sure you want to permanently delete this intruder record?',
                         style: TextStyle(
-                          color: Colors.white70,
+                          color: ThemeConfig.textSecondary(ctx),
                           fontSize: 12,
                         ),
                       ),
@@ -410,9 +374,9 @@ class _IntruderLogsScreenState extends State<IntruderLogsScreen> {
                   children: [
                     TextButton(
                       onPressed: () => Navigator.pop(context),
-                      child: const Text(
+                      child: Text(
                         'Cancel',
-                        style: TextStyle(color: Colors.cyan),
+                        style: TextStyle(color: ThemeConfig.accentColor(ctx)),
                       ),
                     ),
                     ElevatedButton(
@@ -436,14 +400,14 @@ class _IntruderLogsScreenState extends State<IntruderLogsScreen> {
                           // Show deletion confirmation
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: const Row(
+                              content: Row(
                                 children: [
-                                  Icon(Icons.check_circle, color: Color.fromARGB(255, 24, 20, 20)),
-                                  SizedBox(width: 12),
-                                  Text('Intruder record deleted'),
+                                  const Icon(Icons.check_circle, color: Colors.white),
+                                  const SizedBox(width: 12),
+                                  const Text('Intruder record deleted'),
                                 ],
                               ),
-                              backgroundColor: const Color.fromARGB(255, 216, 90, 90),
+                              backgroundColor: ThemeConfig.errorColor(context),
                               duration: const Duration(seconds: 2),
                             ),
                           );
@@ -452,7 +416,7 @@ class _IntruderLogsScreenState extends State<IntruderLogsScreen> {
                         }
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.redAccent,
+                        backgroundColor: ThemeConfig.errorColor(ctx),
                       ),
                       child: const Text(
                         'Delete',

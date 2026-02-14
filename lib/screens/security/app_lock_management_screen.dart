@@ -94,7 +94,7 @@ class _AppLockManagementScreenState extends State<AppLockManagementScreen> {
               ),
               const SizedBox(width: 12),
               Text(
-                isLocked ? '🔒 App locked' : '🔓 App unlocked',
+                isLocked ? ' App locked' : ' App unlocked',
               ),
             ],
           ),

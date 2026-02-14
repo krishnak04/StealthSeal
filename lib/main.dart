@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 // Core imports
 import 'core/theme/app_theme.dart';
+import 'core/theme/theme_service.dart';
 import 'core/routes/app_routes.dart';
 import 'core/services/user_identifier_service.dart';
 
@@ -16,6 +17,7 @@ import 'screens/auth/lock_screen.dart';
 import 'screens/auth/biometric_setup_screen.dart';
 import 'screens/dashboard/real_dashboard.dart';
 import 'screens/dashboard/fake_dashboard.dart';
+import 'screens/settings/settings_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -46,17 +48,41 @@ void main() async {
   );
 }
 
-class StealthSealApp extends StatelessWidget {
+class StealthSealApp extends StatefulWidget {
   const StealthSealApp({super.key});
 
   @override
+  State<StealthSealApp> createState() => _StealthSealAppState();
+}
+
+class _StealthSealAppState extends State<StealthSealApp> {
+  @override
+  void initState() {
+    super.initState();
+    // Initialize theme notifier with current value
+    ThemeService.themeNotifier.value = ThemeService.getThemeMode();
+    // Listen to theme changes and rebuild
+    ThemeService.themeNotifier.addListener(() {
+      setState(() {});
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final themeMode = ThemeService.themeNotifier.value;
+    
     return MaterialApp(
       useInheritedMediaQuery: true,
       locale: DevicePreview.locale(context),
       builder: DevicePreview.appBuilder,
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.darkTheme,
+      themeMode: themeMode == AppThemeMode.dark 
+          ? ThemeMode.dark 
+          : themeMode == AppThemeMode.light 
+              ? ThemeMode.light 
+              : ThemeMode.system,
+      theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
       initialRoute: AppRoutes.splash,
       routes: {
         AppRoutes.splash: (_) => const SplashScreen(),
@@ -66,8 +92,8 @@ class StealthSealApp extends StatelessWidget {
         AppRoutes.realDashboard: (_) => const RealDashboard(),
         AppRoutes.fakeDashboard: (_) => const FakeDashboard(),
         AppRoutes.timeLockService: (_) => const TimeLockScreen(),
+        AppRoutes.settings: (_) => const SettingsScreen(),
       },
     );
   }
-  
 }
