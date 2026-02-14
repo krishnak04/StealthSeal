@@ -199,7 +199,10 @@ class _LockScreenState extends State<LockScreen>
       if (deactivatePanic) {
         PanicService.deactivate();
       }
-      Navigator.pushReplacementNamed(context, AppRoutes.realDashboard);
+      if (mounted) {
+        setState(() => enteredPin = '');
+        Navigator.pushReplacementNamed(context, AppRoutes.realDashboard);
+      }
     } else {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -209,8 +212,10 @@ class _LockScreenState extends State<LockScreen>
           duration: const Duration(seconds: 2),
         ),
       );
+      if (mounted) {
+        setState(() => enteredPin = '');
+      }
     }
-    setState(() => enteredPin = '');
   }
 
   Future<void> _handleWrongPin() async {
@@ -237,6 +242,11 @@ class _LockScreenState extends State<LockScreen>
       await IntruderService.captureIntruderSelfie(
         enteredPin: enteredPin,
       );
+    }
+
+    // Clear the entered PIN to refresh the display
+    if (mounted) {
+      setState(() => enteredPin = '');
     }
   }
 
