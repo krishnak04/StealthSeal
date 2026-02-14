@@ -151,18 +151,21 @@ class _LockScreenState extends State<LockScreen>
 
     // 📍 LOCATION LOCK
     if (await LocationLockService.isOutsideTrustedLocation()) {
+      if (!mounted) return;
       _handleRestrictedUnlock('Location Lock active. Enter real PIN.');
       return;
     }
 
     // ⏰ TIME LOCK
     if (TimeLockService.isNightLockActive()) {
+      if (!mounted) return;
       _handleRestrictedUnlock('Time Lock active. Enter real PIN.');
       return;
     }
 
     // 🚨 PANIC LOCK
     if (PanicService.isActive()) {
+      if (!mounted) return;
       _handleRestrictedUnlock(
         'Panic Lock active. Enter real PIN.',
         deactivatePanic: true,
@@ -173,15 +176,19 @@ class _LockScreenState extends State<LockScreen>
     // 🔐 NORMAL MODE
     if (enteredPin == realPin) {
       failedAttempts = 0;
-      Navigator.pushReplacementNamed(context, AppRoutes.realDashboard);
+      if (mounted) {
+        setState(() => enteredPin = '');
+        Navigator.pushReplacementNamed(context, AppRoutes.realDashboard);
+      }
     } else if (enteredPin == decoyPin) {
       failedAttempts = 0;
-      Navigator.pushReplacementNamed(context, AppRoutes.fakeDashboard);
+      if (mounted) {
+        setState(() => enteredPin = '');
+        Navigator.pushReplacementNamed(context, AppRoutes.fakeDashboard);
+      }
     } else {
       await _handleWrongPin();
     }
-
-    setState(() => enteredPin = '');
   }
 
   Future<void> _handleRestrictedUnlock(

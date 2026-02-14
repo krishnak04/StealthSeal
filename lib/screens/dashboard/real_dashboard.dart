@@ -15,15 +15,15 @@ class RealDashboard extends StatefulWidget {
 }
 
 class _RealDashboardState extends State<RealDashboard> with WidgetsBindingObserver {
+  bool _isFirstLoad = true;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (TimeLockService.isNightLockActive()) {
-        Navigator.pushReplacementNamed(context, AppRoutes.lock);
-      }
-    });
+    // Don't check locks on initial load - let the lock screen handle it
+    // This prevents the issue where it locks immediately after unlocking
+    _isFirstLoad = true;
   }
 
   @override
@@ -36,6 +36,12 @@ class _RealDashboardState extends State<RealDashboard> with WidgetsBindingObserv
   void didChangeAppLifecycleState(AppLifecycleState state) {
     // Check if panic lock or time lock was activated while dashboard was open
     if (state == AppLifecycleState.resumed) {
+      // Skip check on first load
+      if (_isFirstLoad) {
+        _isFirstLoad = false;
+        return;
+      }
+      
       if (PanicService.isActive() || TimeLockService.isNightLockActive()) {
         Navigator.pushReplacementNamed(context, AppRoutes.lock);
       }

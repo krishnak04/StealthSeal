@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
-import '../../utils/hive_keys.dart';
 import '../../core/theme/theme_config.dart';
 
 class TimeLockSettingsScreen extends StatefulWidget {
@@ -19,19 +18,19 @@ class _TimeLockSettingsScreenState extends State<TimeLockSettingsScreen> {
   @override
   void initState() {
     super.initState();
-    _securityBox = Hive.box('security');
+    _securityBox = Hive.box('securityBox');
     _loadSettings();
   }
 
   void _loadSettings() {
-    _timeLockEnabled = _securityBox.get(HiveKeys.nightLockEnabled, defaultValue: false);
+    _timeLockEnabled = _securityBox.get('nightLockEnabled', defaultValue: false);
     
-    final startHour = _securityBox.get(HiveKeys.nightStartHour, defaultValue: 22);
-    final startMinute = _securityBox.get(HiveKeys.nightStartMinute, defaultValue: 0);
+    final startHour = _securityBox.get('nightStartHour', defaultValue: 22);
+    final startMinute = _securityBox.get('nightStartMinute', defaultValue: 0);
     _startTime = TimeOfDay(hour: startHour, minute: startMinute);
 
-    final endHour = _securityBox.get(HiveKeys.nightEndHour, defaultValue: 6);
-    final endMinute = _securityBox.get(HiveKeys.nightEndMinute, defaultValue: 0);
+    final endHour = _securityBox.get('nightEndHour', defaultValue: 6);
+    final endMinute = _securityBox.get('nightEndMinute', defaultValue: 0);
     _endTime = TimeOfDay(hour: endHour, minute: endMinute);
   }
 
@@ -51,8 +50,8 @@ class _TimeLockSettingsScreenState extends State<TimeLockSettingsScreen> {
       setState(() {
         _startTime = picked;
       });
-      await _securityBox.put(HiveKeys.nightStartHour, picked.hour);
-      await _securityBox.put(HiveKeys.nightStartMinute, picked.minute);
+      await _securityBox.put('nightStartHour', picked.hour);
+      await _securityBox.put('nightStartMinute', picked.minute);
     }
   }
 
@@ -72,8 +71,8 @@ class _TimeLockSettingsScreenState extends State<TimeLockSettingsScreen> {
       setState(() {
         _endTime = picked;
       });
-      await _securityBox.put(HiveKeys.nightEndHour, picked.hour);
-      await _securityBox.put(HiveKeys.nightEndMinute, picked.minute);
+      await _securityBox.put('nightEndHour', picked.hour);
+      await _securityBox.put('nightEndMinute', picked.minute);
     }
   }
 
@@ -81,7 +80,7 @@ class _TimeLockSettingsScreenState extends State<TimeLockSettingsScreen> {
     setState(() {
       _timeLockEnabled = value;
     });
-    await _securityBox.put(HiveKeys.nightLockEnabled, value);
+    await _securityBox.put('nightLockEnabled', value);
   }
 
   String _formatTime(TimeOfDay time) {
@@ -109,23 +108,23 @@ class _TimeLockSettingsScreenState extends State<TimeLockSettingsScreen> {
         ),
         centerTitle: false,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: SingleChildScrollView(
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Enable Time Lock Toggle
+              // Enable Time Lock Card
               Container(
                 decoration: BoxDecoration(
                   color: ThemeConfig.surfaceColor(context),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(16),
                   border: Border.all(
                     color: ThemeConfig.borderColor(context),
                     width: 1,
                   ),
                 ),
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(18),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -137,10 +136,10 @@ class _TimeLockSettingsScreenState extends State<TimeLockSettingsScreen> {
                           style: TextStyle(
                             color: ThemeConfig.textPrimary(context),
                             fontSize: 16,
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 6),
                         Text(
                           'Automatically lock apps during specific hours',
                           style: TextStyle(
@@ -150,69 +149,67 @@ class _TimeLockSettingsScreenState extends State<TimeLockSettingsScreen> {
                         ),
                       ],
                     ),
-                    Transform.scale(
-                      scale: 0.8,
-                      child: Switch(
-                        value: _timeLockEnabled,
-                        onChanged: _toggleTimeLock,
-                        activeColor: ThemeConfig.accentColor(context),
-                        inactiveThumbColor: Theme.of(context).brightness == Brightness.light 
-                            ? Colors.grey[400]
-                            : const Color(0xFF4A4F6B),
-                        inactiveTrackColor: ThemeConfig.borderColor(context),
-                      ),
+                    Switch(
+                      value: _timeLockEnabled,
+                      onChanged: _toggleTimeLock,
+                      activeColor: ThemeConfig.accentColor(context),
+                      inactiveThumbColor: Colors.grey[400],
+                      inactiveTrackColor: ThemeConfig.borderColor(context),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
 
-              // Lock Start Time
+              // Time Settings Card
               Container(
                 decoration: BoxDecoration(
                   color: ThemeConfig.surfaceColor(context),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(16),
                   border: Border.all(
                     color: ThemeConfig.borderColor(context),
                     width: 1,
                   ),
                 ),
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(18),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Lock Start Time
                     Text(
                       'Lock Start Time',
                       style: TextStyle(
                         color: ThemeConfig.textPrimary(context),
                         fontSize: 14,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 6),
                     GestureDetector(
                       onTap: _timeLockEnabled ? () => _selectStartTime(context) : null,
                       child: Container(
                         decoration: BoxDecoration(
                           color: ThemeConfig.inputBackground(context),
-                          borderRadius: BorderRadius.circular(8),
                           border: Border.all(
                             color: ThemeConfig.borderColor(context),
                             width: 1,
                           ),
+                          borderRadius: BorderRadius.circular(10),
                         ),
-                        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 10,
+                          horizontal: 10,
+                        ),
                         child: Text(
                           _formatTime(_startTime),
                           style: TextStyle(
                             color: ThemeConfig.textPrimary(context),
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
+                            fontSize: 14,
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 6),
                     Text(
                       'Apps will lock at this time',
                       style: TextStyle(
@@ -220,57 +217,43 @@ class _TimeLockSettingsScreenState extends State<TimeLockSettingsScreen> {
                         fontSize: 12,
                       ),
                     ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
+                    const SizedBox(height: 14),
 
-              // Lock End Time
-              Container(
-                decoration: BoxDecoration(
-                  color: ThemeConfig.surfaceColor(context),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: ThemeConfig.borderColor(context),
-                    width: 1,
-                  ),
-                ),
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
+                    // Lock End Time
                     Text(
                       'Lock End Time',
                       style: TextStyle(
                         color: ThemeConfig.textPrimary(context),
                         fontSize: 14,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 6),
                     GestureDetector(
                       onTap: _timeLockEnabled ? () => _selectEndTime(context) : null,
                       child: Container(
                         decoration: BoxDecoration(
                           color: ThemeConfig.inputBackground(context),
-                          borderRadius: BorderRadius.circular(8),
                           border: Border.all(
                             color: ThemeConfig.borderColor(context),
                             width: 1,
                           ),
+                          borderRadius: BorderRadius.circular(10),
                         ),
-                        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 10,
+                          horizontal: 10,
+                        ),
                         child: Text(
                           _formatTime(_endTime),
                           style: TextStyle(
                             color: ThemeConfig.textPrimary(context),
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
+                            fontSize: 14,
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 6),
                     Text(
                       'Apps will unlock at this time',
                       style: TextStyle(
@@ -278,36 +261,35 @@ class _TimeLockSettingsScreenState extends State<TimeLockSettingsScreen> {
                         fontSize: 12,
                       ),
                     ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
 
-              // Active Period Status
-              Container(
-                decoration: BoxDecoration(
-                  color: ThemeConfig.infoBackground(context),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: ThemeConfig.infoColor(context).withOpacity(0.5),
-                    width: 1,
-                  ),
-                ),
-                padding: const EdgeInsets.all(14),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.access_time,
-                      color: ThemeConfig.infoColor(context),
-                      size: 20,
-                    ),
-                    const SizedBox(width: 12),
-                    Text(
-                      'Active period: ${_formatTime(_startTime)} - ${_formatTime(_endTime)}',
-                      style: TextStyle(
-                        color: ThemeConfig.infoColor(context),
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
+                    // Active Period
+                    Container(
+                      margin: const EdgeInsets.only(top: 15),
+                      decoration: BoxDecoration(
+                        color: ThemeConfig.accentColor(context).withOpacity(0.1),
+                        border: Border.all(
+                          color: ThemeConfig.accentColor(context),
+                          width: 1,
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      padding: const EdgeInsets.all(12),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.access_time,
+                            color: ThemeConfig.accentColor(context),
+                            size: 18,
+                          ),
+                          const SizedBox(width: 10),
+                          Text(
+                            'Active period: ${_formatTime(_startTime)} - ${_formatTime(_endTime)}',
+                            style: TextStyle(
+                              color: ThemeConfig.accentColor(context),
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],

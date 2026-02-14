@@ -5,6 +5,10 @@ import '../../core/theme/theme_service.dart';
 import '../../core/theme/theme_config.dart';
 import '../../core/routes/app_routes.dart';
 import '../../core/services/user_identifier_service.dart';
+import '../security/location_lock_settings_screen.dart';
+import '../security/stealth_mode_settings_screen.dart';
+import '../security/permissions_settings_screen.dart';
+import 'about_help_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -287,21 +291,36 @@ class _SettingsScreenState extends State<SettingsScreen> {
             _buildSettingsItem(
               icon: Icons.location_on,
               label: 'Location-Based Locks',
-              onTap: () {},
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const LocationLockSettingsScreen(),
+                ),
+              ),
               context: ctx,
             ),
             const SizedBox(height: 12),
             _buildSettingsItem(
               icon: Icons.visibility_off,
               label: 'Stealth Mode',
-              onTap: () {},
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const StealthModeSettingsScreen(),
+                ),
+              ),
               context: ctx,
             ),
             const SizedBox(height: 12),
             _buildSettingsItem(
               icon: Icons.security,
               label: 'Permissions',
-              onTap: () {},
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const PermissionsSettingsScreen(),
+                ),
+              ),
               context: ctx,
             ),
           ],
@@ -333,7 +352,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
             _buildSettingsItem(
               icon: Icons.info,
               label: 'About & Help',
-              onTap: () {},
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const AboutHelpScreen(),
+                  ),
+                );
+              },
               context: ctx,
             ),
           ],
