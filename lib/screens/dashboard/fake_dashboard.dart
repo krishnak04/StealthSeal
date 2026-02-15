@@ -7,44 +7,12 @@ class FakeDashboard extends StatefulWidget {
   State<FakeDashboard> createState() => _FakeDashboardState();
 }
 
-class _FakeDashboardState extends State<FakeDashboard>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _animationController;
-  late Animation<double> _fadeAnimation;
-  late Animation<Offset> _slideAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-
-    _animationController = AnimationController(
-      duration: const Duration(milliseconds: 1200),
-      vsync: this,
-    );
-
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
-    );
-
-    _slideAnimation = Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero)
-        .animate(
-      CurvedAnimation(parent: _animationController, curve: Curves.easeOutCubic),
-    );
-
-    _animationController.forward();
-  }
-
-  @override
-  void dispose() {
-    _animationController.dispose();
-    super.dispose();
-  }
-
+class _FakeDashboardState extends State<FakeDashboard> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       extendBodyBehindAppBar: true,
-      appBar: _buildAnimatedAppBar(),
+      appBar: _buildAppBar(),
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -57,34 +25,28 @@ class _FakeDashboardState extends State<FakeDashboard>
             ],
           ),
         ),
-        child: FadeTransition(
-          opacity: _fadeAnimation,
-          child: SlideTransition(
-            position: _slideAnimation,
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(16, 90, 16, 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildWelcomeCard(),
-                  const SizedBox(height: 24),
-                  _buildStatsCard(),
-                  const SizedBox(height: 24),
-                  _buildFakeActionsCard(),
-                  const SizedBox(height: 24),
-                  _buildSecurityInfoCard(),
-                  const SizedBox(height: 20),
-                ],
-              ),
-            ),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(16, 90, 16, 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildWelcomeCard(),
+              const SizedBox(height: 24),
+              _buildStatsCard(),
+              const SizedBox(height: 24),
+              _buildFakeActionsCard(),
+              const SizedBox(height: 24),
+              _buildSecurityInfoCard(),
+              const SizedBox(height: 20),
+            ],
           ),
         ),
       ),
     );
   }
 
-  // 🎯 Animated AppBar
-  PreferredSizeWidget _buildAnimatedAppBar() {
+  // AppBar
+  PreferredSizeWidget _buildAppBar() {
     return AppBar(
       elevation: 8,
       backgroundColor: Colors.black.withOpacity(0.7),
@@ -106,40 +68,22 @@ class _FakeDashboardState extends State<FakeDashboard>
       ),
       title: Row(
         children: [
-          TweenAnimationBuilder(
-            tween: Tween<double>(begin: 0, end: 1),
-            duration: const Duration(milliseconds: 800),
-            builder: (context, value, child) {
-              return Transform.scale(
-                scale: value,
-                child: const Icon(Icons.shield, color: Colors.cyan),
-              );
-            },
-          ),
+          const Icon(Icons.shield, color: Colors.cyan),
           const SizedBox(width: 12),
-          TweenAnimationBuilder(
-            tween: Tween<double>(begin: 0, end: 1),
-            duration: const Duration(milliseconds: 1000),
-            builder: (context, value, child) {
-              return Opacity(
-                opacity: value,
-                child: const Text(
-                  'StealthSeal',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-              );
-            },
+          const Text(
+            'StealthSeal',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
           ),
         ],
       ),
     );
   }
 
-  // 👋 Welcome Card with Animation
+  // Welcome Card
   Widget _buildWelcomeCard() {
     return Container(
       padding: const EdgeInsets.all(20),
@@ -166,46 +110,28 @@ class _FakeDashboardState extends State<FakeDashboard>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          TweenAnimationBuilder(
-            tween: Tween<double>(begin: 0, end: 1),
-            duration: const Duration(milliseconds: 800),
-            builder: (context, value, child) {
-              return Opacity(
-                opacity: value,
-                child: const Text(
-                  'Account Dashboard',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-              );
-            },
+          const Text(
+            'Account Dashboard',
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
           ),
           const SizedBox(height: 8),
-          TweenAnimationBuilder(
-            tween: Tween<double>(begin: 0, end: 1),
-            duration: const Duration(milliseconds: 1000),
-            builder: (context, value, child) {
-              return Opacity(
-                opacity: value,
-                child: Text(
-                  'All systems operating normally',
-                  style: TextStyle(
-                    color: Colors.purple.withOpacity(0.7),
-                    fontSize: 14,
-                  ),
-                ),
-              );
-            },
+          Text(
+            'All systems operating normally',
+            style: TextStyle(
+              color: Colors.purple.withOpacity(0.7),
+              fontSize: 14,
+            ),
           ),
         ],
       ),
     );
   }
 
-  // 📊 Stats Card
+  // Stats Card
   Widget _buildStatsCard() {
     return Container(
       padding: const EdgeInsets.all(20),
@@ -246,19 +172,9 @@ class _FakeDashboardState extends State<FakeDashboard>
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildAnimatedStatItem('12', 'Last Backup', Colors.green, 0),
-              _buildAnimatedStatItem(
-                '98%',
-                'Storage Free',
-                Colors.blue,
-                1,
-              ),
-              _buildAnimatedStatItem(
-                '✓',
-                'Status',
-                Colors.cyan,
-                2,
-              ),
+              _buildStatItem('12', 'Last Backup', Colors.green),
+              _buildStatItem('98%', 'Storage Free', Colors.blue),
+              _buildStatItem('✓', 'Status', Colors.cyan),
             ],
           ),
         ],
@@ -266,62 +182,49 @@ class _FakeDashboardState extends State<FakeDashboard>
     );
   }
 
-  Widget _buildAnimatedStatItem(
-      String value, String label, Color color, int delay) {
-    return TweenAnimationBuilder(
-      tween: Tween<double>(begin: 0, end: 1),
-      duration: Duration(milliseconds: 600 + (delay * 150)),
-      builder: (context, animValue, child) {
-        return Transform.scale(
-          scale: animValue,
-          child: Opacity(
-            opacity: animValue,
-            child: Column(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: color.withOpacity(0.15),
-                    border: Border.all(
-                      color: color.withOpacity(0.4),
-                      width: 2,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: color.withOpacity(0.2),
-                        blurRadius: 10,
-                        spreadRadius: 0,
-                      ),
-                    ],
-                  ),
-                  child: Text(
-                    value,
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: color,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  label,
-                  style: const TextStyle(
-                    color: Colors.white70,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
+  Widget _buildStatItem(String value, String label, Color color) {
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: color.withOpacity(0.15),
+            border: Border.all(
+              color: color.withOpacity(0.4),
+              width: 2,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: color.withOpacity(0.2),
+                blurRadius: 10,
+                spreadRadius: 0,
+              ),
+            ],
+          ),
+          child: Text(
+            value,
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: color,
             ),
           ),
-        );
-      },
+        ),
+        const SizedBox(height: 8),
+        Text(
+          label,
+          style: const TextStyle(
+            color: Colors.white70,
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
     );
   }
 
-  // ⚡ Fake Actions Card
+  // Fake Actions Card
   Widget _buildFakeActionsCard() {
     final actions = [
       _FakeActionData(
@@ -396,21 +299,7 @@ class _FakeDashboardState extends State<FakeDashboard>
             physics: const NeverScrollableScrollPhysics(),
             itemCount: actions.length,
             itemBuilder: (context, index) {
-              return TweenAnimationBuilder(
-                tween: Tween<double>(begin: 0, end: 1),
-                duration: Duration(milliseconds: 400 + (index * 100)),
-                curve: Curves.easeOutCubic,
-                builder: (context, value, child) {
-                  return Transform.translate(
-                    offset: Offset(0, (1 - value) * 20),
-                    child: Opacity(
-                      opacity: value,
-                      child: child,
-                    ),
-                  );
-                },
-                child: _buildFakeActionTile(actions[index]),
-              );
+              return _buildFakeActionTile(actions[index]);
             },
           ),
         ],
