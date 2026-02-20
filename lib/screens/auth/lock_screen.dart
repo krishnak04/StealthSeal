@@ -17,8 +17,7 @@ class LockScreen extends StatefulWidget {
   State<LockScreen> createState() => _LockScreenState();
 }
 
-class _LockScreenState extends State<LockScreen>
-    with SingleTickerProviderStateMixin {
+class _LockScreenState extends State<LockScreen> {
   String enteredPin = '';
   String? realPin;
   String? decoyPin;
@@ -26,28 +25,10 @@ class _LockScreenState extends State<LockScreen>
   int failedAttempts = 0;
   bool _biometricEnabled = false;  // Track biometric status in widget state
   bool _biometricSupported = false;  // Track device support
-  late AnimationController _animationController;
-  late Animation<double> _fadeAnimation;
-  late Animation<Offset> _slideAnimation;
 
   @override
   void initState() {
     super.initState();
-
-    // Initialize animation controller
-    _animationController = AnimationController(
-      duration: const Duration(milliseconds: 1000),
-      vsync: this,
-    );
-
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
-    );
-
-    _slideAnimation = Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero)
-        .animate(
-      CurvedAnimation(parent: _animationController, curve: Curves.easeOutCubic),
-    );
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (PanicService.isActive()) {
@@ -66,7 +47,6 @@ class _LockScreenState extends State<LockScreen>
 
   @override
   void dispose() {
-    _animationController.dispose();
     super.dispose();
   }
 
@@ -117,14 +97,10 @@ class _LockScreenState extends State<LockScreen>
         }
         _isLoading = false;
       });
-
-      // Start animations when loading is complete
-      _animationController.forward();
     } catch (e) {
       debugPrint('Error loading PINs: $e');
       if (!mounted) return;
       setState(() => _isLoading = false);
-      _animationController.forward();
     }
   }
 
@@ -334,99 +310,62 @@ class _LockScreenState extends State<LockScreen>
               ? const Center(
                   child: CircularProgressIndicator(color: Colors.cyan),
                 )
-              : FadeTransition(
-                  opacity: _fadeAnimation,
-                  child: SlideTransition(
-                    position: _slideAnimation,
-                    child: SafeArea(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 24),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            // 🚨 Lock Banners with Animation
-                            if (PanicService.isActive())
-                              _buildAnimatedLockBanner('PANIC LOCK ACTIVE', Colors.redAccent),
-                            if (TimeLockService.isNightLockActive())
-                              _buildAnimatedLockBanner('TIME LOCK ACTIVE', Colors.orangeAccent),
-                            FutureBuilder<bool>(
-                              future: LocationLockService.isOutsideTrustedLocation(),
-                              builder: (_, snap) => snap.data == true
-                                  ? _buildAnimatedLockBanner(
-                                      'LOCATION LOCK ACTIVE', Colors.greenAccent)
-                                  : const SizedBox.shrink(),
-                            ),
-
-                            // 🔐 Animated Logo
-                            _buildAnimatedLogo(),
-
-                            // 📝 Text
-                            TweenAnimationBuilder(
-                              tween: Tween<double>(begin: 0, end: 1),
-                              duration: const Duration(milliseconds: 800),
-                              builder: (context, value, child) {
-                                return Opacity(
-                                  opacity: value,
-                                  child: Text(
-                                    'Enter the PIN',
-                                    style: TextStyle(
-                                      fontSize: 28,
-                                      fontWeight: FontWeight.bold,
-                                      color: ThemeConfig.textPrimary(context),
-                                      letterSpacing: 1.2,
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                            const SizedBox(height: 6),
-                            TweenAnimationBuilder(
-                              tween: Tween<double>(begin: 0, end: 1),
-                              duration: const Duration(milliseconds: 1000),
-                              builder: (context, value, child) {
-                                return Opacity(
-                                  opacity: value,
-                                  child: Text(
-                                    'Unlock to access StealthSeal',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: ThemeConfig.textSecondary(context),
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                            const SizedBox(height: 24),
-
-                            // 🔵 PIN Dots with Animation
-                            _buildAnimatedPinDots(),
-                            const SizedBox(height: 16),
-
-                            // 👆 Biometric Button with Pulse
-                            _buildAnimatedBiometricButton(),
-                            const SizedBox(height: 30),
-
-                            // 🔑 Keypad
-                            TweenAnimationBuilder(
-                              tween: Tween<double>(begin: 0, end: 1),
-                              duration: const Duration(milliseconds: 1200),
-                              builder: (context, value, child) {
-                                return Transform.scale(
-                                  scale: value,
-                                  child: Opacity(
-                                    opacity: value,
-                                    child: child,
-                                  ),
-                                );
-                              },
-                              child: PinKeypad(
-                                onKeyPressed: _onKeyPress,
-                                onDelete: _onDelete,
-                              ),
-                            ),
-                          ],
+              : SafeArea(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        // 🚨 Lock Banners
+                        if (PanicService.isActive())
+                          _buildLockBanner('PANIC LOCK ACTIVE', Colors.redAccent),
+                        if (TimeLockService.isNightLockActive())
+                          _buildLockBanner('TIME LOCK ACTIVE', Colors.orangeAccent),
+                        FutureBuilder<bool>(
+                          future: LocationLockService.isOutsideTrustedLocation(),
+                          builder: (_, snap) => snap.data == true
+                              ? _buildLockBanner(
+                                  'LOCATION LOCK ACTIVE', Colors.greenAccent)
+                              : const SizedBox.shrink(),
                         ),
-                      ),
+
+                        // 🔐 Logo
+                        _buildLogo(),
+
+                        // 📝 Text
+                        Text(
+                          'Enter the PIN',
+                          style: TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                            color: ThemeConfig.textPrimary(context),
+                            letterSpacing: 1.2,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'Unlock to access StealthSeal',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: ThemeConfig.textSecondary(context),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+
+                        // 🔵 PIN Dots
+                        _buildPinDots(),
+                        const SizedBox(height: 16),
+
+                        // 👆 Biometric Button
+                        _buildBiometricButton(),
+                        const SizedBox(height: 30),
+
+                        // 🔑 Keypad
+                        PinKeypad(
+                          onKeyPressed: _onKeyPress,
+                          onDelete: _onDelete,
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -436,197 +375,148 @@ class _LockScreenState extends State<LockScreen>
   }
 
   // 🔐 Animated Lock Logo
-  Widget _buildAnimatedLogo() {
-    return TweenAnimationBuilder(
-      tween: Tween<double>(begin: 0, end: 1),
-      duration: const Duration(milliseconds: 600),
-      builder: (context, value, child) {
-        return Transform.scale(
-          scale: value,
-          child: Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: LinearGradient(
-                colors: [
-                  ThemeConfig.accentColor(context).withOpacity(0.3),
-                  ThemeConfig.accentColor(context).withOpacity(0.1),
-                ],
-              ),
-              border: Border.all(
-                color: ThemeConfig.accentColor(context).withOpacity(0.5),
-                width: 2,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: ThemeConfig.accentColor(context).withOpacity(0.3),
-                  blurRadius: 20,
-                  spreadRadius: 5,
-                ),
+  Widget _buildLogo() {
+    return Builder(
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: LinearGradient(
+              colors: [
+                ThemeConfig.accentColor(context).withOpacity(0.3),
+                ThemeConfig.accentColor(context).withOpacity(0.1),
               ],
             ),
-            child: Icon(
-              Icons.lock,
-              size: 60,
-              color: ThemeConfig.accentColor(context),
+            border: Border.all(
+              color: ThemeConfig.accentColor(context).withOpacity(0.5),
+              width: 2,
             ),
-          ),
-        );
-      },
-    );
-  }
-
-  // 🔁 Animated Lock Banner
-  Widget _buildAnimatedLockBanner(String text, Color color) {
-    return TweenAnimationBuilder(
-      tween: Tween<double>(begin: 0, end: 1),
-      duration: const Duration(milliseconds: 600),
-      builder: (context, value, child) {
-        return Transform.translate(
-          offset: Offset(0, (1 - value) * -20),
-          child: Opacity(
-            opacity: value,
-            child: child,
-          ),
-        );
-      },
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 20),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.15),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withOpacity(0.4), width: 1.5),
-        ),
-        child: Text(
-          text,
-          style: TextStyle(
-            color: color,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 1.2,
-            fontSize: 13,
-          ),
-          textAlign: TextAlign.center,
-        ),
-      ),
-    );
-  }
-
-  // 🔴 Animated PIN Dots
-  Widget _buildAnimatedPinDots() {
-    return TweenAnimationBuilder(
-      tween: Tween<double>(begin: 0, end: 1),
-      duration: const Duration(milliseconds: 900),
-      builder: (context, value, child) {
-        return Opacity(
-          opacity: value,
-          child: child,
-        );
-      },
-      child: Builder(
-        builder: (context) {
-          final accentColor = ThemeConfig.accentColor(context);
-          final isDark = Theme.of(context).brightness == Brightness.dark;
-          
-          return Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(
-              4,
-              (i) => Container(
-                margin: const EdgeInsets.symmetric(horizontal: 8),
-                width: 20,
-                height: 20,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: i < enteredPin.length
-                      ? accentColor
-                      : (isDark ? Colors.grey.shade700.withOpacity(0.5) : Colors.grey[300]!.withOpacity(0.7)),
-                  border: Border.all(
-                    color: i < enteredPin.length
-                        ? accentColor.withOpacity(0.6)
-                        : (isDark ? Colors.grey.shade600.withOpacity(0.3) : Colors.grey[400]!.withOpacity(0.3)),
-                    width: 2,
-                  ),
-                  boxShadow: i < enteredPin.length
-                      ? [
-                          BoxShadow(
-                            color: accentColor.withOpacity(0.4),
-                            blurRadius: 10,
-                            spreadRadius: 2,
-                          ),
-                        ]
-                      : [],
-                ),
+            boxShadow: [
+              BoxShadow(
+                color: ThemeConfig.accentColor(context).withOpacity(0.3),
+                blurRadius: 20,
+                spreadRadius: 5,
               ),
-            ),
-          );
-        },
+            ],
+          ),
+          child: Icon(
+            Icons.lock,
+            size: 60,
+            color: ThemeConfig.accentColor(context),
+          ),
+        );
+      },
+    );
+  }
+
+  // 🔁 Lock Banner
+  Widget _buildLockBanner(String text, Color color) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 20),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.4), width: 1.5),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: color,
+          fontWeight: FontWeight.bold,
+          letterSpacing: 1.2,
+          fontSize: 13,
+        ),
+        textAlign: TextAlign.center,
       ),
     );
   }
 
-  // 👆 Animated Biometric Button
-  Widget _buildAnimatedBiometricButton() {
+  // 🔴 PIN Dots (static)
+  Widget _buildPinDots() {
+    final accentColor = ThemeConfig.accentColor(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: List.generate(
+        4,
+        (i) => Container(
+          margin: const EdgeInsets.symmetric(horizontal: 8),
+          width: 20,
+          height: 20,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: i < enteredPin.length
+                ? accentColor
+                : (isDark ? Colors.grey.shade700.withOpacity(0.5) : Colors.grey[300]!.withOpacity(0.7)),
+            border: Border.all(
+              color: i < enteredPin.length
+                  ? accentColor.withOpacity(0.6)
+                  : (isDark ? Colors.grey.shade600.withOpacity(0.3) : Colors.grey[400]!.withOpacity(0.3)),
+              width: 2,
+            ),
+            boxShadow: i < enteredPin.length
+                ? [
+                    BoxShadow(
+                      color: accentColor.withOpacity(0.4),
+                      blurRadius: 10,
+                      spreadRadius: 2,
+                    ),
+                  ]
+                : [],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // 👆 Biometric Button (static)
+  Widget _buildBiometricButton() {
     if (_biometricSupported &&
         _biometricEnabled &&
         !PanicService.isActive() &&
         !TimeLockService.isNightLockActive()) {
-      return TweenAnimationBuilder(
-        tween: Tween<double>(begin: 0, end: 1),
-        duration: const Duration(milliseconds: 1000),
-        builder: (context, value, child) {
-          return Opacity(
-            opacity: value,
-            child: Transform.scale(
-              scale: 0.8 + (value * 0.2),
-              child: child,
-            ),
-          );
-        },
-        child: Builder(
-          builder: (context) {
-            final accentColor = ThemeConfig.accentColor(context);
-            
-            return GestureDetector(
-              onTap: _authenticateWithBiometrics,
-              onLongPress: _showBiometricTroubleshooting,
-              child: Column(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: LinearGradient(
-                        colors: [
-                          accentColor.withOpacity(0.2),
-                          accentColor.withOpacity(0.1),
-                        ],
-                      ),
-                      border: Border.all(
-                        color: accentColor.withOpacity(0.4),
-                        width: 2,
-                      ),
-                    ),
-                    child: IconButton(
-                      icon: const Icon(Icons.fingerprint, size: 40),
-                      color: accentColor,
-                      onPressed: _authenticateWithBiometrics,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    'Tap to unlock\nLong-press for help',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: accentColor,
-                      height: 1.3,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
+      final accentColor = ThemeConfig.accentColor(context);
+
+      return GestureDetector(
+        onTap: _authenticateWithBiometrics,
+        onLongPress: _showBiometricTroubleshooting,
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  colors: [
+                    accentColor.withOpacity(0.2),
+                    accentColor.withOpacity(0.1),
+                  ],
+                ),
+                border: Border.all(
+                  color: accentColor.withOpacity(0.4),
+                  width: 2,
+                ),
               ),
-            );
-          },
+              child: IconButton(
+                icon: const Icon(Icons.fingerprint, size: 40),
+                color: accentColor,
+                onPressed: _authenticateWithBiometrics,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Tap to unlock\nLong-press for help',
+              style: TextStyle(
+                fontSize: 11,
+                color: accentColor,
+                height: 1.3,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
         ),
       );
     }

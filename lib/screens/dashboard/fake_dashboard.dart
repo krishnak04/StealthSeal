@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import '../../core/theme/theme_config.dart';
+import '../../core/security/app_lock_service.dart';
+import '../../core/routes/app_routes.dart';
 
 class FakeDashboard extends StatefulWidget {
   const FakeDashboard({super.key});
@@ -7,37 +10,76 @@ class FakeDashboard extends StatefulWidget {
   State<FakeDashboard> createState() => _FakeDashboardState();
 }
 
-class _FakeDashboardState extends State<FakeDashboard> {
+class _FakeDashboardState extends State<FakeDashboard> with WidgetsBindingObserver {
+  bool _isFirstLoad = true;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _isFirstLoad = true;
+
+    // 🔒 Start monitoring locked apps in real-time (even in fake dashboard)
+    _initializeAppLockMonitoring();
+  }
+
+  /// Initialize app lock monitoring service
+  void _initializeAppLockMonitoring() {
+    final appLockService = AppLockService();
+
+    // Set callback for when a locked app is detected
+    appLockService.setOnLockedAppDetectedCallback((packageName) {
+      if (mounted) {
+        debugPrint('🔒 Locked app detected from fake dashboard: $packageName - Forcing lock');
+        // Navigate back to lock screen immediately
+        Navigator.pushReplacementNamed(context, AppRoutes.lock);
+      }
+    });
+
+   
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    // Stop app lock monitoring when leaving the fake dashboard
+    AppLockService();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Force lock when app resumes (user returns from background)
+    if (state == AppLifecycleState.resumed) {
+      // Skip check on first load
+      if (_isFirstLoad) {
+        _isFirstLoad = false;
+        return;
+      }
+      
+      // Always force re-lock for security - return to lock screen
+      Navigator.pushReplacementNamed(context, AppRoutes.lock);
+    }
+  }
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      extendBodyBehindAppBar: true,
-      appBar: _buildAppBar(),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              const Color(0xFF0a0e27).withOpacity(0.95),
-              const Color(0xFF1a1a3e).withOpacity(0.95),
-              const Color(0xFF0f0f2e).withOpacity(0.95),
-            ],
-          ),
-        ),
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(16, 90, 16, 16),
+    return WillPopScope(
+      onWillPop: () async => false, // Prevent back button
+      child: Scaffold(
+        appBar: _buildAppBar(context),
+        backgroundColor: ThemeConfig.backgroundColor(context),
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildWelcomeCard(),
+              _buildWelcomeCard(context),
               const SizedBox(height: 24),
-              _buildStatsCard(),
+              _buildStatsCard(context),
               const SizedBox(height: 24),
-              _buildFakeActionsCard(),
+              _buildFakeActionsCard(context),
               const SizedBox(height: 24),
-              _buildSecurityInfoCard(),
-              const SizedBox(height: 20),
+              _buildSecurityInfoCard(context),
             ],
           ),
         ),
@@ -46,36 +88,21 @@ class _FakeDashboardState extends State<FakeDashboard> {
   }
 
   // AppBar
-  PreferredSizeWidget _buildAppBar() {
+  PreferredSizeWidget _buildAppBar(BuildContext context) {
     return AppBar(
-      elevation: 8,
-      backgroundColor: Colors.black.withOpacity(0.7),
-      flexibleSpace: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              Colors.black.withOpacity(0.8),
-              Colors.cyan.withOpacity(0.1),
-            ],
-          ),
-          border: Border(
-            bottom: BorderSide(
-              color: Colors.cyan.withOpacity(0.3),
-              width: 1,
-            ),
-          ),
-        ),
-      ),
+      elevation: 0,
+      backgroundColor: ThemeConfig.appBarBackground(context),
       title: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.shield, color: Colors.cyan),
+          Icon(Icons.shield, color: ThemeConfig.accentColor(context), size: 24),
           const SizedBox(width: 12),
-          const Text(
+          Text(
             'StealthSeal',
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
-              color: Colors.white,
+              color: ThemeConfig.textPrimary(context),
             ),
           ),
         ],
@@ -84,45 +111,33 @@ class _FakeDashboardState extends State<FakeDashboard> {
   }
 
   // Welcome Card
-  Widget _buildWelcomeCard() {
+  Widget _buildWelcomeCard(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            Colors.purple.withOpacity(0.15),
-            Colors.pink.withOpacity(0.05),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(20),
+        color: ThemeConfig.surfaceColor(context),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: Colors.purple.withOpacity(0.3),
+          color: ThemeConfig.accentColor(context).withOpacity(0.3),
           width: 1.5,
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.purple.withOpacity(0.1),
-            blurRadius: 20,
-            spreadRadius: 0,
-          ),
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Account Dashboard',
             style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.bold,
-              color: Colors.white,
+              color: ThemeConfig.textPrimary(context),
             ),
           ),
           const SizedBox(height: 8),
           Text(
             'All systems operating normally',
             style: TextStyle(
-              color: Colors.purple.withOpacity(0.7),
+              color: ThemeConfig.textSecondary(context),
               fontSize: 14,
             ),
           ),
@@ -132,49 +147,35 @@ class _FakeDashboardState extends State<FakeDashboard> {
   }
 
   // Stats Card
-  Widget _buildStatsCard() {
+  Widget _buildStatsCard(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            Colors.blue.withOpacity(0.1),
-            Colors.purple.withOpacity(0.05),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(20),
+        color: ThemeConfig.surfaceColor(context),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: Colors.purple.withOpacity(0.2),
+          color: ThemeConfig.accentColor(context).withOpacity(0.2),
           width: 1.5,
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.purple.withOpacity(0.1),
-            blurRadius: 15,
-            spreadRadius: 0,
-          ),
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Account Status',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
-              color: Colors.white,
+              color: ThemeConfig.textPrimary(context),
             ),
           ),
           const SizedBox(height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildStatItem('12', 'Last Backup', Colors.green),
-              _buildStatItem('98%', 'Storage Free', Colors.blue),
-              _buildStatItem('✓', 'Status', Colors.cyan),
+              _buildStatItem(context, '12', 'Last Backup', Colors.green),
+              _buildStatItem(context, '98%', 'Storage Free', Colors.blue),
+              _buildStatItem(context, '✓', 'Status', ThemeConfig.accentColor(context)),
             ],
           ),
         ],
@@ -182,7 +183,7 @@ class _FakeDashboardState extends State<FakeDashboard> {
     );
   }
 
-  Widget _buildStatItem(String value, String label, Color color) {
+  Widget _buildStatItem(BuildContext context, String value, String label, Color color) {
     return Column(
       children: [
         Container(
@@ -194,13 +195,6 @@ class _FakeDashboardState extends State<FakeDashboard> {
               color: color.withOpacity(0.4),
               width: 2,
             ),
-            boxShadow: [
-              BoxShadow(
-                color: color.withOpacity(0.2),
-                blurRadius: 10,
-                spreadRadius: 0,
-              ),
-            ],
           ),
           child: Text(
             value,
@@ -214,8 +208,8 @@ class _FakeDashboardState extends State<FakeDashboard> {
         const SizedBox(height: 8),
         Text(
           label,
-          style: const TextStyle(
-            color: Colors.white70,
+          style: TextStyle(
+            color: ThemeConfig.textSecondary(context),
             fontSize: 12,
             fontWeight: FontWeight.w500,
           ),
@@ -225,7 +219,7 @@ class _FakeDashboardState extends State<FakeDashboard> {
   }
 
   // Fake Actions Card
-  Widget _buildFakeActionsCard() {
+  Widget _buildFakeActionsCard(BuildContext context) {
     final actions = [
       _FakeActionData(
         icon: Icons.apps,
@@ -263,34 +257,22 @@ class _FakeDashboardState extends State<FakeDashboard> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            Colors.purple.withOpacity(0.05),
-            Colors.pink.withOpacity(0.05),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(20),
+        color: ThemeConfig.surfaceColor(context),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: Colors.purple.withOpacity(0.2),
+          color: ThemeConfig.accentColor(context).withOpacity(0.2),
           width: 1.5,
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.purple.withOpacity(0.08),
-            blurRadius: 15,
-            spreadRadius: 0,
-          ),
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Quick Actions',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
-              color: Colors.white,
+              color: ThemeConfig.textPrimary(context),
             ),
           ),
           const SizedBox(height: 16),
@@ -299,7 +281,7 @@ class _FakeDashboardState extends State<FakeDashboard> {
             physics: const NeverScrollableScrollPhysics(),
             itemCount: actions.length,
             itemBuilder: (context, index) {
-              return _buildFakeActionTile(actions[index]);
+              return _buildFakeActionTile(context, actions[index]);
             },
           ),
         ],
@@ -307,18 +289,13 @@ class _FakeDashboardState extends State<FakeDashboard> {
     );
   }
 
-  Widget _buildFakeActionTile(_FakeActionData action) {
+  Widget _buildFakeActionTile(BuildContext context, _FakeActionData action) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            action.color.withOpacity(0.1),
-            Colors.transparent,
-          ],
-        ),
-        borderRadius: BorderRadius.circular(14),
+        color: ThemeConfig.inputBackground(context),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: action.color.withOpacity(0.2),
           width: 1,
@@ -327,22 +304,22 @@ class _FakeDashboardState extends State<FakeDashboard> {
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(10),
+            padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: action.color.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(10),
+              color: action.color.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(action.icon, color: action.color, size: 22),
+            child: Icon(action.icon, color: action.color, size: 20),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   action.label,
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: ThemeConfig.textPrimary(context),
                     fontWeight: FontWeight.w600,
                     fontSize: 14,
                   ),
@@ -350,7 +327,7 @@ class _FakeDashboardState extends State<FakeDashboard> {
                 Text(
                   action.description,
                   style: TextStyle(
-                    color: Colors.white.withOpacity(0.6),
+                    color: ThemeConfig.textSecondary(context),
                     fontSize: 12,
                   ),
                 ),
@@ -361,8 +338,8 @@ class _FakeDashboardState extends State<FakeDashboard> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: Colors.pink.withOpacity(0.8),
-                borderRadius: BorderRadius.circular(12),
+                color: ThemeConfig.errorColor(context),
+                borderRadius: BorderRadius.circular(6),
               ),
               child: Text(
                 action.badge!,
@@ -376,31 +353,17 @@ class _FakeDashboardState extends State<FakeDashboard> {
     );
   }
 
-  // 📱 Security Info Card (for decoy)
-  Widget _buildSecurityInfoCard() {
+  // Security Info Card (for decoy)
+  Widget _buildSecurityInfoCard(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            Colors.green.withOpacity(0.08),
-            Colors.cyan.withOpacity(0.05),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(20),
+        color: ThemeConfig.surfaceColor(context),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: Colors.green.withOpacity(0.2),
+          color: Colors.green.withOpacity(0.3),
           width: 1.5,
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.green.withOpacity(0.08),
-            blurRadius: 15,
-            spreadRadius: 0,
-          ),
-        ],
       ),
       child: Row(
         children: [
@@ -421,18 +384,18 @@ class _FakeDashboardState extends State<FakeDashboard> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'System Secure',
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                    color: ThemeConfig.textPrimary(context),
                   ),
                 ),
                 Text(
                   'All security checks passed',
                   style: TextStyle(
-                    color: Colors.white.withOpacity(0.6),
+                    color: ThemeConfig.textSecondary(context),
                     fontSize: 12,
                   ),
                 ),

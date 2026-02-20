@@ -17,7 +17,7 @@ class PinKeypad extends StatelessWidget {
         height: 60,
         width: 90,
         decoration: BoxDecoration(
-          color: const Color.fromARGB(255, 110, 110, 110),
+          color: const Color.fromARGB(255, 190, 186, 186),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Center(

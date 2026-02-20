@@ -11,42 +11,22 @@ class BiometricSetupScreen extends StatefulWidget {
   State<BiometricSetupScreen> createState() => _BiometricSetupScreenState();
 }
 
-class _BiometricSetupScreenState extends State<BiometricSetupScreen>
-    with SingleTickerProviderStateMixin {
+class _BiometricSetupScreenState extends State<BiometricSetupScreen> {
   bool _isBiometricSupported = false;
   bool _isRegistering = false;
   bool _biometricEnabled = false;
   String? _statusMessage;
   bool _isLoading = true;
-  late AnimationController _animationController;
-  late Animation<double> _fadeAnimation;
-  late Animation<Offset> _slideAnimation;
+  // Animations removed: static UI retained for simplicity
 
   @override
   void initState() {
     super.initState();
-
-    // Initialize animation controller
-    _animationController = AnimationController(
-      duration: const Duration(milliseconds: 1200),
-      vsync: this,
-    );
-
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
-    );
-
-    _slideAnimation = Tween<Offset>(begin: const Offset(0, 0.4), end: Offset.zero)
-        .animate(
-      CurvedAnimation(parent: _animationController, curve: Curves.easeOutCubic),
-    );
-
     _checkBiometricSupport();
   }
 
   @override
   void dispose() {
-    _animationController.dispose();
     super.dispose();
   }
 
@@ -58,8 +38,6 @@ class _BiometricSetupScreenState extends State<BiometricSetupScreen>
           _isBiometricSupported = isSupported;
           _isLoading = false;
         });
-        // Start animations after loading is complete
-        _animationController.forward();
       }
     } catch (e) {
       debugPrint('Error checking biometric support: $e');
@@ -68,7 +46,6 @@ class _BiometricSetupScreenState extends State<BiometricSetupScreen>
           _isBiometricSupported = false;
           _isLoading = false;
         });
-        _animationController.forward();
       }
     }
   }
@@ -203,11 +180,7 @@ class _BiometricSetupScreenState extends State<BiometricSetupScreen>
               ? const Center(
                   child: CircularProgressIndicator(color: Colors.cyan),
                 )
-              : FadeTransition(
-                  opacity: _fadeAnimation,
-                  child: SlideTransition(
-                    position: _slideAnimation,
-                    child: SingleChildScrollView(
+                  : SingleChildScrollView(
                       child: SizedBox(
                         height: MediaQuery.of(context).size.height,
                         child: Padding(
@@ -215,175 +188,119 @@ class _BiometricSetupScreenState extends State<BiometricSetupScreen>
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              // 👆 Animated Fingerprint Icon
-                              _buildAnimatedIcon(),
+                              _buildIcon(),
                               const SizedBox(height: 24),
-
-                              // 📝 Title
-                              _buildAnimatedTitle(),
+                              _buildTitle(),
                               const SizedBox(height: 12),
-
-                              // 📄 Subtitle
-                              _buildAnimatedSubtitle(),
+                              _buildSubtitle(),
                               const SizedBox(height: 32),
-
-                              // ✅ Status Message
-                              if (_statusMessage != null)
-                                _buildAnimatedStatusMessage(),
-
-                              // 📋 Features List
-                              _buildAnimatedFeaturesList(),
+                              if (_statusMessage != null) _buildStatusMessage(),
+                              _buildFeaturesList(),
                               const SizedBox(height: 40),
-
-                              // 🔘 Buttons
-                              _buildAnimatedButtons(),
+                              _buildButtons(),
                             ],
                           ),
                         ),
                       ),
                     ),
-                  ),
-                ),
         ),
       ),
     );
   }
 
   // 👆 Animated Icon with Pulse
-  Widget _buildAnimatedIcon() {
-    return TweenAnimationBuilder(
-      tween: Tween<double>(begin: 0, end: 1),
-      duration: const Duration(milliseconds: 800),
-      builder: (context, value, child) {
-        return Transform.scale(
-          scale: value,
-          child: Container(
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: LinearGradient(
-                colors: [
-                  Colors.cyan.withOpacity(0.2),
-                  Colors.blue.withOpacity(0.1),
-                ],
-              ),
-              border: Border.all(
-                color: Colors.cyan.withOpacity(0.4),
-                width: 2,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.cyan.withOpacity(0.3),
-                  blurRadius: 20,
-                  spreadRadius: 5,
-                ),
-              ],
-            ),
-            child: Icon(
-              Icons.fingerprint,
-              size: 80,
-              color: _isBiometricSupported ? Colors.cyan : Colors.grey,
-            ),
+  Widget _buildIcon() {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: LinearGradient(
+          colors: [
+            Colors.cyan.withOpacity(0.2),
+            Colors.blue.withOpacity(0.1),
+          ],
+        ),
+        border: Border.all(
+          color: Colors.cyan.withOpacity(0.4),
+          width: 2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.cyan.withOpacity(0.3),
+            blurRadius: 20,
+            spreadRadius: 5,
           ),
-        );
-      },
+        ],
+      ),
+      child: Icon(
+        Icons.fingerprint,
+        size: 80,
+        color: _isBiometricSupported ? Colors.cyan : Colors.grey,
+      ),
     );
   }
 
   // 📝 Animated Title
-  Widget _buildAnimatedTitle() {
-    return TweenAnimationBuilder(
-      tween: Tween<double>(begin: 0, end: 1),
-      duration: const Duration(milliseconds: 900),
-      builder: (context, value, child) {
-        return Opacity(
-          opacity: value,
-          child: child,
-        );
-      },
-      child: const Text(
-        'Secure Your Account',
-        style: TextStyle(
-          fontSize: 28,
-          fontWeight: FontWeight.bold,
-          color: Colors.white,
-        ),
-        textAlign: TextAlign.center,
+  Widget _buildTitle() {
+    return const Text(
+      'Secure Your Account',
+      style: TextStyle(
+        fontSize: 28,
+        fontWeight: FontWeight.bold,
+        color: Colors.white,
       ),
+      textAlign: TextAlign.center,
     );
   }
 
   // 📄 Animated Subtitle
-  Widget _buildAnimatedSubtitle() {
-    return TweenAnimationBuilder(
-      tween: Tween<double>(begin: 0, end: 1),
-      duration: const Duration(milliseconds: 1000),
-      builder: (context, value, child) {
-        return Opacity(
-          opacity: value,
-          child: child,
-        );
-      },
-      child: Text(
-        _isBiometricSupported
-            ? 'Add biometric authentication for faster unlocking'
-            : 'Biometric authentication not available on this device',
-        style: const TextStyle(
-          fontSize: 16,
-          color: Colors.white70,
-          height: 1.5,
-        ),
-        textAlign: TextAlign.center,
+  Widget _buildSubtitle() {
+    return Text(
+      _isBiometricSupported
+          ? 'Add biometric authentication for faster unlocking'
+          : 'Biometric authentication not available on this device',
+      style: const TextStyle(
+        fontSize: 16,
+        color: Colors.white70,
+        height: 1.5,
       ),
+      textAlign: TextAlign.center,
     );
   }
 
   // ✅ Animated Status Message
-  Widget _buildAnimatedStatusMessage() {
-    return TweenAnimationBuilder(
-      tween: Tween<double>(begin: 0, end: 1),
-      duration: const Duration(milliseconds: 600),
-      builder: (context, value, child) {
-        return Transform.translate(
-          offset: Offset(0, (1 - value) * 20),
-          child: Opacity(
-            opacity: value,
-            child: child,
-          ),
-        );
-      },
-      child: Padding(
-        padding: const EdgeInsets.only(bottom: 20),
-        child: Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
+  Widget _buildStatusMessage() {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 20),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: _biometricEnabled
+              ? Colors.green.withOpacity(0.15)
+              : Colors.orange.withOpacity(0.15),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
             color: _biometricEnabled
-                ? Colors.green.withOpacity(0.15)
-                : Colors.orange.withOpacity(0.15),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: _biometricEnabled
-                  ? Colors.green.withOpacity(0.3)
-                  : Colors.orange.withOpacity(0.3),
-              width: 1.5,
-            ),
+                ? Colors.green.withOpacity(0.3)
+                : Colors.orange.withOpacity(0.3),
+            width: 1.5,
           ),
-          child: Text(
-            _statusMessage!,
-            style: TextStyle(
-              color: _biometricEnabled ? Colors.greenAccent : Colors.orangeAccent,
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-            ),
-            textAlign: TextAlign.center,
+        ),
+        child: Text(
+          _statusMessage!,
+          style: TextStyle(
+            color: _biometricEnabled ? Colors.greenAccent : Colors.orangeAccent,
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
           ),
+          textAlign: TextAlign.center,
         ),
       ),
     );
   }
 
   // 📋 Animated Features List
-  Widget _buildAnimatedFeaturesList() {
+  Widget _buildFeaturesList() {
     final features = [
       _FeatureData(
         Icons.bolt,
@@ -427,28 +344,12 @@ class _BiometricSetupScreenState extends State<BiometricSetupScreen>
       child: Column(
         children: List.generate(
           features.length,
-          (index) => TweenAnimationBuilder(
-            tween: Tween<double>(begin: 0, end: 1),
-            duration: Duration(milliseconds: 600 + (index * 150)),
-            curve: Curves.easeOutCubic,
-            builder: (context, value, child) {
-              return Transform.translate(
-                offset: Offset(0, (1 - value) * 20),
-                child: Opacity(
-                  opacity: value,
-                  child: child,
-                ),
-              );
-            },
-            child: Padding(
-              padding: EdgeInsets.only(
-                bottom: index < features.length - 1 ? 16 : 0,
-              ),
-              child: _buildFeatureItem(
-                features[index].icon,
-                features[index].title,
-                features[index].description,
-              ),
+          (index) => Padding(
+            padding: EdgeInsets.only(bottom: index < features.length - 1 ? 16 : 0),
+            child: _buildFeatureItem(
+              features[index].icon,
+              features[index].title,
+              features[index].description,
             ),
           ),
         ),
@@ -457,22 +358,7 @@ class _BiometricSetupScreenState extends State<BiometricSetupScreen>
   }
 
   // 🔘 Animated Buttons
-  Widget _buildAnimatedButtons() {
-    return TweenAnimationBuilder(
-      tween: Tween<double>(begin: 0, end: 1),
-      duration: const Duration(milliseconds: 1000),
-      builder: (context, value, child) {
-        return Transform.scale(
-          scale: value,
-          child: Opacity(
-            opacity: value,
-            child: child,
-          ),
-        );
-      },
-      child: _buildButtons(),
-    );
-  }
+  // Buttons are static now; keep existing _buildButtons implementation below
 
   // 🔘 Button Logic
   Widget _buildButtons() {
