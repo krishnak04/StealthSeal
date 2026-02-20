@@ -15,10 +15,47 @@ class RealDashboard extends StatefulWidget {
 }
 
 class _RealDashboardState extends State<RealDashboard> {
+  bool _accessibilityEnabled = true;
+
   @override
   void initState() {
     super.initState();
     _initializeAccessibilityLock();
+    _checkAccessibilityService();
+    _checkForLockOverlay();
+  }
+
+  /// Check if accessibility service is enabled
+  Future<void> _checkAccessibilityService() async {
+    final service = AppLockService();
+    final isEnabled = await service.isAccessibilityServiceEnabled();
+    
+    if (mounted) {
+      setState(() {
+        _accessibilityEnabled = isEnabled;
+      });
+    }
+
+    if (!isEnabled) {
+      if (mounted) {
+        debugPrint('⚠️ Accessibility service not enabled!');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text(
+              'Enable Accessibility Service for App Lock to work. Go to Settings > Accessibility > StealthSeal',
+            ),
+            duration: const Duration(seconds: 5),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+    }
+  }
+
+  /// Check for lock overlay (when app is opened from locked app)
+  void _checkForLockOverlay() {
+    // This will be called when MainActivity receives showLockOverlay from native
+    AppLockService().initialize();
   }
 
   /// ✅ Initialize Accessibility based App Lock
@@ -134,8 +171,9 @@ class _RealDashboardState extends State<RealDashboard> {
         ),
         actions: [
           IconButton(
-            icon: Icon(Icons.home, color: ThemeConfig.textPrimary(context)),
-            onPressed: () {},
+            icon: Icon(Icons.bug_report, color: ThemeConfig.textPrimary(context)),
+            onPressed: () =>
+                Navigator.pushNamed(context, AppRoutes.debug),
           ),
           IconButton(
             icon: Icon(Icons.settings, color: ThemeConfig.textPrimary(context)),
@@ -153,6 +191,37 @@ class _RealDashboardState extends State<RealDashboard> {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
+            /// ⚠️ ACCESSIBILITY WARNING
+            if (!_accessibilityEnabled)
+              Container(
+                padding: const EdgeInsets.all(12),
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: Colors.orange,
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.warning, color: Colors.orange, size: 20),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Enable Accessibility Service in Settings for App Lock to work',
+                        style: TextStyle(
+                          color: Colors.orange,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
             /// 🔵 SECURITY STATUS
             Container(
               padding: const EdgeInsets.all(20),
@@ -282,8 +351,7 @@ class _RealDashboardState extends State<RealDashboard> {
                   _buildActionButton(
                     icon: Icons.settings,
                     label: "Settings",
-                    onTap: () =>
-                        Navigator.pushNamed(context, AppRoutes.settings),
+                    onTap: () {},
                     context: context,
                   ),
                 ],

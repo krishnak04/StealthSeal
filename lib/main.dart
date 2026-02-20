@@ -18,6 +18,7 @@ import 'screens/auth/biometric_setup_screen.dart';
 import 'screens/dashboard/real_dashboard.dart';
 import 'screens/dashboard/fake_dashboard.dart';
 import 'screens/settings/settings_screen.dart';
+import 'screens/debug/debug_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -93,6 +94,7 @@ class _StealthSealAppState extends State<StealthSealApp> {
         AppRoutes.fakeDashboard: (_) => const FakeDashboard(),
         AppRoutes.timeLockService: (_) => const TimeLockScreen(),
         AppRoutes.settings: (_) => const SettingsScreen(),
+        AppRoutes.debug: (_) => const DebugScreen(),
       },
     );
   }

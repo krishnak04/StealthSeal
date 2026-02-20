@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
 import 'package:hive/hive.dart';
 import '../../core/theme/theme_config.dart';
 
@@ -82,6 +83,14 @@ class _AppLockManagementScreenState extends State<AppLockManagementScreen> {
     });
 
     await box.put('lockedApps', _lockedApps);
+    
+    // ✅ Sync with Android native SharedPreferences
+    try {
+      final lockedAppsStr = _lockedApps.join(',');
+      await platform.invokeMethod('setLockedApps', {'apps': lockedAppsStr});
+    } catch (e) {
+      debugPrint('Error syncing locked apps: $e');
+    }
   }
 
   List<Map<String, dynamic>> get _unlockApps =>

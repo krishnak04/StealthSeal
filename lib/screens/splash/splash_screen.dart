@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:lottie/lottie.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/routes/app_routes.dart';
@@ -17,7 +18,19 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
+    _requestAccessibilityService();
     _checkUserStatus();
+  }
+
+  /// Request accessibility service permission on app startup  
+  Future<void> _requestAccessibilityService() async {
+    try {
+      const platform = MethodChannel('com.stealthseal.app/applock');
+      debugPrint('📱 Requesting accessibility service...');
+      await platform.invokeMethod('requestAccessibilityService');
+    } catch (e) {
+      debugPrint('ℹ️ Accessibility request error: $e');
+    }
   }
 
   Future<void> _navigateToScreen(String routeName) async {
