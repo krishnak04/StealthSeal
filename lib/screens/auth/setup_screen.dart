@@ -144,7 +144,9 @@ class _SetupScreenState extends State<SetupScreen> {
       box.put('isPinSetupDone', true);
 
       if (!mounted) return;
-      Navigator.pushReplacementNamed(context, AppRoutes.biometricSetup);
+
+      // Show success message dialog
+      _showSuccessDialog();
       
     } catch (e) {
       debugPrint('Error saving PINs: $e');
@@ -155,6 +157,78 @@ class _SetupScreenState extends State<SetupScreen> {
         });
       }
     }
+  }
+
+  void _showSuccessDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1a1a1a),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.check_circle,
+              color: Colors.green,
+              size: 60,
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'PIN Set Successfully! ',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Your real PIN and decoy PIN have been saved securely.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.white70,
+                fontSize: 14,
+              ),
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(ctx); // Close dialog
+                  if (mounted) {
+                    Navigator.pushReplacementNamed(
+                      context,
+                      AppRoutes.biometricSetup,
+                    );
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.cyan,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                child: const Text(
+                  'Continue',
+                  style: TextStyle(
+                    color: Colors.black,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _showError(String message) {

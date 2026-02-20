@@ -55,26 +55,43 @@ class _RealDashboardState extends State<RealDashboard> {
   void _showPanicDialog(BuildContext context) {
     showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (BuildContext dialogContext) {
         return AlertDialog(
-          title: const Text("Activate Panic Lock?"),
-          content: const Text(
-              "Are you sure you want to instantly lock all apps and trigger the security overlay?"),
+          backgroundColor: ThemeConfig.surfaceColor(dialogContext),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          title: Text(
+            "Activate Panic Lock?",
+            style: TextStyle(
+              color: ThemeConfig.textPrimary(dialogContext),
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          content: Text(
+            "Are you sure you want to instantly lock all apps and trigger the security overlay?",
+            style: TextStyle(color: ThemeConfig.textSecondary(dialogContext)),
+          ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(dialogContext), // Close dialog
-              child: const Text("Cancel"),
+              onPressed: () => Navigator.pop(dialogContext),
+              child: Text(
+                "Cancel",
+                style: TextStyle(color: ThemeConfig.textSecondary(dialogContext)),
+              ),
             ),
             TextButton(
               onPressed: () {
-                Navigator.pop(dialogContext); // Close dialog
-                PanicService.activate(); // Trigger the panic service
-                Navigator.pushReplacementNamed(context, AppRoutes.lock); // Lock the app
+                Navigator.pop(dialogContext);
+                PanicService.activate();
+                Navigator.pushReplacementNamed(context, AppRoutes.lock);
               },
-              style: TextButton.styleFrom(
-                foregroundColor: ThemeConfig.errorColor(context),
+              child: Text(
+                "Activate",
+                style: TextStyle(color: ThemeConfig.errorColor(dialogContext)),
               ),
-              child: const Text("Activate"),
             ),
           ],
         );
@@ -104,19 +121,29 @@ class _RealDashboardState extends State<RealDashboard> {
     return Scaffold(
       backgroundColor: ThemeConfig.backgroundColor(context),
       appBar: AppBar(
-        title: const Text("StealthSeal"),
+        backgroundColor: ThemeConfig.appBarBackground(context),
+        elevation: 0,
+        centerTitle: true,
+        title: Text(
+          "StealthSeal",
+          style: TextStyle(
+            color: ThemeConfig.accentColor(context),
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.home),
+            icon: Icon(Icons.home, color: ThemeConfig.textPrimary(context)),
             onPressed: () {},
           ),
           IconButton(
-            icon: const Icon(Icons.settings),
+            icon: Icon(Icons.settings, color: ThemeConfig.textPrimary(context)),
             onPressed: () =>
                 Navigator.pushNamed(context, AppRoutes.settings),
           ),
           IconButton(
-            icon: const Icon(Icons.lock),
+            icon: Icon(Icons.lock, color: ThemeConfig.textPrimary(context)),
             onPressed: () =>
                 Navigator.pushReplacementNamed(context, AppRoutes.lock),
           ),
@@ -131,9 +158,10 @@ class _RealDashboardState extends State<RealDashboard> {
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
                 color: ThemeConfig.surfaceColor(context),
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: ThemeConfig.accentColor(context),
+                  color: ThemeConfig.accentColor(context).withOpacity(0.3),
+                  width: 1,
                 ),
               ),
               child: Column(
@@ -141,11 +169,15 @@ class _RealDashboardState extends State<RealDashboard> {
                   Row(
                     children: [
                       Icon(Icons.shield,
-                          color: ThemeConfig.accentColor(context)),
+                          color: ThemeConfig.accentColor(context), size: 20),
                       const SizedBox(width: 8),
-                      const Text(
+                      Text(
                         "Security Status",
-                        style: TextStyle(fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          color: ThemeConfig.accentColor(context),
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ],
                   ),
@@ -157,23 +189,38 @@ class _RealDashboardState extends State<RealDashboard> {
                         children: [
                           Text(
                             "$lockedCount",
-                            style: const TextStyle(
-                                fontSize: 28,
-                                fontWeight: FontWeight.bold),
+                            style: TextStyle(
+                              color: ThemeConfig.accentColor(context),
+                              fontSize: 32,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
-                          const Text("Apps Locked"),
+                          Text(
+                            "Apps Locked",
+                            style: TextStyle(
+                              color: ThemeConfig.textSecondary(context),
+                              fontSize: 13,
+                            ),
+                          ),
                         ],
                       ),
                       Column(
                         children: [
                           Text(
                             "$intruderCount",
-                            style: const TextStyle(
-                                fontSize: 28,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.red),
+                            style: TextStyle(
+                              color: ThemeConfig.errorColor(context),
+                              fontSize: 32,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
-                          const Text("Intruders"),
+                          Text(
+                            "Intruders",
+                            style: TextStyle(
+                              color: ThemeConfig.textSecondary(context),
+                              fontSize: 13,
+                            ),
+                          ),
                         ],
                       ),
                     ],
@@ -186,51 +233,58 @@ class _RealDashboardState extends State<RealDashboard> {
 
             /// 🔵 QUICK ACTIONS
             Container(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: ThemeConfig.surfaceColor(context),
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: ThemeConfig.borderColor(context),
+                  width: 1,
+                ),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     "Quick Actions",
-                    style:
-                        TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      color: ThemeConfig.textPrimary(context),
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
-                  const SizedBox(height: 16),
-                  ListTile(
-                    leading: const Icon(Icons.apps),
-                    title: const Text("Manage App Locks"),
-                    trailing: const Icon(Icons.arrow_forward),
+                  const SizedBox(height: 12),
+                  _buildActionButton(
+                    icon: Icons.apps,
+                    label: "Manage App Locks",
                     onTap: () => Navigator.push(
                       context,
                       MaterialPageRoute(
                         builder: (_) => const AppLockManagementScreen(),
                       ),
                     ),
+                    context: context,
                   ),
-                  ListTile(
-                    leading: const Icon(Icons.camera_alt),
-                    title: const Text("Intruder Logs"),
-                    trailing: intruderCount > 0
-                        ? CircleAvatar(
-                            radius: 12,
-                            backgroundColor: Colors.red,
-                            child: Text(
-                              intruderCount.toString(),
-                              style: const TextStyle(
-                                  fontSize: 12, color: Colors.white),
-                            ),
-                          )
-                        : const Icon(Icons.arrow_forward),
+                  const SizedBox(height: 10),
+                  _buildActionButton(
+                    icon: Icons.warning_amber,
+                    label: "Intruder Logs",
+                    badge: intruderCount > 0 ? intruderCount.toString() : null,
                     onTap: () => Navigator.push(
                       context,
                       MaterialPageRoute(
                         builder: (_) => const IntruderLogsScreen(),
                       ),
                     ),
+                    context: context,
+                  ),
+                  const SizedBox(height: 10),
+                  _buildActionButton(
+                    icon: Icons.settings,
+                    label: "Settings",
+                    onTap: () =>
+                        Navigator.pushNamed(context, AppRoutes.settings),
+                    context: context,
                   ),
                 ],
               ),
@@ -245,12 +299,73 @@ class _RealDashboardState extends State<RealDashboard> {
     );
   }
 
+  Widget _buildActionButton({
+    required IconData icon,
+    required String label,
+    String? badge,
+    required VoidCallback onTap,
+    required BuildContext context,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: ThemeConfig.surfaceColor(context),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: ThemeConfig.borderColor(context),
+            width: 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: ThemeConfig.accentColor(context), size: 20),
+            const SizedBox(width: 12),
+            Text(
+              label,
+              style: TextStyle(
+                color: ThemeConfig.textPrimary(context),
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const Spacer(),
+            if (badge != null)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: ThemeConfig.errorColor(context),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  badge,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              )
+            else
+              Icon(Icons.arrow_forward_ios,
+                  color: ThemeConfig.textSecondary(context), size: 16),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildEmergencyCard(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: ThemeConfig.surfaceColor(context),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: ThemeConfig.borderColor(context),
+          width: 1,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -260,7 +375,7 @@ class _RealDashboardState extends State<RealDashboard> {
             style: TextStyle(
               color: ThemeConfig.textPrimary(context),
               fontSize: 16,
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.w600,
             ),
           ),
           const SizedBox(height: 16),
@@ -272,15 +387,17 @@ class _RealDashboardState extends State<RealDashboard> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: ThemeConfig.errorColor(context),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(8),
                 ),
               ),
-              icon: const Icon(Icons.warning_rounded, size: 20),
-              label: const Text(
+              icon: Icon(Icons.warning_rounded,
+                  size: 20, color: Colors.white),
+              label: Text(
                 'Activate Panic Lock',
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.bold,
+                  color: Colors.white,
                 ),
               ),
             ),
@@ -313,12 +430,28 @@ class _AppLockOverlay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text("$appName Locked"),
-      content: const Text("Access denied. Please verify your PIN."),
+      backgroundColor: ThemeConfig.surfaceColor(context),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      title: Text(
+        "$appName Locked",
+        style: TextStyle(
+          color: ThemeConfig.textPrimary(context),
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+      content: Text(
+        "Access denied. Please verify your PIN.",
+        style: TextStyle(color: ThemeConfig.textSecondary(context)),
+      ),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text("Unlock"),
+          child: Text(
+            "Unlock",
+            style: TextStyle(color: ThemeConfig.accentColor(context)),
+          ),
         ),
       ],
     );

@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:hive/hive.dart';
 import '../../core/theme/theme_config.dart';
+import '../../core/security/panic_service.dart';
+import '../../core/routes/app_routes.dart';
 
 class AboutHelpScreen extends StatefulWidget {
   const AboutHelpScreen({super.key});
@@ -9,11 +12,25 @@ class AboutHelpScreen extends StatefulWidget {
 }
 
 class _AboutHelpScreenState extends State<AboutHelpScreen> {
+  late Box _securityBox;
+  int _lockedAppsCount = 0;
+  int _intrudersCount = 0;
 
   @override
   void initState() {
     super.initState();
-    // Animations removed; static content shown immediately
+    _securityBox = Hive.box('securityBox');
+    _loadStats();
+  }
+
+  void _loadStats() {
+    setState(() {
+      final lockedApps = (_securityBox.get('lockedApps', defaultValue: []) as List).toList();
+      _lockedAppsCount = lockedApps.length;
+      
+      final intruderLogs = (_securityBox.get('intruderLogs', defaultValue: []) as List).toList();
+      _intrudersCount = intruderLogs.length;
+    });
   }
 
   @override
