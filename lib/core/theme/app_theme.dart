@@ -80,10 +80,10 @@ class AppTheme {
       bodySmall: TextStyle(color: Colors.grey[600]),
     ),
     switchTheme: SwitchThemeData(
-      thumbColor: MaterialStateProperty.all(Colors.blue),
-      trackColor: MaterialStateProperty.resolveWith(
+      thumbColor: WidgetStateProperty.all(Colors.blue),
+      trackColor: WidgetStateProperty.resolveWith(
         (states) {
-          if (states.contains(MaterialState.selected)) {
+          if (states.contains(WidgetState.selected)) {
             return Colors.blue.withOpacity(0.3);
           }
           return Colors.grey[300];

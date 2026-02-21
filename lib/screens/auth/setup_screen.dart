@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../widgets/pin_keypad.dart';
 import '../../core/routes/app_routes.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -21,7 +22,7 @@ class _SetupScreenState extends State<SetupScreen> {
   String confirmRealPin = '';
   String decoyPin = '';
   String confirmDecoyPin = '';
-  
+
   bool _isSaving = false; // Added to prevent double taps while saving
 
   void _onKeyPress(String value) {
@@ -131,14 +132,27 @@ class _SetupScreenState extends State<SetupScreen> {
       final supabase = Supabase.instance.client;
 
       await supabase.from('user_security').insert({
-        'id': userId,  // ✅ Insert the unique user ID
+        'id': userId, // ✅ Insert the unique user ID
         'real_pin': realPin,
         'decoy_pin': decoyPin,
-        'biometric_enabled': false, // Default to false, will be updated in biometric setup
+        'biometric_enabled':
+            false, // Default to false, will be updated in biometric setup
         // Ideally add 'created_at': DateTime.now().toIso8601String() if your DB requires it
       });
 
       debugPrint('✅ PINs saved successfully for user: $userId');
+
+      // Cache PINs to native SharedPreferences for AppLockActivity
+      try {
+        const platform = MethodChannel('com.stealthseal.app/applock');
+        await platform.invokeMethod('cachePins', {
+          'real_pin': realPin,
+          'decoy_pin': decoyPin,
+        });
+        debugPrint('✅ PINs cached to native SharedPreferences');
+      } catch (e) {
+        debugPrint('⚠️ Failed to cache PINs: $e');
+      }
 
       final box = Hive.box('securityBox');
       box.put('isPinSetupDone', true);
@@ -147,7 +161,6 @@ class _SetupScreenState extends State<SetupScreen> {
 
       // Show success message dialog
       _showSuccessDialog();
-      
     } catch (e) {
       debugPrint('Error saving PINs: $e');
       if (mounted) {
@@ -282,7 +295,6 @@ class _SetupScreenState extends State<SetupScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      
       backgroundColor: const Color(0xFF050505),
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -325,7 +337,7 @@ class _SetupScreenState extends State<SetupScreen> {
             const SizedBox(height: 30),
 
             // If saving, show spinner, otherwise show keypad
-            _isSaving 
+            _isSaving
                 ? const CircularProgressIndicator(color: Colors.cyan)
                 : PinKeypad(onKeyPressed: _onKeyPress, onDelete: _onDelete),
           ],

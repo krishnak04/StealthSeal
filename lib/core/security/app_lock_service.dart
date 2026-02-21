@@ -7,8 +7,7 @@ class AppLockService {
   static const MethodChannel _channel =
       MethodChannel('com.stealthseal.app/applock');
 
-  static final AppLockService _instance =
-      AppLockService._internal();
+  static final AppLockService _instance = AppLockService._internal();
 
   factory AppLockService() => _instance;
 
@@ -20,11 +19,12 @@ class AppLockService {
 
   void initialize() {
     debugPrint('🚀 AppLockService initializing...');
-    
+
     // ✅ Listen for INCOMING method calls from native code
     _channel.setMethodCallHandler((call) async {
-      debugPrint('📥 Incoming method: ${call.method} | Args: ${call.arguments}');
-      
+      debugPrint(
+          '📥 Incoming method: ${call.method} | Args: ${call.arguments}');
+
       if (call.method == "onAppDetected") {
         final packageName = call.arguments as String;
         debugPrint('📱 Native event received: $packageName');
@@ -39,7 +39,7 @@ class AppLockService {
         _callback?.call(packageName);
       }
     });
-    
+
     // Start active monitoring as fallback
     _startActiveMonitoring();
   }
@@ -48,11 +48,13 @@ class AppLockService {
   void _startActiveMonitoring() {
     _monitoringTimer?.cancel();
     debugPrint('⏱️ Starting active monitoring (every 500ms)...');
-    
-    _monitoringTimer = Timer.periodic(const Duration(milliseconds: 500), (_) async {
+
+    _monitoringTimer =
+        Timer.periodic(const Duration(milliseconds: 500), (_) async {
       try {
-        final currentApp = await _channel.invokeMethod<String>('getCurrentForegroundApp');
-        
+        final currentApp =
+            await _channel.invokeMethod<String>('getCurrentForegroundApp');
+
         if (currentApp != null) {
           if (currentApp != _lastDetectedApp) {
             _lastDetectedApp = currentApp;
@@ -68,7 +70,8 @@ class AppLockService {
 
   Future<bool> isAccessibilityServiceEnabled() async {
     try {
-      final result = await _channel.invokeMethod<bool>('isAccessibilityServiceEnabled');
+      final result =
+          await _channel.invokeMethod<bool>('isAccessibilityServiceEnabled');
       return result ?? false;
     } catch (e) {
       debugPrint('ℹ️ Could not check accessibility service: $e');
@@ -76,8 +79,7 @@ class AppLockService {
     }
   }
 
-  void setOnLockedAppDetectedCallback(
-      Function(String packageName) callback) {
+  void setOnLockedAppDetectedCallback(Function(String packageName) callback) {
     _callback = callback;
   }
 
@@ -86,9 +88,15 @@ class AppLockService {
     final lockedApps =
         List<String>.from(box.get('lockedApps', defaultValue: []));
 
-    debugPrint('🔍 App detected: $packageName | Locked: ${lockedApps.contains(packageName)}');
-    
-    if (lockedApps.contains(packageName)) {
+    // Check if app is temporarily unlocked
+    final tempUnlocked =
+        List<String>.from(box.get('tempUnlockedApps', defaultValue: []));
+
+    debugPrint(
+        '🔍 App detected: $packageName | Locked: ${lockedApps.contains(packageName)} | TempUnlocked: ${tempUnlocked.contains(packageName)}');
+
+    if (lockedApps.contains(packageName) &&
+        !tempUnlocked.contains(packageName)) {
       debugPrint('🔒 LOCKED APP DETECTED (Flutter): $packageName');
       _callback?.call(packageName);
     }
@@ -98,4 +106,3 @@ class AppLockService {
     _monitoringTimer?.cancel();
   }
 }
-

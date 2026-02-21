@@ -26,28 +26,15 @@ class MainActivity : FlutterFragmentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        val showLockOverlay = intent.getBooleanExtra("show_lock_overlay", false)
-        val lockedPackage = intent.getStringExtra("locked_package")
-
-        if (showLockOverlay && lockedPackage != null) {
-            Log.d("MainActivity", "🔒 Lock overlay mode: $lockedPackage")
-        }
-    }
-
-    override fun onNewIntent(intent: Intent) {
-        super.onNewIntent(intent)
-        setIntent(intent)
+        // Start foreground service to keep app lock alive when removed from recents
+        AppLockForegroundService.start(this)
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
 
-        // Register engine for accessibility service
+        // Register engine for accessibility service (kept for future use)
         FlutterEngineCache.getInstance().put("stealth_engine", flutterEngine)
-
-        val showLockOverlay = intent.getBooleanExtra("show_lock_overlay", false)
-        val lockedPackage = intent.getStringExtra("locked_package")
 
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL)
             .setMethodCallHandler { call, result ->
@@ -58,34 +45,48 @@ class MainActivity : FlutterFragmentActivity() {
                     "setLockedApps" -> {
                         val apps = call.argument<String>("apps") ?: ""
                         val sharedPref = getSharedPreferences("stealthseal_prefs", Context.MODE_PRIVATE)
-                        sharedPref.edit().putString("lockedApps", apps).apply()
-                        Log.d("MainActivity", "✅ Locked apps synced: $apps")
+                        sharedPref.edit()
+                            .putString("lockedApps", apps)
+                            .putString("sessionUnlockedApps", "")  // Clear all session unlocks
+                            .apply()
+                        Log.d("MainActivity", "✅ Locked apps synced: $apps (sessions cleared)")
                         result.success(true)
                     }
-                    "requestAccessibilityService" -> handleRequestAccessibilityService()
+                    "cachePins" -> {
+                        val realPin = call.argument<String>("real_pin") ?: ""
+                        val decoyPin = call.argument<String>("decoy_pin") ?: ""
+                        val sharedPref = getSharedPreferences("stealthseal_prefs", Context.MODE_PRIVATE)
+                        sharedPref.edit()
+                            .putString("cached_real_pin", realPin)
+                            .putString("cached_decoy_pin", decoyPin)
+                            .apply()
+                        Log.d("MainActivity", "✅ PINs cached to SharedPreferences")
+                        result.success(true)
+                    }
+                    "requestAccessibilityService" -> {
+                        handleRequestAccessibilityService()
+                        result.success(true)
+                    }
+                    "launchApp" -> {
+                        val packageName = call.argument<String>("packageName") ?: ""
+                        handleLaunchApp(packageName, result)
+                    }
                     else -> result.notImplemented()
                 }
             }
-
-        // If lock overlay, notify Flutter
-        if (showLockOverlay && lockedPackage != null) {
-            try {
-                MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL)
-                    .invokeMethod("showLockOverlay", lockedPackage)
-                Log.d("MainActivity", "✅ showLockOverlay sent: $lockedPackage")
-            } catch (e: Exception) {
-                Log.e("MainActivity", "❌ Error: ${e.message}")
-            }
-        }
     }
 
     private fun handleGetInstalledApps(result: MethodChannel.Result) {
         try {
+            Log.d("MainActivity", "📱 Starting to fetch installed apps...")
             val pm = packageManager
             val mainIntent = Intent(Intent.ACTION_MAIN, null)
             mainIntent.addCategory(Intent.CATEGORY_LAUNCHER)
 
+            Log.d("MainActivity", "🔍 Querying intent activities for launcher apps...")
             val resolveInfoList = pm.queryIntentActivities(mainIntent, 0)
+            Log.d("MainActivity", "✅ Found ${resolveInfoList.size} installed apps")
+            
             val appList = mutableListOf<Map<String, String>>()
             val addedPackages = mutableSetOf<String>()
 
@@ -94,25 +95,33 @@ class MainActivity : FlutterFragmentActivity() {
                 if (addedPackages.contains(packageName)) continue
                 addedPackages.add(packageName)
 
-                val name = resolveInfo.loadLabel(pm).toString()
-                val iconDrawable = resolveInfo.loadIcon(pm)
-                val bitmap = drawableToBitmap(iconDrawable)
+                try {
+                    val name = resolveInfo.loadLabel(pm).toString()
+                    val iconDrawable = resolveInfo.loadIcon(pm)
+                    val bitmap = drawableToBitmap(iconDrawable)
 
-                val stream = ByteArrayOutputStream()
-                bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream)
-                val byteArray = stream.toByteArray()
-                val base64Icon = Base64.encodeToString(byteArray, Base64.NO_WRAP)
+                    val stream = ByteArrayOutputStream()
+                    bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream)
+                    val byteArray = stream.toByteArray()
+                    val base64Icon = Base64.encodeToString(byteArray, Base64.NO_WRAP)
 
-                appList.add(mapOf(
-                    "name" to name,
-                    "package" to packageName,
-                    "icon" to base64Icon
-                ))
+                    appList.add(mapOf(
+                        "name" to name,
+                        "package" to packageName,
+                        "icon" to base64Icon
+                    ))
+                    Log.d("MainActivity", "✅ Added app: $name ($packageName)")
+                } catch (e: Exception) {
+                    Log.e("MainActivity", "⚠️ Failed to process app $packageName: ${e.message}")
+                }
             }
 
+            Log.d("MainActivity", "📤 Returning ${appList.size} apps to Flutter")
             result.success(appList)
         } catch (e: Exception) {
-            result.error("ERROR", e.message, null)
+            Log.e("MainActivity", "❌ ERROR fetching installed apps: ${e.message}")
+            e.printStackTrace()
+            result.error("ERROR", "Failed to fetch apps: ${e.message}", null)
         }
     }
 
@@ -130,6 +139,24 @@ class MainActivity : FlutterFragmentActivity() {
             val isEnabled = isAccessibilityServiceEnabled()
             result.success(isEnabled)
         } catch (e: Exception) {
+            result.error("ERROR", e.message, null)
+        }
+    }
+
+    private fun handleLaunchApp(packageName: String, result: MethodChannel.Result) {
+        try {
+            Log.d("MainActivity", "🚀 Launching app: $packageName")
+            val launchIntent = packageManager.getLaunchIntentForPackage(packageName)
+            if (launchIntent != null) {
+                launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                startActivity(launchIntent)
+                result.success(true)
+            } else {
+                Log.e("MainActivity", "❌ No launch intent for: $packageName")
+                result.error("NO_INTENT", "Cannot launch $packageName", null)
+            }
+        } catch (e: Exception) {
+            Log.e("MainActivity", "❌ Error launching app: ${e.message}")
             result.error("ERROR", e.message, null)
         }
     }

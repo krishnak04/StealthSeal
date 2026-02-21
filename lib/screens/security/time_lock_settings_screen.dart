@@ -23,8 +23,9 @@ class _TimeLockSettingsScreenState extends State<TimeLockSettingsScreen> {
   }
 
   void _loadSettings() {
-    _timeLockEnabled = _securityBox.get('nightLockEnabled', defaultValue: false);
-    
+    _timeLockEnabled =
+        _securityBox.get('nightLockEnabled', defaultValue: false);
+
     final startHour = _securityBox.get('nightStartHour', defaultValue: 22);
     final startMinute = _securityBox.get('nightStartMinute', defaultValue: 0);
     _startTime = TimeOfDay(hour: startHour, minute: startMinute);
@@ -152,7 +153,7 @@ class _TimeLockSettingsScreenState extends State<TimeLockSettingsScreen> {
                     Switch(
                       value: _timeLockEnabled,
                       onChanged: _toggleTimeLock,
-                      activeColor: ThemeConfig.accentColor(context),
+                      activeThumbColor: ThemeConfig.accentColor(context),
                       inactiveThumbColor: Colors.grey[400],
                       inactiveTrackColor: ThemeConfig.borderColor(context),
                     ),
@@ -186,7 +187,9 @@ class _TimeLockSettingsScreenState extends State<TimeLockSettingsScreen> {
                     ),
                     const SizedBox(height: 6),
                     GestureDetector(
-                      onTap: _timeLockEnabled ? () => _selectStartTime(context) : null,
+                      onTap: _timeLockEnabled
+                          ? () => _selectStartTime(context)
+                          : null,
                       child: Container(
                         decoration: BoxDecoration(
                           color: ThemeConfig.inputBackground(context),
@@ -230,7 +233,9 @@ class _TimeLockSettingsScreenState extends State<TimeLockSettingsScreen> {
                     ),
                     const SizedBox(height: 6),
                     GestureDetector(
-                      onTap: _timeLockEnabled ? () => _selectEndTime(context) : null,
+                      onTap: _timeLockEnabled
+                          ? () => _selectEndTime(context)
+                          : null,
                       child: Container(
                         decoration: BoxDecoration(
                           color: ThemeConfig.inputBackground(context),
@@ -266,7 +271,8 @@ class _TimeLockSettingsScreenState extends State<TimeLockSettingsScreen> {
                     Container(
                       margin: const EdgeInsets.only(top: 15),
                       decoration: BoxDecoration(
-                        color: ThemeConfig.accentColor(context).withOpacity(0.1),
+                        color:
+                            ThemeConfig.accentColor(context).withOpacity(0.1),
                         border: Border.all(
                           color: ThemeConfig.accentColor(context),
                           width: 1,

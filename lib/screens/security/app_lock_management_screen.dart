@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
@@ -23,6 +22,32 @@ class _AppLockManagementScreenState extends State<AppLockManagementScreen> {
   bool _showLockedTab = false;
   bool _isLoading = true;
 
+  // System-critical apps that should never be lockable
+  static const _systemExcludedPackages = {
+    'com.example.stealthseal',
+    'com.android.systemui',
+    'com.android.launcher',
+    'com.android.launcher2',
+    'com.android.launcher3',
+    'com.google.android.apps.nexuslauncher',
+    'com.sec.android.app.launcher',
+    'com.mi.android.globallauncher',
+    'com.oppo.launcher',
+    'com.android.settings',
+    'com.android.phone',
+    'com.android.server.telecom',
+    'com.android.incallui',
+    'com.android.packageinstaller',
+    'com.google.android.packageinstaller',
+    'com.android.permissioncontroller',
+    'com.android.inputmethod.latin',
+    'com.google.android.inputmethod.latin',
+    'com.samsung.android.honeyboard',
+    'com.swiftkey.languageprovider',
+    'com.touchtype.swiftkey',
+    'com.google.android.gboard',
+  };
+
   @override
   void initState() {
     super.initState();
@@ -33,8 +58,11 @@ class _AppLockManagementScreenState extends State<AppLockManagementScreen> {
   /// Load installed apps
   Future<void> _loadInstalledApps() async {
     try {
+      debugPrint('📱 Requesting installed apps from native code...');
       final List<dynamic> result =
           await platform.invokeMethod('getInstalledApps');
+
+      debugPrint('✅ Received ${result.length} apps from native');
 
       setState(() {
         _installedApps = result
@@ -43,10 +71,13 @@ class _AppLockManagementScreenState extends State<AppLockManagementScreen> {
                   "package": app["package"],
                   "icon": app["icon"],
                 })
+            .where((app) => !_systemExcludedPackages.contains(app["package"]))
             .toList();
         _isLoading = false;
       });
-      
+
+      debugPrint('📝 Loaded ${_installedApps.length} apps into UI');
+
       // Update appNamesMap in Hive for the Dashboard to use
       final box = Hive.box('securityBox');
       Map<String, String> appNamesMap = {};
@@ -54,8 +85,8 @@ class _AppLockManagementScreenState extends State<AppLockManagementScreen> {
         appNamesMap[app["package"]] = app["name"];
       }
       await box.put('appNamesMap', appNamesMap);
-      
     } catch (e) {
+      debugPrint('❌ ERROR loading installed apps: $e');
       setState(() {
         _installedApps = [];
         _isLoading = false;
@@ -68,6 +99,14 @@ class _AppLockManagementScreenState extends State<AppLockManagementScreen> {
     final box = Hive.box('securityBox');
     _lockedApps =
         List<String>.from(box.get('lockedApps', defaultValue: []) as List);
+    // Remove any system-critical apps that may have been locked previously
+    final before = _lockedApps.length;
+    _lockedApps.removeWhere((pkg) => _systemExcludedPackages.contains(pkg));
+    if (_lockedApps.length != before) {
+      box.put('lockedApps', _lockedApps);
+      debugPrint(
+          '🛡️ Removed ${before - _lockedApps.length} system apps from locked list');
+    }
   }
 
   /// Toggle lock
@@ -83,7 +122,7 @@ class _AppLockManagementScreenState extends State<AppLockManagementScreen> {
     });
 
     await box.put('lockedApps', _lockedApps);
-    
+
     // ✅ Sync with Android native SharedPreferences
     try {
       final lockedAppsStr = _lockedApps.join(',');
@@ -108,63 +147,92 @@ class _AppLockManagementScreenState extends State<AppLockManagementScreen> {
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : Column(
-              children: [
-                const SizedBox(height: 10),
-
-                /// Tabs
-                Row(
+          : _installedApps.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.error_outline,
+                          size: 48, color: ThemeConfig.textSecondary(context)),
+                      const SizedBox(height: 16),
+                      Text(
+                        "No apps found",
+                        style: TextStyle(
+                          color: ThemeConfig.textPrimary(context),
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        "Check the console for errors.\nMake sure QUERY_ALL_PACKAGES\npermission is granted.",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                            color: ThemeConfig.textSecondary(context),
+                            fontSize: 12),
+                      ),
+                    ],
+                  ),
+                )
+              : Column(
                   children: [
-                    _buildTab(
-                        "Unlock (${_unlockApps.length})", !_showLockedTab, () {
-                      setState(() => _showLockedTab = false);
-                    }),
-                    _buildTab(
-                        "Locked (${_lockedAppsList.length})", _showLockedTab,
-                        () {
-                      setState(() => _showLockedTab = true);
-                    }),
+                    const SizedBox(height: 10),
+
+                    /// Tabs
+                    Row(
+                      children: [
+                        _buildTab(
+                            "Unlock (${_unlockApps.length})", !_showLockedTab,
+                            () {
+                          setState(() => _showLockedTab = false);
+                        }),
+                        _buildTab("Locked (${_lockedAppsList.length})",
+                            _showLockedTab, () {
+                          setState(() => _showLockedTab = true);
+                        }),
+                      ],
+                    ),
+
+                    const SizedBox(height: 10),
+
+                    /// App List
+                    Expanded(
+                      child: ListView.builder(
+                        itemCount: _showLockedTab
+                            ? _lockedAppsList.length
+                            : _unlockApps.length,
+                        itemBuilder: (context, index) {
+                          final app = _showLockedTab
+                              ? _lockedAppsList[index]
+                              : _unlockApps[index];
+
+                          final isLocked = _lockedApps.contains(app["package"]);
+
+                          return ListTile(
+                            leading: _buildIcon(app["icon"]),
+                            title: Text(
+                              app["name"],
+                              style: TextStyle(
+                                  color: ThemeConfig.textPrimary(context)),
+                            ),
+                            subtitle: Text(
+                              app["package"],
+                              style: TextStyle(
+                                  color: ThemeConfig.textSecondary(context),
+                                  fontSize: 12),
+                            ),
+                            trailing: Icon(
+                              isLocked ? Icons.lock : Icons.lock_open,
+                              color:
+                                  isLocked ? Colors.red : Colors.grey.shade600,
+                            ),
+                            onTap: () => _toggleAppLock(app["package"]),
+                          );
+                        },
+                      ),
+                    ),
                   ],
                 ),
-
-                const SizedBox(height: 10),
-
-                /// App List
-                Expanded(
-                  child: ListView.builder(
-                    itemCount: _showLockedTab
-                        ? _lockedAppsList.length
-                        : _unlockApps.length,
-                    itemBuilder: (context, index) {
-                      final app = _showLockedTab
-                          ? _lockedAppsList[index]
-                          : _unlockApps[index];
-
-                      final isLocked =
-                          _lockedApps.contains(app["package"]);
-
-                      return ListTile(
-                        leading: _buildIcon(app["icon"]),
-                        title: Text(
-                          app["name"],
-                          style: TextStyle(color: ThemeConfig.textPrimary(context)),
-                        ),
-                        subtitle: Text(
-                          app["package"],
-                          style: TextStyle(color: ThemeConfig.textSecondary(context), fontSize: 12),
-                        ),
-                        trailing: Icon(
-                          isLocked ? Icons.lock : Icons.lock_open,
-                          color:
-                              isLocked ? Colors.red : Colors.grey.shade600,
-                        ),
-                        onTap: () => _toggleAppLock(app["package"]),
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
     );
   }
 
@@ -220,7 +288,8 @@ class _AppLockManagementScreenState extends State<AppLockManagementScreen> {
           child: Image.memory(
             bytes,
             fit: BoxFit.cover,
-            errorBuilder: (context, error, stackTrace) => const Icon(Icons.apps),
+            errorBuilder: (context, error, stackTrace) =>
+                const Icon(Icons.apps),
           ),
         ),
       );

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lottie/lottie.dart';
+import 'package:hive/hive.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/routes/app_routes.dart';
 import '../../core/services/user_identifier_service.dart';
@@ -22,12 +23,35 @@ class _SplashScreenState extends State<SplashScreen> {
     _checkUserStatus();
   }
 
-  /// Request accessibility service permission on app startup  
+  /// Request accessibility service permission on app startup (ONLY ONCE ever)
   Future<void> _requestAccessibilityService() async {
     try {
       const platform = MethodChannel('com.stealthseal.app/applock');
-      debugPrint('📱 Requesting accessibility service...');
+
+      // Check if already enabled first
+      final isEnabled =
+          await platform.invokeMethod<bool>('isAccessibilityServiceEnabled');
+
+      if (isEnabled == true) {
+        debugPrint('✅ Accessibility service already enabled, skipping prompt');
+        return;
+      }
+
+      // Check if we already prompted the user before — only ask ONCE
+      final box = Hive.box('securityBox');
+      final alreadyPrompted =
+          box.get('accessibility_prompt_shown', defaultValue: false) as bool;
+      if (alreadyPrompted) {
+        debugPrint('ℹ️ Accessibility prompt already shown before, skipping');
+        return;
+      }
+
+      debugPrint(
+          '📱 Accessibility service not enabled, requesting (first time)...');
       await platform.invokeMethod('requestAccessibilityService');
+
+      // Mark as prompted so we never open settings automatically again
+      await box.put('accessibility_prompt_shown', true);
     } catch (e) {
       debugPrint('ℹ️ Accessibility request error: $e');
     }
@@ -44,7 +68,7 @@ class _SplashScreenState extends State<SplashScreen> {
     try {
       debugPrint('⏳ Starting user status check...');
       setState(() => _status = 'Checking registration...');
-      
+
       // Wait 2 seconds for splash display
       await Future.delayed(const Duration(seconds: 2));
 
@@ -62,7 +86,7 @@ class _SplashScreenState extends State<SplashScreen> {
       final existingUser = await supabase
           .from('user_security')
           .select()
-          .eq('id', userId)  // Query for THIS user only
+          .eq('id', userId) // Query for THIS user only
           .maybeSingle();
 
       debugPrint('📊 Database response: $existingUser');
@@ -87,9 +111,9 @@ class _SplashScreenState extends State<SplashScreen> {
     } catch (e) {
       debugPrint('❌ Error checking user status: $e');
       debugPrint('Stack trace: ${StackTrace.current}');
-      
+
       setState(() => _status = 'Error: $e\n\nDefaulting to setup...');
-      
+
       // On error, wait 3 seconds then default to setup screen
       await Future.delayed(const Duration(seconds: 3));
       if (mounted) {
@@ -148,4 +172,3 @@ class _SplashScreenState extends State<SplashScreen> {
     );
   }
 }
-
