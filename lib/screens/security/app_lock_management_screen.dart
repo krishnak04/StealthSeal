@@ -4,7 +4,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hive/hive.dart';
 import '../../core/theme/theme_config.dart';
-import '../../core/services/accessibility_service_helper.dart';
 
 class AppLockManagementScreen extends StatefulWidget {
   const AppLockManagementScreen({super.key});
@@ -114,9 +113,6 @@ class _AppLockManagementScreenState extends State<AppLockManagementScreen> {
   Future<void> _toggleAppLock(String packageName) async {
     final box = Hive.box('securityBox');
 
-    // Check if this is a NEW lock (app is being locked)
-    final isLocking = !_lockedApps.contains(packageName);
-
     setState(() {
       if (_lockedApps.contains(packageName)) {
         _lockedApps.remove(packageName);
@@ -126,12 +122,6 @@ class _AppLockManagementScreenState extends State<AppLockManagementScreen> {
     });
 
     await box.put('lockedApps', _lockedApps);
-
-    // Show accessibility service popup when user locks an app (ONCE)
-    if (isLocking && mounted) {
-      debugPrint('📱 User locked app: $packageName - Requesting accessibility service');
-      await AccessibilityServiceHelper.requestAccessibilityServiceWhenLocking(context);
-    }
 
     // ✅ Sync with Android native SharedPreferences
     try {
