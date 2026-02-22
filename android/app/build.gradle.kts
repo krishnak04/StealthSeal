@@ -39,6 +39,15 @@ android {
     }
 }
 
+dependencies {
+    // Material Design Components
+    implementation("com.google.android.material:material:1.9.0")
+    
+    // AndroidX Libraries
+    implementation("androidx.appcompat:appcompat:1.6.1")
+    implementation("androidx.core:core:1.10.1")
+}
+
 flutter {
     source = "../.."
 }

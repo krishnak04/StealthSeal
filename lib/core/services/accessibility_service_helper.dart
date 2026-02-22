@@ -48,10 +48,10 @@ class AccessibilityServiceHelper {
               ),
               title: Row(
                 children: [
-                  Icon(Icons.security, color: Colors.cyan),
+                  Icon(Icons.verified_user, color: Colors.blue),
                   const SizedBox(width: 8),
                   const Text(
-                    'Enable Accessibility Service',
+                    'Permission Required',
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 18,
@@ -64,73 +64,99 @@ class AccessibilityServiceHelper {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'StealthSeal requires accessibility service to automatically show the lock screen when you open a protected app.',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      height: 1.5,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: Colors.cyan.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.cyan, width: 1),
-                    ),
-                    child: const Text(
-                      '✓ Detects when locked apps are opened\n'
-                      '✓ Shows PIN lock screen automatically\n'
-                      '✓ Works in the background',
-                      style: TextStyle(
-                        color: Colors.cyan,
-                        fontSize: 12,
-                        height: 1.6,
+                  // Accessibility Service permission
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Accessibility Service',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            SizedBox(height: 4),
+                            const Text(
+                              'Detect when locked apps are opened',
+                              style: TextStyle(
+                                color: Colors.grey,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
+                      Switch(
+                        value: true,
+                        onChanged: null,
+                        activeColor: Colors.blue,
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 12),
-                  const Text(
-                    'You will be redirected to Settings to enable it.',
-                    style: TextStyle(
-                      color: Colors.grey,
-                      fontSize: 12,
-                      fontStyle: FontStyle.italic,
-                    ),
+                  const SizedBox(height: 20),
+                  // Display over other apps permission
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Display over other apps',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            SizedBox(height: 4),
+                            const Text(
+                              'Show PIN lock screen on top',
+                              style: TextStyle(
+                                color: Colors.grey,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Switch(
+                        value: true,
+                        onChanged: null,
+                        activeColor: Colors.blue,
+                      ),
+                    ],
                   ),
                 ],
               ),
               actions: [
-                TextButton(
-                  onPressed: () {
-                    debugPrint('❌ User dismissed accessibility dialog');
-                    Navigator.pop(dialogContext);
-                  },
-                  child: const Text(
-                    'Skip for Now',
-                    style: TextStyle(color: Colors.grey),
-                  ),
-                ),
-                ElevatedButton(
+                ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.cyan,
+                    backgroundColor: Colors.blue,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
+                    padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                   ),
                   onPressed: () {
-                    debugPrint('✅ User accepted - Opening accessibility settings');
+                    debugPrint('✅ User confirmed - Opening accessibility settings');
                     userConfirmed = true;
                     Navigator.pop(dialogContext);
                     _channel.invokeMethod('requestAccessibilityService');
                   },
-                  child: const Text(
-                    'Enable Now',
+                  icon: const Icon(Icons.settings, size: 20, color: Colors.white),
+                  label: const Text(
+                    'Go to set',
                     style: TextStyle(
-                      color: Colors.black,
+                      color: Colors.white,
                       fontWeight: FontWeight.bold,
+                      fontSize: 16,
                     ),
                   ),
                 ),
