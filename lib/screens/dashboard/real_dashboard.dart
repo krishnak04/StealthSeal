@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import '../security/intruder_logs_screen.dart';
 import '../security/app_lock_management_screen.dart';
+import '../security/app_lock_pin_screen.dart';
 import '../../core/security/panic_service.dart';
 import '../../core/security/app_lock_service.dart';
 import '../../core/routes/app_routes.dart';
@@ -20,6 +21,7 @@ class _RealDashboardState extends State<RealDashboard> {
   @override
   void initState() {
     super.initState();
+    _setupAppLockCallback();
     _checkAccessibilityService();
   }
 
@@ -27,7 +29,7 @@ class _RealDashboardState extends State<RealDashboard> {
   Future<void> _checkAccessibilityService() async {
     final service = AppLockService();
     final isEnabled = await service.isAccessibilityServiceEnabled();
-
+    
     if (mounted) {
       setState(() {
         _accessibilityEnabled = isEnabled;
@@ -48,6 +50,37 @@ class _RealDashboardState extends State<RealDashboard> {
         );
       }
     }
+  }
+
+  /// ✅ Set up callback for locked app detection (service already initialized in main.dart)
+  void _setupAppLockCallback() {
+    final service = AppLockService();
+
+    service.setOnLockedAppDetectedCallback((packageName) {
+      if (mounted) {
+        _showAppLockPinScreen(packageName);
+      }
+    });
+  }
+
+  /// Show the dedicated App Lock PIN verification screen
+  void _showAppLockPinScreen(String packageName) {
+    final box = Hive.box('securityBox');
+    final appNamesMap =
+        (box.get('appNamesMap', defaultValue: {}) ?? {}) as Map;
+
+    final appName =
+        appNamesMap[packageName]?.toString() ?? packageName.split('.').last;
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => AppLockPinScreen(
+          packageName: packageName,
+          appName: appName,
+        ),
+      ),
+    );
   }
 
   // ✅ Added missing _showPanicDialog method
@@ -78,8 +111,7 @@ class _RealDashboardState extends State<RealDashboard> {
               onPressed: () => Navigator.pop(dialogContext),
               child: Text(
                 "Cancel",
-                style:
-                    TextStyle(color: ThemeConfig.textSecondary(dialogContext)),
+                style: TextStyle(color: ThemeConfig.textSecondary(dialogContext)),
               ),
             ),
             TextButton(
@@ -134,13 +166,14 @@ class _RealDashboardState extends State<RealDashboard> {
         ),
         actions: [
           IconButton(
-            icon:
-                Icon(Icons.bug_report, color: ThemeConfig.textPrimary(context)),
-            onPressed: () => Navigator.pushNamed(context, AppRoutes.debug),
+            icon: Icon(Icons.bug_report, color: ThemeConfig.textPrimary(context)),
+            onPressed: () =>
+                Navigator.pushNamed(context, AppRoutes.debug),
           ),
           IconButton(
             icon: Icon(Icons.settings, color: ThemeConfig.textPrimary(context)),
-            onPressed: () => Navigator.pushNamed(context, AppRoutes.settings),
+            onPressed: () =>
+                Navigator.pushNamed(context, AppRoutes.settings),
           ),
           IconButton(
             icon: Icon(Icons.lock, color: ThemeConfig.textPrimary(context)),
@@ -313,7 +346,8 @@ class _RealDashboardState extends State<RealDashboard> {
                   _buildActionButton(
                     icon: Icons.settings,
                     label: "Settings",
-                    onTap: () {},
+                    onTap: () =>
+                        Navigator.pushNamed(context, AppRoutes.settings),
                     context: context,
                   ),
                 ],
@@ -420,7 +454,8 @@ class _RealDashboardState extends State<RealDashboard> {
                   borderRadius: BorderRadius.circular(8),
                 ),
               ),
-              icon: Icon(Icons.warning_rounded, size: 20, color: Colors.white),
+              icon: Icon(Icons.warning_rounded,
+                  size: 20, color: Colors.white),
               label: Text(
                 'Activate Panic Lock',
                 style: const TextStyle(
@@ -444,294 +479,6 @@ class _RealDashboardState extends State<RealDashboard> {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _AppLockOverlay extends StatefulWidget {
-  final String appName;
-
-  const _AppLockOverlay({
-    required this.appName,
-  });
-
-  @override
-  State<_AppLockOverlay> createState() => _AppLockOverlayState();
-}
-
-class _AppLockOverlayState extends State<_AppLockOverlay> {
-  String _enteredPin = '';
-  String? _realPin;
-  String? _decoyPin;
-  int _failedAttempts = 0;
-  bool _showError = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadPins();
-  }
-
-  /// Load PINs from Hive
-  void _loadPins() {
-    final box = Hive.box('securityBox');
-    setState(() {
-      _realPin = box.get('realPin', defaultValue: null) as String?;
-      _decoyPin = box.get('decoyPin', defaultValue: null) as String?;
-    });
-  }
-
-  /// Handle PIN entry
-  void _handlePinEntry(String pin) {
-    if (_realPin == null || _decoyPin == null) {
-      debugPrint('❌ PINs not configured!');
-      return;
-    }
-
-    setState(() {
-      if (pin == _realPin) {
-        // ✅ Correct PIN - close overlay and allow app to open
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('App unlocked successfully'),
-            duration: Duration(seconds: 2),
-          ),
-        );
-      } else if (pin == _decoyPin) {
-        // ⚠️ Decoy PIN entered
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Decoy mode activated'),
-            duration: Duration(seconds: 2),
-          ),
-        );
-      } else {
-        // ❌ Wrong PIN
-        _failedAttempts++;
-        _showError = true;
-        _enteredPin = '';
-
-        Future.delayed(const Duration(seconds: 1), () {
-          if (mounted) {
-            setState(() => _showError = false);
-          }
-        });
-      }
-    });
-  }
-
-  void _addDigit(String digit) {
-    if (_enteredPin.length < 6) {
-      setState(() => _enteredPin += digit);
-    }
-  }
-
-  void _removeDigit() {
-    if (_enteredPin.isNotEmpty) {
-      setState(
-          () => _enteredPin = _enteredPin.substring(0, _enteredPin.length - 1));
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () async => false, // Prevent back button
-      child: Dialog(
-        insetPadding: const EdgeInsets.all(16),
-        backgroundColor: ThemeConfig.surfaceColor(context),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                /// 🔒 Lock Icon
-                Icon(
-                  Icons.lock_rounded,
-                  size: 48,
-                  color: ThemeConfig.accentColor(context),
-                ),
-                const SizedBox(height: 16),
-
-                /// App Name
-                Text(
-                  "${widget.appName} is Locked",
-                  style: TextStyle(
-                    color: ThemeConfig.textPrimary(context),
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 8),
-
-                /// Instructions
-                Text(
-                  "Enter your PIN to unlock",
-                  style: TextStyle(
-                    color: ThemeConfig.textSecondary(context),
-                    fontSize: 14,
-                  ),
-                ),
-                const SizedBox(height: 24),
-
-                /// PIN Display
-                Container(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: List.generate(
-                      6,
-                      (index) => Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 6),
-                        child: Container(
-                          width: 40,
-                          height: 50,
-                          decoration: BoxDecoration(
-                            color: _showError
-                                ? Colors.red.shade100
-                                : index < _enteredPin.length
-                                    ? ThemeConfig.accentColor(context)
-                                    : ThemeConfig.borderColor(context),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                              color: _showError
-                                  ? Colors.red
-                                  : ThemeConfig.borderColor(context),
-                            ),
-                          ),
-                          child: index < _enteredPin.length
-                              ? Icon(
-                                  Icons.circle,
-                                  color: Colors.white,
-                                  size: 16,
-                                )
-                              : null,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-
-                /// Error Message
-                if (_showError)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 16),
-                    child: Text(
-                      "Incorrect PIN",
-                      style: TextStyle(
-                        color: Colors.red,
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-
-                /// Numeric Keypad
-                GridView.count(
-                  crossAxisCount: 3,
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  mainAxisSpacing: 8,
-                  crossAxisSpacing: 8,
-                  children: List.generate(12, (index) {
-                    if (index < 9) {
-                      return _buildKeypadButton(
-                        label: '${index + 1}',
-                        onPressed: () => _addDigit('${index + 1}'),
-                      );
-                    } else if (index == 9) {
-                      return _buildKeypadButton(
-                        label: '0',
-                        onPressed: () => _addDigit('0'),
-                      );
-                    } else if (index == 10) {
-                      return _buildKeypadButton(
-                        label: '←',
-                        onPressed: _removeDigit,
-                        isSpecial: true,
-                      );
-                    } else {
-                      return _buildKeypadButton(
-                        label: '✓',
-                        onPressed: () => _handlePinEntry(_enteredPin),
-                        isSpecial: true,
-                      );
-                    }
-                  }),
-                ),
-
-                const SizedBox(height: 16),
-
-                /// Failed Attempts Warning
-                if (_failedAttempts >= 3)
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.red.shade50,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.red),
-                    ),
-                    child: Text(
-                      'Multiple failed attempts detected',
-                      style: TextStyle(
-                        color: Colors.red,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// Build keypad button
-  Widget _buildKeypadButton({
-    required String label,
-    required VoidCallback onPressed,
-    bool isSpecial = false,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: isSpecial
-            ? ThemeConfig.accentColor(context)
-            : ThemeConfig.backgroundColor(context),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: isSpecial
-              ? ThemeConfig.accentColor(context)
-              : ThemeConfig.borderColor(context),
-        ),
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onPressed,
-          borderRadius: BorderRadius.circular(8),
-          child: Center(
-            child: Text(
-              label,
-              style: TextStyle(
-                color:
-                    isSpecial ? Colors.white : ThemeConfig.textPrimary(context),
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ),
       ),
     );
   }

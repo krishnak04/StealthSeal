@@ -19,7 +19,9 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
+    // Show accessibility popup FIRST (before checking user status)
     _requestAccessibilityService();
+    // Then check user registration
     _checkUserStatus();
   }
 
@@ -46,14 +48,58 @@ class _SplashScreenState extends State<SplashScreen> {
         return;
       }
 
-      debugPrint(
-          '📱 Accessibility service not enabled, requesting (first time)...');
-      await platform.invokeMethod('requestAccessibilityService');
+      // Show accessibility popup dialog
+      debugPrint('📱 Showing accessibility permission dialog...');
+      if (mounted) {
+        await Future.delayed(const Duration(milliseconds: 500));
+        if (mounted) {
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (BuildContext dialogContext) {
+              return AlertDialog(
+                title: const Text('Enable Accessibility Service'),
+                content: const Text(
+                  'StealthSeal needs accessibility permission to protect your apps.\n\n'
+                  'This allows the app to detect when you open locked apps and show the PIN screen.\n\n'
+                  'You can enable it in Settings > Accessibility > StealthSeal',
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () {
+                      Navigator.pop(dialogContext);
+                      // Mark as shown and continue
+                      box.put('accessibility_prompt_shown', true);
+                    },
+                    child: const Text('Maybe Later'),
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      Navigator.pop(dialogContext);
+                      // Open accessibility settings with error handling
+                      try {
+                        platform.invokeMethod('openAccessibilitySettings');
+                        debugPrint('✅ User confirmed - Opening accessibility settings');
+                      } catch (e) {
+                        debugPrint('⚠️ Error opening accessibility settings: $e');
+                        // Silently fail - user can open manually
+                      }
+                      // Mark as shown
+                      box.put('accessibility_prompt_shown', true);
+                    },
+                    child: const Text('Enable Now'),
+                  ),
+                ],
+              );
+            },
+          );
+        }
+      }
 
-      // Mark as prompted so we never open settings automatically again
+      // Mark as prompted
       await box.put('accessibility_prompt_shown', true);
     } catch (e) {
-      debugPrint('ℹ️ Accessibility request error: $e');
+      debugPrint('❌ Accessibility request error: $e');
     }
   }
 
@@ -172,4 +218,3 @@ class _SplashScreenState extends State<SplashScreen> {
     );
   }
 }
-

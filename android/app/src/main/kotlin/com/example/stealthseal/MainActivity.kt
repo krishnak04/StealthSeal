@@ -67,6 +67,10 @@ class MainActivity : FlutterFragmentActivity() {
                         handleRequestAccessibilityService()
                         result.success(true)
                     }
+                    "openAccessibilitySettings" -> {
+                        handleOpenAccessibilitySettings()
+                        result.success(true)
+                    }
                     "launchApp" -> {
                         val packageName = call.argument<String>("packageName") ?: ""
                         handleLaunchApp(packageName, result)
@@ -140,6 +144,18 @@ class MainActivity : FlutterFragmentActivity() {
             result.success(isEnabled)
         } catch (e: Exception) {
             result.error("ERROR", e.message, null)
+        }
+    }
+
+    private fun handleOpenAccessibilitySettings() {
+        try {
+            Log.d("MainActivity", "🔧 Opening accessibility settings...")
+            val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            startActivity(intent)
+            Log.d("MainActivity", "✅ Accessibility settings opened")
+        } catch (e: Exception) {
+            Log.e("MainActivity", "❌ Error opening accessibility settings: ${e.message}")
         }
     }
 
@@ -239,7 +255,7 @@ class MainActivity : FlutterFragmentActivity() {
                     contentResolver,
                     Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
                 )
-                enabledServices?.contains("com.example.stealthseal/.AppAccessibilityService") ?: false
+                enabledServices?.contains("com.example.stealthseal/com.example.stealthseal.AppAccessibilityService") ?: false
             } else {
                 false
             }

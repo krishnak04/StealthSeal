@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hive/hive.dart';
 import '../../core/theme/theme_config.dart';
+import '../../core/services/accessibility_service_helper.dart';
 
 class AppLockManagementScreen extends StatefulWidget {
   const AppLockManagementScreen({super.key});
@@ -109,10 +110,85 @@ class _AppLockManagementScreenState extends State<AppLockManagementScreen> {
     }
   }
 
-  /// Toggle lock
+  /// Toggle lock - with accessibility check BEFORE locking
   Future<void> _toggleAppLock(String packageName) async {
     final box = Hive.box('securityBox');
 
+    // Check if this is a NEW lock (app is being locked, not unlocked)
+    final isLocking = !_lockedApps.contains(packageName);
+
+    // If trying to LOCK an app, check accessibility first
+    if (isLocking) {
+      try {
+        final isEnabled =
+            await platform.invokeMethod<bool>('isAccessibilityServiceEnabled');
+
+        if (isEnabled != true) {
+          debugPrint('❌ Accessibility service NOT enabled - blocking lock');
+          
+          // Show popup that accessibility is required
+          if (mounted) {
+            showDialog(
+              context: context,
+              barrierDismissible: false,
+              builder: (BuildContext dialogContext) {
+                return AlertDialog(
+                  title: const Text('⚠️ Accessibility Required'),
+                  content: const Text(
+                    'App locking requires accessibility permission.\n\n'
+                    'Without it, the PIN screen won\'t show when you open locked apps.\n\n'
+                    'Enable it in Settings > Accessibility > StealthSeal',
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(dialogContext),
+                      child: const Text('OK'),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        Navigator.pop(dialogContext);
+                        // Open accessibility settings with error handling
+                        try {
+                          platform.invokeMethod('openAccessibilitySettings');
+                        } catch (e) {
+                          debugPrint('Error opening accessibility settings: $e');
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Please manually open Settings > Accessibility > StealthSeal'),
+                                backgroundColor: Colors.orange,
+                              ),
+                            );
+                          }
+                        }
+                      },
+                      child: const Text('Open Settings'),
+                    ),
+                  ],
+                );
+              },
+            );
+          }
+          
+          // DO NOT proceed with locking
+          return;
+        }
+      } catch (e) {
+        debugPrint('Error checking accessibility: $e');
+        // On error, show warning and don't lock
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Could not verify accessibility permission'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+        return;
+      }
+    }
+
+    // Accessibility is enabled (or this is an UNLOCK), proceed with lock toggle
     setState(() {
       if (_lockedApps.contains(packageName)) {
         _lockedApps.remove(packageName);
@@ -122,6 +198,12 @@ class _AppLockManagementScreenState extends State<AppLockManagementScreen> {
     });
 
     await box.put('lockedApps', _lockedApps);
+
+    // Show accessibility popup if locking (after successful check)
+    if (isLocking && mounted) {
+      debugPrint('📱 User locked app: $packageName - Requesting accessibility service');
+      await AccessibilityServiceHelper.requestAccessibilityServiceWhenLocking(context);
+    }
 
     // ✅ Sync with Android native SharedPreferences
     try {
