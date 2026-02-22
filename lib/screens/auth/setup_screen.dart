@@ -161,7 +161,6 @@ class _SetupScreenState extends State<SetupScreen> {
 
       // Show success message dialog
       _showSuccessDialog();
-
     } catch (e) {
       debugPrint('Error saving PINs: $e');
       if (mounted) {
@@ -296,7 +295,6 @@ class _SetupScreenState extends State<SetupScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-
       backgroundColor: const Color(0xFF050505),
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24),

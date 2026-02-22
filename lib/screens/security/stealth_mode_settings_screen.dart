@@ -23,7 +23,6 @@ class _StealthModeSettingsScreenState extends State<StealthModeSettingsScreen> {
 
   void _loadSettings() {
     _selectedMode = _securityBox.get('stealthMode', defaultValue: 'normal');
-
   }
 
   void _setStealthMode(String mode) {

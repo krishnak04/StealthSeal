@@ -30,7 +30,7 @@
         android:id="@+id/titleText"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Hello world"
+        android:text="Enter the PIN"
         android:textColor="#1A1A1A"
         android:textSize="28sp"
         android:textStyle="bold"

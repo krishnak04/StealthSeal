@@ -20,9 +20,7 @@ class _RealDashboardState extends State<RealDashboard> {
   @override
   void initState() {
     super.initState();
-
     _checkAccessibilityService();
-
   }
 
   /// Check if accessibility service is enabled
@@ -51,42 +49,6 @@ class _RealDashboardState extends State<RealDashboard> {
       }
     }
   }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
   // ✅ Added missing _showPanicDialog method
   void _showPanicDialog(BuildContext context) {
@@ -179,7 +141,6 @@ class _RealDashboardState extends State<RealDashboard> {
           IconButton(
             icon: Icon(Icons.settings, color: ThemeConfig.textPrimary(context)),
             onPressed: () => Navigator.pushNamed(context, AppRoutes.settings),
-
           ),
           IconButton(
             icon: Icon(Icons.lock, color: ThemeConfig.textPrimary(context)),
@@ -460,7 +421,6 @@ class _RealDashboardState extends State<RealDashboard> {
                 ),
               ),
               icon: Icon(Icons.warning_rounded, size: 20, color: Colors.white),
-
               label: Text(
                 'Activate Panic Lock',
                 style: const TextStyle(

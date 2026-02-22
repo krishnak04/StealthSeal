@@ -1,4 +1,4 @@
-﻿package com.example.stealthseal
+package com.example.stealthseal
 
 import android.app.usage.UsageStatsManager
 import android.content.Context
@@ -28,16 +28,6 @@ class MainActivity : FlutterFragmentActivity() {
         super.onCreate(savedInstanceState)
         // Start foreground service to keep app lock alive when removed from recents
         AppLockForegroundService.start(this)
-
-
-
-
-
-
-
-
-
-
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -45,9 +35,6 @@ class MainActivity : FlutterFragmentActivity() {
 
         // Register engine for accessibility service (kept for future use)
         FlutterEngineCache.getInstance().put("stealth_engine", flutterEngine)
-
-
-
 
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL)
             .setMethodCallHandler { call, result ->
@@ -87,17 +74,6 @@ class MainActivity : FlutterFragmentActivity() {
                     else -> result.notImplemented()
                 }
             }
-
-
-
-
-
-
-
-
-
-
-
     }
 
     private fun handleGetInstalledApps(result: MethodChannel.Result) {

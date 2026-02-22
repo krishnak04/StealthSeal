@@ -7,15 +7,11 @@ import android.content.Intent
 import android.content.SharedPreferences
 import android.content.Context
 import android.content.pm.PackageManager
-
-
-
 import java.util.concurrent.ConcurrentHashMap
 
 class AppAccessibilityService : AccessibilityService() {
 
     companion object {
-
         private const val TAG = "🔐AppLockService"
         private val lockedApps = ConcurrentHashMap<String, Boolean>()
 
@@ -109,14 +105,7 @@ class AppAccessibilityService : AccessibilityService() {
                 for (app in lockedAppsStr.split(",")) {
                     val trimmed = app.trim()
                     if (trimmed.isNotEmpty()) lockedApps[trimmed] = true
-
-
-
-
                 }
-
-
-
             }
             Log.d(TAG, "📋 Loaded ${lockedApps.size} locked apps")
         } catch (e: Exception) {
@@ -127,7 +116,6 @@ class AppAccessibilityService : AccessibilityService() {
     private fun reloadLockedAppsIfNeeded() {
         val now = System.currentTimeMillis()
         if (now - lastLoadTime >= RELOAD_INTERVAL_MS) {
-
             loadLockedApps()
             lastLoadTime = now
         }
@@ -231,14 +219,10 @@ class AppAccessibilityService : AccessibilityService() {
         // ══════════════════════════════════════════════════════════
         if (!lockedApps.containsKey(packageName)) return
 
-
-
         // ══════════════════════════════════════════════════════════
         // 8. SESSION UNLOCKED — user entered PIN, let them through
         // ══════════════════════════════════════════════════════════
         if (isSessionUnlocked(packageName)) return
-
-
 
         // ══════════════════════════════════════════════════════════
         // 9. PIN ALREADY SHOWING — prevent duplicate
@@ -246,13 +230,6 @@ class AppAccessibilityService : AccessibilityService() {
         if (AppLockActivity.isShowing) {
             Log.d(TAG, "⏳ PIN already showing for ${AppLockActivity.currentlyBlockedPackage}, skip $packageName")
             return
-
-
-
-
-
-
-
         }
 
         // ══════════════════════════════════════════════════════════
@@ -271,7 +248,6 @@ class AppAccessibilityService : AccessibilityService() {
                            Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS
             intent.putExtra(AppLockActivity.EXTRA_LOCKED_PACKAGE, packageName)
             intent.putExtra(AppLockActivity.EXTRA_APP_NAME, appName)
-
             startActivity(intent)
             Log.d(TAG, "✅ PIN launched for: $appName ($packageName)")
         } catch (e: Exception) {
@@ -282,7 +258,6 @@ class AppAccessibilityService : AccessibilityService() {
     override fun onInterrupt() {
         Log.d(TAG, "⚠️ Service Interrupted")
     }
-
 
     override fun onDestroy() {
         super.onDestroy()

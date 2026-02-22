@@ -18,7 +18,6 @@ import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
-import android.widget.FrameLayout
 
 /**
  * Standalone native PIN entry activity that appears on TOP of the locked app.
@@ -100,11 +99,7 @@ class AppLockActivity : Activity() {
         // Initialize views
         initViews()
         setupKeypad()
-        setupFingerprint()
         updateDots()
-        
-        // Apply entrance animation
-        applyEntranceAnimation()
     }
 
     private fun loadPins() {
@@ -125,37 +120,18 @@ class AppLockActivity : Activity() {
         dot3 = findViewById(R.id.dot3)
         dot4 = findViewById(R.id.dot4)
         errorText = findViewById(R.id.errorText)
+        appNameText = findViewById(R.id.appNameText)
 
-        // Update title and subtitle for new modern layout
-        val titleText = findViewById<TextView>(R.id.titleText)
-        val subtitleText = findViewById<TextView>(R.id.subtitleText)
-        
-        titleText.text = "Enter the PIN"
-        subtitleText.text = "Unlock to access StealthSeal"
+        appNameText.text = "$appName is Locked"
 
-        Log.d(TAG, "✅ Modern UI initialized for: $appName")
-    }
-
-    private fun setupFingerprint() {
-        val fingerprintButton = findViewById<FrameLayout>(R.id.fingerprintButtonContainer)
-        fingerprintButton.setOnClickListener {
-            Log.d(TAG, "👆 Fingerprint button tapped")
-            // TODO: Integrate with BiometricService if available
-        }
-        fingerprintButton.setOnLongClickListener {
-            Log.d(TAG, "👆 Fingerprint button long-pressed")
-            // TODO: Show help dialog
-            true
-        }
-    }
-
-    private fun applyEntranceAnimation() {
-        try {
-            val animation = AnimationUtils.loadAnimation(this, R.anim.fade_scale_in)
-            findViewById<View>(R.id.titleText).startAnimation(animation)
-        } catch (e: Exception) {
-            Log.e(TAG, "Animation error: ${e.message}")
-        }
+        // Style the lock icon
+        val lockIcon = findViewById<ImageView>(R.id.lockIcon)
+        val iconBg = GradientDrawable()
+        iconBg.shape = GradientDrawable.OVAL
+        iconBg.setColor(Color.parseColor("#1A00BCD4"))
+        iconBg.setStroke(2, Color.parseColor("#8000BCD4"))
+        lockIcon.background = iconBg
+        lockIcon.setColorFilter(Color.parseColor("#00BCD4"))
     }
 
     private fun setupKeypad() {
@@ -203,8 +179,8 @@ class AppLockActivity : Activity() {
 
     private fun updateDots() {
         val dots = listOf(dot1, dot2, dot3, dot4)
-        val filledColor = Color.parseColor("#2196F3") // Modern Material Blue
-        val emptyColor = Color.parseColor("#E0E0E0")
+        val filledColor = Color.parseColor("#00BCD4") // Cyan
+        val emptyStroke = Color.parseColor("#8000BCD4")
 
         for (i in dots.indices) {
             val bg = GradientDrawable()
@@ -212,9 +188,12 @@ class AppLockActivity : Activity() {
 
             if (i < enteredPin.length) {
                 bg.setColor(filledColor)
+                bg.setStroke(2, filledColor)
             } else {
-                bg.setColor(emptyColor)
+                bg.setColor(Color.TRANSPARENT)
+                bg.setStroke(2, emptyStroke)
             }
+
             dots[i].background = bg
         }
     }

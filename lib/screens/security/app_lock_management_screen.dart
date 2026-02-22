@@ -1,5 +1,4 @@
 import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
@@ -86,7 +85,6 @@ class _AppLockManagementScreenState extends State<AppLockManagementScreen> {
         appNamesMap[app["package"]] = app["name"];
       }
       await box.put('appNamesMap', appNamesMap);
-
     } catch (e) {
       debugPrint('❌ ERROR loading installed apps: $e');
       setState(() {
@@ -163,32 +161,6 @@ class _AppLockManagementScreenState extends State<AppLockManagementScreen> {
                           color: ThemeConfig.textPrimary(context),
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
                         ),
                       ),
                       const SizedBox(height: 8),
@@ -200,8 +172,6 @@ class _AppLockManagementScreenState extends State<AppLockManagementScreen> {
                             fontSize: 12),
                       ),
                     ],
-
-
                   ),
                 )
               : Column(
@@ -263,8 +233,6 @@ class _AppLockManagementScreenState extends State<AppLockManagementScreen> {
                     ),
                   ],
                 ),
-
-
     );
   }
 

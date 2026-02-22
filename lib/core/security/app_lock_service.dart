@@ -1,5 +1,5 @@
 import 'package:flutter/services.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:hive/hive.dart';
 import 'dart:async';
 
@@ -8,8 +8,6 @@ class AppLockService {
       MethodChannel('com.stealthseal.app/applock');
 
   static final AppLockService _instance = AppLockService._internal();
-  static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
-
 
   factory AppLockService() => _instance;
 
@@ -82,7 +80,6 @@ class AppLockService {
   }
 
   void setOnLockedAppDetectedCallback(Function(String packageName) callback) {
-
     _callback = callback;
   }
 
@@ -109,4 +106,3 @@ class AppLockService {
     _monitoringTimer?.cancel();
   }
 }
-
