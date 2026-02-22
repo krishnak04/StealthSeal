@@ -1,9 +1,13 @@
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import 'dart:async';
 
 class AppLockService {
+  static final GlobalKey<NavigatorState> navigatorKey =
+      GlobalKey<NavigatorState>();
+
   static const MethodChannel _channel =
       MethodChannel('com.stealthseal.app/applock');
 

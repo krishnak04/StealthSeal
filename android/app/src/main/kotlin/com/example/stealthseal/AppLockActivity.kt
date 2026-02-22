@@ -68,7 +68,6 @@ class AppLockActivity : Activity() {
     private lateinit var dot3: View
     private lateinit var dot4: View
     private lateinit var errorText: TextView
-    private lateinit var appNameText: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -120,18 +119,10 @@ class AppLockActivity : Activity() {
         dot3 = findViewById(R.id.dot3)
         dot4 = findViewById(R.id.dot4)
         errorText = findViewById(R.id.errorText)
-        appNameText = findViewById(R.id.appNameText)
-
-        appNameText.text = "$appName is Locked"
-
-        // Style the lock icon
+        
+        // Modern lock icon is already styled in the layout
         val lockIcon = findViewById<ImageView>(R.id.lockIcon)
-        val iconBg = GradientDrawable()
-        iconBg.shape = GradientDrawable.OVAL
-        iconBg.setColor(Color.parseColor("#1A00BCD4"))
-        iconBg.setStroke(2, Color.parseColor("#8000BCD4"))
-        lockIcon.background = iconBg
-        lockIcon.setColorFilter(Color.parseColor("#00BCD4"))
+        lockIcon.setColorFilter(Color.WHITE)
     }
 
     private fun setupKeypad() {
@@ -277,7 +268,6 @@ class AppLockActivity : Activity() {
                 failedAttempts = 0
                 pinCorrect = false
                 errorText.visibility = View.GONE
-                appNameText.text = "$appName is Locked"
                 updateDots()
                 currentlyBlockedPackage = lockedPackage
                 Log.d(TAG, "🔒 PIN screen switched to: $appName ($lockedPackage)")

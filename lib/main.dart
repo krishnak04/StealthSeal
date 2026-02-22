@@ -77,7 +77,7 @@ class _StealthSealAppState extends State<StealthSealApp> {
     final themeMode = ThemeService.themeNotifier.value;
     
     return MaterialApp(
-      navigatorKey: AppLockService.navigatorKey,
+      navigatorKey: AppLockService.navigatorKey, // Set navigator key for global navigation
       useInheritedMediaQuery: true,
       locale: DevicePreview.locale(context),
       builder: DevicePreview.appBuilder,
