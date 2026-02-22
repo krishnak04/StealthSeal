@@ -12,7 +12,8 @@ class LocationLockSettingsScreen extends StatefulWidget {
       _LocationLockSettingsScreenState();
 }
 
-class _LocationLockSettingsScreenState extends State<LocationLockSettingsScreen> {
+class _LocationLockSettingsScreenState
+    extends State<LocationLockSettingsScreen> {
   late Box _securityBox;
   late bool _locationLockEnabled;
   late double _trustedLat;
@@ -179,7 +180,7 @@ class _LocationLockSettingsScreenState extends State<LocationLockSettingsScreen>
                     Switch(
                       value: _locationLockEnabled,
                       onChanged: _toggleLocationLock,
-                      activeColor: ThemeConfig.accentColor(context),
+                      activeThumbColor: ThemeConfig.accentColor(context),
                       inactiveThumbColor: ThemeConfig.borderColor(context),
                       inactiveTrackColor: ThemeConfig.surfaceColor(context),
                     ),
@@ -375,4 +376,3 @@ class _LocationLockSettingsScreenState extends State<LocationLockSettingsScreen>
     );
   }
 }
-

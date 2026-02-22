@@ -9,6 +9,7 @@ import 'core/theme/app_theme.dart';
 import 'core/theme/theme_service.dart';
 import 'core/routes/app_routes.dart';
 import 'core/services/user_identifier_service.dart';
+import 'core/security/app_lock_service.dart';
 
 // Screens
 import 'screens/splash/splash_screen.dart';
@@ -33,6 +34,9 @@ void main() async {
 
   // 🔹 Initialize User Identifier Service
   await UserIdentifierService.initialize();
+
+  // 🔹 Initialize App Lock Service (global, listens for native events)
+  AppLockService().initialize();
 
   // 🔹 Initialize Supabase
   await Supabase.initialize(
@@ -73,6 +77,7 @@ class _StealthSealAppState extends State<StealthSealApp> {
     final themeMode = ThemeService.themeNotifier.value;
     
     return MaterialApp(
+      navigatorKey: AppLockService.navigatorKey,
       useInheritedMediaQuery: true,
       locale: DevicePreview.locale(context),
       builder: DevicePreview.appBuilder,

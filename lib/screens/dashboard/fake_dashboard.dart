@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:hive/hive.dart';
 import '../../core/theme/theme_config.dart';
 import '../../core/security/app_lock_service.dart';
 import '../../core/routes/app_routes.dart';
+import '../security/app_lock_pin_screen.dart';
 
 class FakeDashboard extends StatefulWidget {
   const FakeDashboard({super.key});
@@ -30,20 +32,32 @@ class _FakeDashboardState extends State<FakeDashboard> with WidgetsBindingObserv
     // Set callback for when a locked app is detected
     appLockService.setOnLockedAppDetectedCallback((packageName) {
       if (mounted) {
-        debugPrint('🔒 Locked app detected from fake dashboard: $packageName - Forcing lock');
-        // Navigate back to lock screen immediately
-        Navigator.pushReplacementNamed(context, AppRoutes.lock);
+        debugPrint('🔒 Locked app detected from fake dashboard: $packageName - Showing PIN screen');
+        // Show the app lock PIN verification screen
+        final box = Hive.box('securityBox');
+        final appNamesMap =
+            (box.get('appNamesMap', defaultValue: {}) ?? {}) as Map;
+        final appName =
+            appNamesMap[packageName]?.toString() ?? packageName.split('.').last;
+
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => AppLockPinScreen(
+              packageName: packageName,
+              appName: appName,
+            ),
+          ),
+        );
       }
     });
-
-   
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    // Stop app lock monitoring when leaving the fake dashboard
-    AppLockService();
+    // Clear app lock callback when leaving the fake dashboard
+    AppLockService().dispose();
     super.dispose();
   }
 

@@ -22,8 +22,8 @@ class _StealthModeSettingsScreenState extends State<StealthModeSettingsScreen> {
   }
 
   void _loadSettings() {
-    _selectedMode =
-        _securityBox.get('stealthMode', defaultValue: 'normal');
+    _selectedMode = _securityBox.get('stealthMode', defaultValue: 'normal');
+
   }
 
   void _setStealthMode(String mode) {
@@ -155,7 +155,7 @@ class _StealthModeSettingsScreenState extends State<StealthModeSettingsScreen> {
                           }
                         },
                         activeColor: ThemeConfig.accentColor(context),
-                        fillColor: MaterialStateProperty.all(
+                        fillColor: WidgetStateProperty.all(
                           ThemeConfig.accentColor(context),
                         ),
                       ),
@@ -219,7 +219,7 @@ class _StealthModeSettingsScreenState extends State<StealthModeSettingsScreen> {
                           }
                         },
                         activeColor: ThemeConfig.accentColor(context),
-                        fillColor: MaterialStateProperty.all(
+                        fillColor: WidgetStateProperty.all(
                           ThemeConfig.accentColor(context),
                         ),
                       ),
@@ -286,7 +286,7 @@ class _StealthModeSettingsScreenState extends State<StealthModeSettingsScreen> {
                               }
                             },
                             activeColor: ThemeConfig.accentColor(context),
-                            fillColor: MaterialStateProperty.all(
+                            fillColor: WidgetStateProperty.all(
                               ThemeConfig.accentColor(context),
                             ),
                           ),

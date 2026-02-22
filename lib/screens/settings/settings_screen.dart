@@ -120,7 +120,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       onTap: () async {
         await ThemeService.setThemeMode(value);
         setState(() => _selectedTheme = value);
-        
+
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -134,12 +134,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: _selectedTheme == value 
+          color: _selectedTheme == value
               ? ThemeConfig.accentColor(context).withOpacity(0.2)
               : ThemeConfig.inputBackground(context),
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: _selectedTheme == value ? ThemeConfig.accentColor(context) : Colors.transparent,
+            color: _selectedTheme == value
+                ? ThemeConfig.accentColor(context)
+                : Colors.transparent,
             width: 2,
           ),
         ),
@@ -158,9 +160,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
             if (_selectedTheme == value)
-              Icon(Icons.check_circle, color: ThemeConfig.accentColor(context), size: 24)
+              Icon(Icons.check_circle,
+                  color: ThemeConfig.accentColor(context), size: 24)
             else
-              Icon(Icons.radio_button_unchecked, color: ThemeConfig.borderColor(context), size: 24),
+              Icon(Icons.radio_button_unchecked,
+                  color: ThemeConfig.borderColor(context), size: 24),
           ],
         ),
       ),
@@ -192,7 +196,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               children: [
                 Row(
                   children: [
-                    Icon(Icons.fingerprint, color: ThemeConfig.accentColor(context), size: 20),
+                    Icon(Icons.fingerprint,
+                        color: ThemeConfig.accentColor(context), size: 20),
                     const SizedBox(width: 12),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -225,7 +230,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         if (mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: const Text('Biometric not supported on this device'),
+                              content: const Text(
+                                  'Biometric not supported on this device'),
                               backgroundColor: ThemeConfig.errorColor(context),
                             ),
                           );
@@ -236,22 +242,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     } else {
                       BiometricService.disable();
                     }
-                    
+
                     // Update Supabase
                     try {
                       final userId = await UserIdentifierService.getUserId();
                       await Supabase.instance.client
                           .from('user_security')
-                          .update({'biometric_enabled': value})
-                          .eq('id', userId);
+                          .update({'biometric_enabled': value}).eq(
+                              'id', userId);
                       debugPrint(' Biometric updated in Supabase: $value');
                     } catch (e) {
                       debugPrint(' Error updating biometric in Supabase: $e');
                     }
-                    
+
                     setState(() => _biometricEnabled = value);
                   },
-                  activeColor: ThemeConfig.accentColor(context),
+                  activeThumbColor: ThemeConfig.accentColor(context),
                 ),
               ],
             ),
@@ -284,7 +290,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             _buildSettingsItem(
               icon: Icons.schedule,
               label: 'Time-Based Locks',
-              onTap: () => Navigator.pushNamed(context, AppRoutes.timeLockService),
+              onTap: () =>
+                  Navigator.pushNamed(context, AppRoutes.timeLockService),
               context: ctx,
             ),
             const SizedBox(height: 12),
@@ -396,7 +403,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ),
             ),
-            Icon(Icons.arrow_forward, color: ThemeConfig.accentColor(context), size: 18),
+            Icon(Icons.arrow_forward,
+                color: ThemeConfig.accentColor(context), size: 18),
           ],
         ),
       ),
