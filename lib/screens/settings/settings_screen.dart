@@ -9,6 +9,8 @@ import '../security/location_lock_settings_screen.dart';
 import '../security/stealth_mode_settings_screen.dart';
 import '../security/permissions_settings_screen.dart';
 import 'about_help_screen.dart';
+import 'change_password_screen.dart';
+import 'password_type_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -260,6 +262,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   activeThumbColor: ThemeConfig.accentColor(context),
                 ),
               ],
+            ),
+            const SizedBox(height: 20),
+            Divider(color: ThemeConfig.borderColor(context)),
+            const SizedBox(height: 20),
+            _buildSettingsItem(
+              icon: Icons.lock,
+              label: 'Change Password',
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ChangePasswordScreen()),
+              ),
+              context: context,
+            ),
+            const SizedBox(height: 12),
+            _buildSettingsItem(
+              icon: Icons.vpn_key,
+              label: 'Password Type',
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const PatternScreen()),
+              ),
+              context: context,
             ),
           ],
         ),
