@@ -205,61 +205,61 @@ class _PermissionsSettingsScreenState extends State<PermissionsSettingsScreen> {
     required PermissionStatus status,
     required VoidCallback onTap,
   }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: ThemeConfig.surfaceColor(context),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: ThemeConfig.borderColor(context),
-          width: 1,
+    return GestureDetector(
+      onTap: _isGranted(status) ? null : onTap,
+      child: Container(
+        decoration: BoxDecoration(
+          color: ThemeConfig.surfaceColor(context),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: ThemeConfig.borderColor(context),
+            width: 1,
+          ),
         ),
-      ),
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        children: [
-          Icon(
-            icon,
-            color: iconColor,
-            size: 32,
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    color: ThemeConfig.textPrimary(context),
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  description,
-                  style: TextStyle(
-                    color: ThemeConfig.textSecondary(context),
-                    fontSize: 12,
-                  ),
-                ),
-              ],
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Icon(
+              icon,
+              color: iconColor,
+              size: 32,
             ),
-          ),
-          const SizedBox(width: 12),
-          if (_isGranted(status))
-            Text(
-              _getStatusText(status),
-              style: const TextStyle(
-                color: Color(0xFF4CAF50),
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      color: ThemeConfig.textPrimary(context),
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    description,
+                    style: TextStyle(
+                      color: ThemeConfig.textSecondary(context),
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
               ),
-            )
-          else
-            GestureDetector(
-              onTap: onTap,
-              child: Container(
+            ),
+            const SizedBox(width: 12),
+            if (_isGranted(status))
+              Text(
+                _getStatusText(status),
+                style: const TextStyle(
+                  color: Color(0xFF4CAF50),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              )
+            else
+              Container(
                 decoration: BoxDecoration(
                   color: ThemeConfig.accentColor(context),
                   borderRadius: BorderRadius.circular(6),
@@ -277,8 +277,8 @@ class _PermissionsSettingsScreenState extends State<PermissionsSettingsScreen> {
                   ),
                 ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }

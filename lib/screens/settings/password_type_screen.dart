@@ -58,9 +58,9 @@ class _PatternScreenState extends State<PatternScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(' Pattern changed to $pattern'),
+            content: Text(' Password changed to $pattern'),
             backgroundColor: Colors.green,
-            duration: const Duration(seconds: 2),
+            duration: const Duration(seconds: 1),
           ),
         );
       }

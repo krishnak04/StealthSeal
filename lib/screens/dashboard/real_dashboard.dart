@@ -38,21 +38,21 @@ class _RealDashboardState extends State<RealDashboard> {
 
     if (!isEnabled) {
       if (mounted) {
-        debugPrint('⚠️ Accessibility service not enabled!');
+        debugPrint('Accessibility service not enabled !');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: const Text(
               'Enable Accessibility Service for App Lock to work. Go to Settings > Accessibility > StealthSeal',
             ),
-            duration: const Duration(seconds: 5),
-            backgroundColor: Colors.orange,
+            duration: const Duration(seconds: 2),
+            backgroundColor: const Color.fromARGB(255, 214, 77, 77),
           ),
         );
       }
     }
   }
 
-  /// ✅ Set up callback for locked app detection (service already initialized in main.dart)
+  /// ✅ Set up callback for locked app detection
   void _setupAppLockCallback() {
     final service = AppLockService();
 
@@ -65,6 +65,7 @@ class _RealDashboardState extends State<RealDashboard> {
 
   /// Show the dedicated App Lock PIN verification screen
   void _showAppLockPinScreen(String packageName) {
+    if (!Hive.isBoxOpen('securityBox')) return;
     final box = Hive.box('securityBox');
     final appNamesMap =
         (box.get('appNamesMap', defaultValue: {}) ?? {}) as Map;
@@ -83,7 +84,6 @@ class _RealDashboardState extends State<RealDashboard> {
     );
   }
 
-  // ✅ Added missing _showPanicDialog method
   void _showPanicDialog(BuildContext context) {
     showDialog(
       context: context,
@@ -185,38 +185,8 @@ class _RealDashboardState extends State<RealDashboard> {
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            /// ⚠️ ACCESSIBILITY WARNING
-            if (!_accessibilityEnabled)
-              Container(
-                padding: const EdgeInsets.all(12),
-                margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(
-                  color: Colors.orange.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: Colors.orange,
-                    width: 1,
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.warning, color: Colors.orange, size: 20),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        'Enable Accessibility Service in Settings for App Lock to work',
-                        style: TextStyle(
-                          color: Colors.orange,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
             /// 🔵 SECURITY STATUS
             Container(
               padding: const EdgeInsets.all(20),
@@ -454,11 +424,11 @@ class _RealDashboardState extends State<RealDashboard> {
                   borderRadius: BorderRadius.circular(8),
                 ),
               ),
-              icon: Icon(Icons.warning_rounded,
+              icon: const Icon(Icons.warning_rounded,
                   size: 20, color: Colors.white),
-              label: Text(
+              label: const Text(
                 'Activate Panic Lock',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.bold,
                   color: Colors.white,
