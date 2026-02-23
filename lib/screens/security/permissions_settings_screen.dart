@@ -11,10 +11,13 @@ class PermissionsSettingsScreen extends StatefulWidget {
 }
 
 class _PermissionsSettingsScreenState extends State<PermissionsSettingsScreen> {
-  late PermissionStatus _cameraStatus;
-  late PermissionStatus _storageStatus;
-  late PermissionStatus _locationStatus;
-  late PermissionStatus _photosStatus;
+  // Initialize with denied status to avoid LateInitializationError
+  PermissionStatus _cameraStatus = PermissionStatus.denied;
+  PermissionStatus _storageStatus = PermissionStatus.denied;
+  PermissionStatus _locationStatus = PermissionStatus.denied;
+  PermissionStatus _photosStatus = PermissionStatus.denied;
+  PermissionStatus _accessibilityStatus = PermissionStatus.denied;
+  bool _isInitializing = true;
 
   @override
   void initState() {
@@ -27,13 +30,21 @@ class _PermissionsSettingsScreenState extends State<PermissionsSettingsScreen> {
     final storage = await Permission.storage.status;
     final location = await Permission.location.status;
     final photos = await Permission.photos.status;
+    
+    // Note: Accessibility permission usually requires a different approach on Android,
+    // but we will check it via the standard handler for this UI.
+    final accessibility = await Permission.sensors.status; 
 
-    setState(() {
-      _cameraStatus = camera;
-      _storageStatus = storage;
-      _locationStatus = location;
-      _photosStatus = photos;
-    });
+    if (mounted) {
+      setState(() {
+        _cameraStatus = camera;
+        _storageStatus = storage;
+        _locationStatus = location;
+        _photosStatus = photos;
+        _accessibilityStatus = accessibility;
+        _isInitializing = false;
+      });
+    }
   }
 
   Future<void> _requestCameraPermission() async {
@@ -60,6 +71,13 @@ class _PermissionsSettingsScreenState extends State<PermissionsSettingsScreen> {
     _showPermissionResult(status, 'Photos');
   }
 
+  Future<void> _requestAccessibilityPermission() async {
+    // Accessibility is often a system intent, but here we trigger the request
+    final status = await Permission.ignoreBatteryOptimizations.request();
+    setState(() => _accessibilityStatus = status);
+    _showPermissionResult(status, 'Accessibility');
+  }
+
   void _showPermissionResult(PermissionStatus status, String permission) {
     String message = '';
     if (status.isGranted) {
@@ -68,17 +86,20 @@ class _PermissionsSettingsScreenState extends State<PermissionsSettingsScreen> {
       message = '$permission permission denied';
     } else if (status.isPermanentlyDenied) {
       message = '$permission permission denied. Open settings to allow.';
+      openAppSettings();
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: status.isGranted
-            ? const Color(0xFF4CAF50)
-            : const Color(0xFFFF6B5B),
-        duration: const Duration(seconds: 2),
-      ),
-    );
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: status.isGranted
+              ? const Color(0xFF4CAF50)
+              : const Color(0xFFFF6B5B),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
   }
 
   String _getStatusText(PermissionStatus status) {
@@ -117,13 +138,14 @@ class _PermissionsSettingsScreenState extends State<PermissionsSettingsScreen> {
         centerTitle: false,
       ),
       backgroundColor: ThemeConfig.backgroundColor(context),
-      body: Padding(
+      body: _isInitializing 
+        ? const Center(child: CircularProgressIndicator())
+        : Padding(
         padding: const EdgeInsets.all(16.0),
         child: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Camera Permission
               _buildPermissionCard(
                 icon: Icons.camera_alt,
                 iconColor: const Color(0xFFFF6B5B),
@@ -133,8 +155,6 @@ class _PermissionsSettingsScreenState extends State<PermissionsSettingsScreen> {
                 onTap: _requestCameraPermission,
               ),
               const SizedBox(height: 12),
-
-              // Storage Permission
               _buildPermissionCard(
                 icon: Icons.folder,
                 iconColor: ThemeConfig.accentColor(context),
@@ -144,8 +164,6 @@ class _PermissionsSettingsScreenState extends State<PermissionsSettingsScreen> {
                 onTap: _requestStoragePermission,
               ),
               const SizedBox(height: 12),
-
-              // Location Permission
               _buildPermissionCard(
                 icon: Icons.location_on,
                 iconColor: const Color(0xFF4CAF50),
@@ -155,8 +173,6 @@ class _PermissionsSettingsScreenState extends State<PermissionsSettingsScreen> {
                 onTap: _requestLocationPermission,
               ),
               const SizedBox(height: 12),
-
-              // Photos Permission
               _buildPermissionCard(
                 icon: Icons.photo_library,
                 iconColor: ThemeConfig.accentColor(context),
@@ -165,6 +181,15 @@ class _PermissionsSettingsScreenState extends State<PermissionsSettingsScreen> {
                 status: _photosStatus,
                 onTap: _requestPhotosPermission,
               ),
+              const SizedBox(height: 12),
+              _buildPermissionCard(
+                icon: Icons.accessibility,
+                iconColor: const Color(0xFF4CAF50),
+                title: 'Accessibility',
+                description: 'Required for app locking functionality',
+                status: _accessibilityStatus,
+                onTap: _requestAccessibilityPermission,
+              ),  
             ],
           ),
         ),
@@ -192,15 +217,12 @@ class _PermissionsSettingsScreenState extends State<PermissionsSettingsScreen> {
       padding: const EdgeInsets.all(16),
       child: Row(
         children: [
-          // Icon
           Icon(
             icon,
             color: iconColor,
             size: 32,
           ),
           const SizedBox(width: 16),
-
-          // Title and Description
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -225,8 +247,6 @@ class _PermissionsSettingsScreenState extends State<PermissionsSettingsScreen> {
             ),
           ),
           const SizedBox(width: 12),
-
-          // Status Button/Text
           if (_isGranted(status))
             Text(
               _getStatusText(status),
@@ -248,9 +268,9 @@ class _PermissionsSettingsScreenState extends State<PermissionsSettingsScreen> {
                   horizontal: 12,
                   vertical: 8,
                 ),
-                child: const Text(
-                  'Grant',
-                  style: TextStyle(
+                child: Text(
+                  _getStatusText(status),
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 13,
                     fontWeight: FontWeight.w600,

@@ -65,7 +65,7 @@ class _PatternScreenState extends State<PatternScreen> {
         );
       }
     } catch (e) {
-      debugPrint(' Error updating pattern: $e');
+      debugPrint('❌ Error updating pattern: $e');
       if (mounted) {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -105,7 +105,7 @@ class _PatternScreenState extends State<PatternScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Password Type',
+                    'Unlock Pin',
                     style: TextStyle(
                       color: ThemeConfig.textPrimary(context),
                       fontSize: 16,
@@ -114,7 +114,7 @@ class _PatternScreenState extends State<PatternScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Select your preferred password type',
+                    'Select your preferred unlock pattern',
                     style: TextStyle(
                       color: ThemeConfig.textSecondary(context),
                       fontSize: 13,
@@ -135,6 +135,14 @@ class _PatternScreenState extends State<PatternScreen> {
                     description: 'Longer numeric PIN\nExample: 123456',
                     pattern: '6-digit',
                     icon: Icons.pin,
+                  ),
+                  const SizedBox(height: 24),
+                  _buildPatternOption(
+                    context: context,
+                    title: 'Pattern',
+                    description: 'Pattern-based unlock\nExample: L-shaped pattern',
+                    pattern: 'pattern',
+                    icon: Icons.lock,
                   ),
                   const SizedBox(height: 12),
                   _buildPatternOption(
