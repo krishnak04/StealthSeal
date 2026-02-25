@@ -155,20 +155,19 @@ class _RealDashboardState extends State<RealDashboard> {
       appBar: AppBar(
         backgroundColor: ThemeConfig.appBarBackground(context),
         elevation: 0,
-        centerTitle: true,
+        centerTitle: false,
         title: Text(
           "StealthSeal",
           style: TextStyle(
             color: ThemeConfig.accentColor(context),
-            fontSize: 20,
+            fontSize: 30,
             fontWeight: FontWeight.bold,
           ),
         ),
         actions: [
           IconButton(
-            icon: Icon(Icons.bug_report, color: ThemeConfig.textPrimary(context)),
-            onPressed: () =>
-                Navigator.pushNamed(context, AppRoutes.debug),
+            icon: Icon(Icons.refresh, color: ThemeConfig.textPrimary(context)),
+            onPressed: () => setState(() {}),
           ),
           IconButton(
             icon: Icon(Icons.settings, color: ThemeConfig.textPrimary(context)),
