@@ -177,6 +177,12 @@ class _AppLockPinScreenState extends State<AppLockPinScreen> {
   Widget build(BuildContext context) {
     return PopScope(
       canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) {
+          // Send user to home screen instead of dismissing PIN screen
+          SystemNavigator.pop();
+        }
+      },
       child: Scaffold(
         resizeToAvoidBottomInset: false,
         body: Container(

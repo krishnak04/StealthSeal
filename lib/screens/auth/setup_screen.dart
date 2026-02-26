@@ -145,19 +145,18 @@ class _SetupScreenState extends State<SetupScreen> {
         debugPrint('Warning: Failed to cache PINs: $error');
       }
 
-      // Step 3: Sync to Supabase (best-effort, non-blocking on failure)
+      // Step 3: Sync to Supabase
       try {
         final supabase = Supabase.instance.client;
-        await supabase.from('user_security').upsert({
+        final response = await supabase.from('user_security').upsert({
           'id': userId,
           'real_pin': realPin,
           'decoy_pin': decoyPin,
           'biometric_enabled': false,
-        }).timeout(const Duration(seconds: 8));
-        debugPrint('PINs synced to Supabase successfully');
+        }).select().timeout(const Duration(seconds: 10));
+        debugPrint('PINs synced to Supabase successfully: $response');
       } catch (supabaseError) {
-        debugPrint('Warning: Supabase sync failed (will retry later): $supabaseError');
-        // PINs are safely stored in Hive, so we continue
+        debugPrint('WARNING: Supabase sync failed: $supabaseError');
       }
 
       if (!mounted) return;

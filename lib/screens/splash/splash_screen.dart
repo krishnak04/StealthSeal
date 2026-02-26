@@ -118,7 +118,6 @@ class _SplashScreenState extends State<SplashScreen> {
 
       debugPrint('Local check: isPinSetupDone=$isPinSetupDone, hasLocalPins=$hasLocalPins');
 
-      // Try Supabase but don't block on failure
       try {
         final supabase = Supabase.instance.client;
         debugPrint('Connected to Supabase');
@@ -138,6 +137,11 @@ class _SplashScreenState extends State<SplashScreen> {
         if (!mounted) return;
 
         if (existingUser != null) {
+
+          securityBox.put('realPin', existingUser['real_pin'] ?? '');
+          securityBox.put('decoyPin', existingUser['decoy_pin'] ?? '');
+          securityBox.put('isPinSetupDone', true);
+
           debugPrint('User registered - Navigating to Lock Screen');
           setState(() => _status = 'Redirecting to login...');
           await Future.delayed(const Duration(milliseconds: 500));
@@ -153,7 +157,6 @@ class _SplashScreenState extends State<SplashScreen> {
         debugPrint('Supabase unreachable: $supabaseError');
       }
 
-      // Supabase failed — use local Hive data as fallback
       if (!mounted) return;
 
       if (isPinSetupDone && hasLocalPins) {
@@ -171,7 +174,6 @@ class _SplashScreenState extends State<SplashScreen> {
       debugPrint('Error checking user status: $error');
       debugPrint('Stack trace: ${StackTrace.current}');
 
-      // Last resort: check Hive even if everything else failed
       try {
         final securityBox = Hive.box('securityBox');
         final isPinSetupDone = securityBox.get('isPinSetupDone', defaultValue: false) as bool;

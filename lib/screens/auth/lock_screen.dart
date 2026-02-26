@@ -328,6 +328,11 @@ class _LockScreenState extends State<LockScreen> {
   Widget build(BuildContext context) {
     return PopScope(
       canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) {
+          SystemNavigator.pop();
+        }
+      },
       child: Scaffold(
         resizeToAvoidBottomInset: false,
         body: Container(

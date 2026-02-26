@@ -110,13 +110,20 @@ class _FakeDashboardState extends State<FakeDashboard> with WidgetsBindingObserv
           Text(
             'StealthSeal',
             style: TextStyle(
-              fontSize: 20,
+              fontSize: 30,
               fontWeight: FontWeight.bold,
               color: ThemeConfig.textPrimary(context),
             ),
           ),
         ],
       ),
+      actions: [
+        IconButton(
+          icon: Icon(Icons.lock, color: ThemeConfig.textPrimary(context)),
+          onPressed: () =>
+              Navigator.pushReplacementNamed(context, AppRoutes.lock),
+        ),
+      ],
     );
   }
 
@@ -137,7 +144,7 @@ class _FakeDashboardState extends State<FakeDashboard> with WidgetsBindingObserv
           Text(
             'Account Dashboard',
             style: TextStyle(
-              fontSize: 24,
+              fontSize: 30,
               fontWeight: FontWeight.bold,
               color: ThemeConfig.textPrimary(context),
             ),
