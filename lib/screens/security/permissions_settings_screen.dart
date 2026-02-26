@@ -25,6 +25,9 @@ class _PermissionsSettingsScreenState extends State<PermissionsSettingsScreen> {
     _checkPermissions();
   }
 
+  // ─── Permission Checks ───
+
+  /// Queries the current status of all required permissions and updates state.
   Future<void> _checkPermissions() async {
     final camera = await Permission.camera.status;
     final storage = await Permission.storage.status;
@@ -47,30 +50,37 @@ class _PermissionsSettingsScreenState extends State<PermissionsSettingsScreen> {
     }
   }
 
+  // ─── Permission Requests ───
+
+  /// Requests camera permission from the OS and displays the result.
   Future<void> _requestCameraPermission() async {
     final status = await Permission.camera.request();
     setState(() => _cameraStatus = status);
     _showPermissionResult(status, 'Camera');
   }
 
+  /// Requests storage permission from the OS and displays the result.
   Future<void> _requestStoragePermission() async {
     final status = await Permission.storage.request();
     setState(() => _storageStatus = status);
     _showPermissionResult(status, 'Storage');
   }
 
+  /// Requests location permission from the OS and displays the result.
   Future<void> _requestLocationPermission() async {
     final status = await Permission.location.request();
     setState(() => _locationStatus = status);
     _showPermissionResult(status, 'Location');
   }
 
+  /// Requests photos permission from the OS and displays the result.
   Future<void> _requestPhotosPermission() async {
     final status = await Permission.photos.request();
     setState(() => _photosStatus = status);
     _showPermissionResult(status, 'Photos');
   }
 
+  /// Requests accessibility (battery-optimization) permission and displays the result.
   Future<void> _requestAccessibilityPermission() async {
     // Accessibility is often a system intent, but here we trigger the request
     final status = await Permission.ignoreBatteryOptimizations.request();
@@ -78,6 +88,9 @@ class _PermissionsSettingsScreenState extends State<PermissionsSettingsScreen> {
     _showPermissionResult(status, 'Accessibility');
   }
 
+  // ─── UI Helpers ───
+
+  /// Shows a [SnackBar] indicating whether the [permission] was granted or denied.
   void _showPermissionResult(PermissionStatus status, String permission) {
     String message = '';
     if (status.isGranted) {
@@ -102,6 +115,7 @@ class _PermissionsSettingsScreenState extends State<PermissionsSettingsScreen> {
     }
   }
 
+  /// Returns a human-readable label for the given [PermissionStatus].
   String _getStatusText(PermissionStatus status) {
     if (status.isGranted) {
       return 'Granted';
@@ -113,9 +127,12 @@ class _PermissionsSettingsScreenState extends State<PermissionsSettingsScreen> {
     return 'Unknown';
   }
 
+  /// Returns `true` when the given [status] is [PermissionStatus.granted].
   bool _isGranted(PermissionStatus status) {
     return status.isGranted;
   }
+
+  // ─── Build ───
 
   @override
   Widget build(BuildContext context) {
@@ -197,6 +214,7 @@ class _PermissionsSettingsScreenState extends State<PermissionsSettingsScreen> {
     );
   }
 
+  /// Builds a single permission row card with icon, description, and action button.
   Widget _buildPermissionCard({
     required IconData icon,
     required Color iconColor,

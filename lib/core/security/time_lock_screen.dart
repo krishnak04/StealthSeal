@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import '../../utils/hive_keys.dart';
 
+/// Screen for configuring the night-lock time window.
+///
+/// Lets the user enable/disable the lock and pick start/end times.
 class TimeLockScreen extends StatefulWidget {
   const TimeLockScreen({super.key});
 
@@ -10,43 +13,47 @@ class TimeLockScreen extends StatefulWidget {
 }
 
 class _TimeLockScreenState extends State<TimeLockScreen> {
-  final box = Hive.box('security');
+  /// Hive box used for persisting security settings.
+  final securityBox = Hive.box('security');
 
+  /// Opens a time picker to set the night-lock start time.
   Future<void> _pickStartTime() async {
     final picked = await showTimePicker(
       context: context,
       initialTime: TimeOfDay(
-        hour: box.get(HiveKeys.nightStartHour, defaultValue: 22),
-        minute: box.get(HiveKeys.nightStartMinute, defaultValue: 0),
+        hour: securityBox.get(HiveKeys.nightStartHour, defaultValue: 22),
+        minute: securityBox.get(HiveKeys.nightStartMinute, defaultValue: 0),
       ),
     );
 
     if (picked != null) {
-      await box.put(HiveKeys.nightStartHour, picked.hour);
-      await box.put(HiveKeys.nightStartMinute, picked.minute);
+      await securityBox.put(HiveKeys.nightStartHour, picked.hour);
+      await securityBox.put(HiveKeys.nightStartMinute, picked.minute);
       setState(() {});
     }
   }
 
+  /// Opens a time picker to set the night-lock end time.
   Future<void> _pickEndTime() async {
     final picked = await showTimePicker(
       context: context,
       initialTime: TimeOfDay(
-        hour: box.get(HiveKeys.nightEndHour, defaultValue: 6),
-        minute: box.get(HiveKeys.nightEndMinute, defaultValue: 0),
+        hour: securityBox.get(HiveKeys.nightEndHour, defaultValue: 6),
+        minute: securityBox.get(HiveKeys.nightEndMinute, defaultValue: 0),
       ),
     );
 
     if (picked != null) {
-      await box.put(HiveKeys.nightEndHour, picked.hour);
-      await box.put(HiveKeys.nightEndMinute, picked.minute);
+      await securityBox.put(HiveKeys.nightEndHour, picked.hour);
+      await securityBox.put(HiveKeys.nightEndMinute, picked.minute);
       setState(() {});
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final enabled = box.get(HiveKeys.nightLockEnabled, defaultValue: false);
+    final isEnabled =
+        securityBox.get(HiveKeys.nightLockEnabled, defaultValue: false);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Time-Based Lock')),
@@ -54,29 +61,29 @@ class _TimeLockScreenState extends State<TimeLockScreen> {
         children: [
           SwitchListTile(
             title: const Text('Enable Night Lock'),
-            value: enabled,
+            value: isEnabled,
             onChanged: (value) async {
-              await box.put(HiveKeys.nightLockEnabled, value);
+              await securityBox.put(HiveKeys.nightLockEnabled, value);
               setState(() {});
             },
           ),
           ListTile(
             title: const Text('Start Time'),
             subtitle: Text(
-              '${box.get(HiveKeys.nightStartHour, defaultValue: 22).toString().padLeft(2, '0')}:'
-              '${box.get(HiveKeys.nightStartMinute, defaultValue: 0).toString().padLeft(2, '0')}',
+              '${securityBox.get(HiveKeys.nightStartHour, defaultValue: 22).toString().padLeft(2, '0')}:'
+              '${securityBox.get(HiveKeys.nightStartMinute, defaultValue: 0).toString().padLeft(2, '0')}',
             ),
             trailing: const Icon(Icons.access_time),
-            onTap: enabled ? _pickStartTime : null,
+            onTap: isEnabled ? _pickStartTime : null,
           ),
           ListTile(
             title: const Text('End Time'),
             subtitle: Text(
-              '${box.get(HiveKeys.nightEndHour, defaultValue: 6).toString().padLeft(2, '0')}:'
-              '${box.get(HiveKeys.nightEndMinute, defaultValue: 0).toString().padLeft(2, '0')}',
+              '${securityBox.get(HiveKeys.nightEndHour, defaultValue: 6).toString().padLeft(2, '0')}:'
+              '${securityBox.get(HiveKeys.nightEndMinute, defaultValue: 0).toString().padLeft(2, '0')}',
             ),
             trailing: const Icon(Icons.access_time),
-            onTap: enabled ? _pickEndTime : null,
+            onTap: isEnabled ? _pickEndTime : null,
           ),
         ],
       ),

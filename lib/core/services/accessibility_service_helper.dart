@@ -2,11 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hive/hive.dart';
 
-/// Helper class to manage accessibility service requests
+/// Manages prompts for enabling the Android accessibility service,
+/// which is required for app-lock detection to function.
 class AccessibilityServiceHelper {
   static const platform = MethodChannel('com.stealthseal.app/applock');
 
-  /// Show accessibility popup when user locks an app for the first time
+  /// Shows a one-time accessibility permission dialog when the user
+  /// locks an app for the first time.
+  ///
+  /// Skips the dialog if the service is already enabled or if the
+  /// prompt was already shown during this lock action.
   static Future<void> requestAccessibilityServiceWhenLocking(
     BuildContext context,
   ) async {
@@ -16,21 +21,22 @@ class AccessibilityServiceHelper {
           await platform.invokeMethod<bool>('isAccessibilityServiceEnabled');
 
       if (isEnabled == true) {
-        debugPrint('✅ Accessibility service already enabled');
+        debugPrint('Accessibility service already enabled');
         return;
       }
 
-      // Check if we already prompted when locking - only ask ONCE per lock action
-      final box = Hive.box('securityBox');
+      // Only prompt once per lock action
+      final securityBox = Hive.box('securityBox');
       final alreadyPromptedOnLock =
-          box.get('accessibility_prompt_on_lock_shown', defaultValue: false) as bool;
-      
+          securityBox.get('accessibility_prompt_on_lock_shown',
+              defaultValue: false) as bool;
+
       if (alreadyPromptedOnLock) {
-        debugPrint('ℹ️ Accessibility lock prompt already shown, skipping');
+        debugPrint('Accessibility lock prompt already shown, skipping');
         return;
       }
 
-      debugPrint('📱 Showing accessibility permission popup for app lock...');
+      debugPrint('Showing accessibility permission popup for app lock...');
 
       if (!context.mounted) return;
 
@@ -39,7 +45,7 @@ class AccessibilityServiceHelper {
         barrierDismissible: false,
         builder: (BuildContext dialogContext) {
           return AlertDialog(
-            title: const Text('⚠️ Enable Accessibility'),
+            title: const Text('Enable Accessibility'),
             content: const Text(
               'For app locking to work, StealthSeal needs accessibility permission.\n\n'
               'Without it, the PIN screen won\'t show when you open locked apps.\n\n'
@@ -58,7 +64,8 @@ class AccessibilityServiceHelper {
                   Navigator.pop(dialogContext);
                   // Open Android accessibility settings
                   _openAccessibilitySettings();
-                  debugPrint('✅ User confirmed - Opening accessibility settings');
+                  debugPrint(
+                      'User confirmed - Opening accessibility settings');
                 },
                 child: const Text('Open Settings'),
               ),
@@ -68,19 +75,19 @@ class AccessibilityServiceHelper {
       );
 
       // Mark as shown on lock action
-      await box.put('accessibility_prompt_on_lock_shown', true);
-    } catch (e) {
-      debugPrint('❌ Accessibility lock prompt error: $e');
+      await securityBox.put('accessibility_prompt_on_lock_shown', true);
+    } catch (error) {
+      debugPrint('Accessibility lock prompt error: $error');
     }
   }
 
-  /// Open Android accessibility settings
+  /// Opens the Android accessibility settings page.
   static Future<void> _openAccessibilitySettings() async {
     try {
       await platform.invokeMethod('openAccessibilitySettings');
-      debugPrint('✅ Opened accessibility settings');
-    } catch (e) {
-      debugPrint('⚠️ Error opening accessibility settings: $e');
+      debugPrint('Opened accessibility settings');
+    } catch (error) {
+      debugPrint('Error opening accessibility settings: $error');
       // Silently fail - user can open manually
     }
   }

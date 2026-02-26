@@ -1,133 +1,158 @@
+import 'package:flutter/foundation.dart';
 import 'package:hive/hive.dart';
 import 'package:local_auth/local_auth.dart';
 
+/// Provides biometric authentication (fingerprint / face) backed by
+/// the `local_auth` plugin, with an enable/disable flag stored in Hive.
+///
+/// Biometric auth is a convenience fast-path; it does **not** bypass
+/// Panic, Time, or Location locks — the PIN is still required when
+/// any of those locks are active.
 class BiometricService {
   static final LocalAuthentication _auth = LocalAuthentication();
 
-  // 🔐 Get box safely (no static crash)
-  static Box _box() => Hive.box('security');
+  /// Returns the Hive security box safely (avoids static init crash).
+  static Box _securityBox() => Hive.box('security');
 
-  // ===== Enable / Disable =====
-  /// Synchronously enable biometric for immediate effect
+  // ──────────────────────────────────────────────
+  //  Enable / Disable
+  // ──────────────────────────────────────────────
+
+  /// Synchronously enable biometric for immediate effect.
   static void enable() {
     try {
-      _box().put('biometricEnabled', true);
-      print('✅ Biometric enabled in Hive');
-    } catch (e) {
-      print('❌ Error enabling biometric: $e');
+      _securityBox().put('biometricEnabled', true);
+      debugPrint('Biometric enabled in Hive');
+    } catch (error) {
+      debugPrint('Error enabling biometric: $error');
     }
   }
 
-  /// Synchronously disable biometric for immediate effect
+  /// Synchronously disable biometric for immediate effect.
   static void disable() {
     try {
-      _box().put('biometricEnabled', false);
-      print('❌ Biometric disabled in Hive');
-    } catch (e) {
-      print('❌ Error disabling biometric: $e');
+      _securityBox().put('biometricEnabled', false);
+      debugPrint('Biometric disabled in Hive');
+    } catch (error) {
+      debugPrint('Error disabling biometric: $error');
     }
   }
 
-  /// Check if biometric is enabled
+  /// Returns `true` if biometric authentication is enabled.
   static bool isEnabled() {
     try {
-      return _box().get('biometricEnabled', defaultValue: false);
-    } catch (e) {
-      print('❌ Error checking biometric status: $e');
+      return _securityBox().get('biometricEnabled', defaultValue: false);
+    } catch (error) {
+      debugPrint('Error checking biometric status: $error');
       return false;
     }
   }
 
-  // ===== Device Support =====
+  // ──────────────────────────────────────────────
+  //  Device Support
+  // ──────────────────────────────────────────────
+
+  /// Returns `true` if the device supports biometric authentication
+  /// and at least one biometric type is enrolled.
   static Future<bool> isSupported() async {
     try {
       final canCheck = await _auth.canCheckBiometrics;
-      final isSupported = await _auth.isDeviceSupported();
-      final hasAvailable = await _auth.getAvailableBiometrics();
-      
-      print('🔍 Biometric Check:');
-      print('   - canCheckBiometrics: $canCheck');
-      print('   - isDeviceSupported: $isSupported');
-      print('   - availableBiometrics: $hasAvailable');
-      
+      final deviceSupported = await _auth.isDeviceSupported();
+      final availableBiometrics = await _auth.getAvailableBiometrics();
+
+      debugPrint('Biometric Check:');
+      debugPrint('   - canCheckBiometrics: $canCheck');
+      debugPrint('   - isDeviceSupported: $deviceSupported');
+      debugPrint('   - availableBiometrics: $availableBiometrics');
+
       // Return true if device can check biometrics AND has any biometric type available
-      return canCheck && hasAvailable.isNotEmpty;
-    } catch (e) {
-      print('❌ BiometricService: Device support check error = $e');
+      return canCheck && availableBiometrics.isNotEmpty;
+    } catch (error) {
+      debugPrint('BiometricService: Device support check error = $error');
       return false;
     }
   }
 
-  /// Get available biometric types (fingerprint, face, iris, etc.)
+  /// Returns the list of biometric types available on the device
+  /// (e.g., fingerprint, face, iris).
   static Future<List<BiometricType>> getAvailableBiometrics() async {
     try {
       final available = await _auth.getAvailableBiometrics();
-      print('📱 Available biometric types:');
+      debugPrint('Available biometric types:');
       for (var biometric in available) {
-        print('   - $biometric');
+        debugPrint('   - $biometric');
       }
-      
+
       // Check specifically for fingerprint (covers in-display, side-mounted, etc.)
       final hasFingerprint = available.contains(BiometricType.fingerprint);
       final hasFace = available.contains(BiometricType.face);
-      
-      print('   Has Fingerprint: $hasFingerprint, Has Face: $hasFace');
-      
+
+      debugPrint('   Has Fingerprint: $hasFingerprint, Has Face: $hasFace');
+
       return available;
-    } catch (e) {
-      print('❌ Error getting available biometrics: $e');
+    } catch (error) {
+      debugPrint('Error getting available biometrics: $error');
       return [];
     }
   }
 
-  /// Check if face recognition is available on device
+  /// Returns `true` if face recognition is available on the device.
   static Future<bool> isFaceSupported() async {
     try {
       final available = await _auth.getAvailableBiometrics();
       final hasFace = available.contains(BiometricType.face);
-      print('🔍 Face Recognition Check: $hasFace');
+      debugPrint('Face Recognition Check: $hasFace');
       if (hasFace) {
-        print('   ✅ FaceID/Face Unlock is available on this device');
+        debugPrint('   FaceID/Face Unlock is available on this device');
       } else {
-        print('   ❌ Face recognition not available');
-        print('      Available: $available');
+        debugPrint('   Face recognition not available');
+        debugPrint('      Available: $available');
       }
       return hasFace;
-    } catch (e) {
-      print('❌ Error checking face support: $e');
+    } catch (error) {
+      debugPrint('Error checking face support: $error');
       return false;
     }
   }
 
-  /// Check if fingerprint is available on device
+  /// Returns `true` if fingerprint authentication is available.
   static Future<bool> isFingerprintSupported() async {
     try {
       final available = await _auth.getAvailableBiometrics();
       final hasFingerprint = available.contains(BiometricType.fingerprint);
-      print('🔍 Fingerprint Check: $hasFingerprint');
+      debugPrint('Fingerprint Check: $hasFingerprint');
       if (hasFingerprint) {
-        print('   ✅ Fingerprint is available on this device');
+        debugPrint('   Fingerprint is available on this device');
       } else {
-        print('   ❌ Fingerprint not available');
+        debugPrint('   Fingerprint not available');
       }
       return hasFingerprint;
-    } catch (e) {
-      print('❌ Error checking fingerprint support: $e');
+    } catch (error) {
+      debugPrint('Error checking fingerprint support: $error');
       return false;
     }
   }
 
-  // ===== Authenticate =====
+  // ──────────────────────────────────────────────
+  //  Authenticate
+  // ──────────────────────────────────────────────
+
+  /// Attempts biometric authentication and returns a result map.
+  ///
+  /// The returned map contains:
+  /// - `success` (bool): whether authentication succeeded.
+  /// - `message` (String): human-readable description.
+  /// - `code` (String): machine-readable status code.
   static Future<Map<String, dynamic>> authenticate() async {
     try {
-      print('🔐 Starting Biometric Authentication...');
-      
+      debugPrint('Starting Biometric Authentication...');
+
       // Step 1: Check if device can check biometrics
       final canCheck = await _auth.canCheckBiometrics;
-      print('Step 1 - Can check biometrics: $canCheck');
-      
+      debugPrint('Step 1 - Can check biometrics: $canCheck');
+
       if (!canCheck) {
-        print('❌ BiometricService: Device cannot check biometrics');
+        debugPrint('BiometricService: Device cannot check biometrics');
         return {
           'success': false,
           'message': 'Device cannot check biometrics. Use PIN instead.',
@@ -137,27 +162,31 @@ class BiometricService {
 
       // Step 2: Get available biometric types
       final availableBiometrics = await _auth.getAvailableBiometrics();
-      print('Step 2 - Available biometrics: $availableBiometrics');
-      
+      debugPrint('Step 2 - Available biometrics: $availableBiometrics');
+
       if (availableBiometrics.isEmpty) {
-        print('❌ BiometricService: No biometric types available on device');
+        debugPrint('BiometricService: No biometric types available on device');
         return {
           'success': false,
-          'message': 'No biometric enrolled on your device. Please enroll fingerprint/face in device settings.',
+          'message': 'No biometric enrolled on your device. '
+              'Please enroll fingerprint/face in device settings.',
           'code': 'NO_BIOMETRIC_ENROLLED'
         };
       }
 
       // Step 3: Check if device is supported
-      final isSupported = await _auth.isDeviceSupported();
-      print('Step 3 - Device is supported: $isSupported');
+      final deviceSupported = await _auth.isDeviceSupported();
+      debugPrint('Step 3 - Device is supported: $deviceSupported');
 
       // Step 3.5: Determine what biometrics are available
-      final hasFingerprint = availableBiometrics.contains(BiometricType.fingerprint);
-      final hasFace = availableBiometrics.contains(BiometricType.face);
-      
-      print('Step 3.5 - Has Fingerprint: $hasFingerprint, Has Face: $hasFace');
-      
+      final hasFingerprint =
+          availableBiometrics.contains(BiometricType.fingerprint);
+      final hasFace =
+          availableBiometrics.contains(BiometricType.face);
+
+      debugPrint(
+          'Step 3.5 - Has Fingerprint: $hasFingerprint, Has Face: $hasFace');
+
       // Create appropriate reason message based on available biometrics
       String reasonMessage = 'Authenticate with ';
       if (hasFingerprint && hasFace) {
@@ -171,11 +200,11 @@ class BiometricService {
       }
       reasonMessage += ' to unlock StealthSeal';
 
-      // Step 4: Attempt authentication with optimized settings for all biometric types
-      print('✅ Step 4 - Attempting biometric authentication...');
-      print('   Reason: $reasonMessage');
-      
-      final result = await _auth.authenticate(
+      // Step 4: Attempt authentication with optimized settings
+      debugPrint('Step 4 - Attempting biometric authentication...');
+      debugPrint('   Reason: $reasonMessage');
+
+      final authResult = await _auth.authenticate(
         localizedReason: reasonMessage,
         options: const AuthenticationOptions(
           stickyAuth: false,           // Don't keep auth dialog open
@@ -184,10 +213,10 @@ class BiometricService {
           biometricOnly: false,        // Allow both biometric and device credentials
         ),
       );
-      
-      print('✅ BiometricService: Authentication result = $result');
-      
-      if (result) {
+
+      debugPrint('BiometricService: Authentication result = $authResult');
+
+      if (authResult) {
         return {
           'success': true,
           'message': 'Biometric authentication successful',
@@ -196,58 +225,68 @@ class BiometricService {
       } else {
         return {
           'success': false,
-          'message': 'Biometric authentication cancelled or failed. Try again or use PIN.',
+          'message': 'Biometric authentication cancelled or failed. '
+              'Try again or use PIN.',
           'code': 'AUTH_FAILED'
         };
       }
-    } on Exception catch (e) {
-      print('❌ BiometricService: Authentication exception = $e');
-      
+    } on Exception catch (error) {
+      debugPrint('BiometricService: Authentication exception = $error');
+
       String errorMessage = 'Biometric authentication failed';
       String errorCode = 'UNKNOWN_ERROR';
-      String exceptionStr = e.toString().toLowerCase();
-      
+      String exceptionStr = error.toString().toLowerCase();
+
       // Detailed error handling for common biometric issues
-      if (exceptionStr.contains('no_biometrics') || 
+      if (exceptionStr.contains('no_biometrics') ||
           exceptionStr.contains('no biometric') ||
           exceptionStr.contains('not enrolled')) {
-        errorMessage = 'No biometric enrolled. Go to device settings and register your fingerprint/face.';
+        errorMessage = 'No biometric enrolled. Go to device settings '
+            'and register your fingerprint/face.';
         errorCode = 'NO_BIOMETRIC_ENROLLED';
-      } else if (exceptionStr.contains('hw_unavailable') || 
+      } else if (exceptionStr.contains('hw_unavailable') ||
                  exceptionStr.contains('hardware unavailable') ||
                  exceptionStr.contains('sensor not available')) {
-        errorMessage = 'Biometric sensor unavailable. Check if your device has a working biometric sensor (fingerprint/face).';
+        errorMessage = 'Biometric sensor unavailable. Check if your '
+            'device has a working biometric sensor (fingerprint/face).';
         errorCode = 'HW_UNAVAILABLE';
-      } else if (exceptionStr.contains('user_canceled') || 
+      } else if (exceptionStr.contains('user_canceled') ||
                  exceptionStr.contains('cancelled')) {
         errorMessage = 'Authentication cancelled. Try again.';
         errorCode = 'USER_CANCELLED';
       } else if (exceptionStr.contains('lockout')) {
-        errorMessage = 'Too many failed attempts. Try again later or use PIN.';
+        errorMessage = 'Too many failed attempts. '
+            'Try again later or use PIN.';
         errorCode = 'LOCKOUT';
       } else if (exceptionStr.contains('timeout')) {
         errorMessage = 'Authentication timed out. Try again.';
         errorCode = 'TIMEOUT';
       }
-      
+
       return {
         'success': false,
         'message': errorMessage,
         'code': errorCode,
-        'error': e.toString()
+        'error': error.toString()
       };
     }
   }
 
-  /// Force re-initialization of biometric (useful if sensor needs reset)
+  // ──────────────────────────────────────────────
+  //  Utilities
+  // ──────────────────────────────────────────────
+
+  /// Forces a re-initialization of the biometric sensor.
+  ///
+  /// Useful if the sensor needs a reset after an error state.
   static Future<void> reinitializeBiometric() async {
     try {
-      print('🔄 Reinitializing biometric...');
+      debugPrint('Reinitializing biometric...');
       // Get biometrics again to refresh
       await _auth.getAvailableBiometrics();
-      print('✅ Biometric reinitialized');
-    } catch (e) {
-      print('❌ Error reinitializing biometric: $e');
+      debugPrint('Biometric reinitialized');
+    } catch (error) {
+      debugPrint('Error reinitializing biometric: $error');
     }
   }
 }

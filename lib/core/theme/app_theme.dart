@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 
+/// Defines the dark and light [ThemeData] used across the application.
 class AppTheme {
+  // ──────────────────────────────────────────────
+  //  Dark Theme
+  // ──────────────────────────────────────────────
+
   static ThemeData darkTheme = ThemeData(
     brightness: Brightness.dark,
     scaffoldBackgroundColor: const Color(0xFF0D1117),
@@ -40,6 +45,10 @@ class AppTheme {
       bodySmall: TextStyle(color: Color(0xFF8B949E)),
     ),
   );
+
+  // ──────────────────────────────────────────────
+  //  Light Theme
+  // ──────────────────────────────────────────────
 
   static ThemeData lightTheme = ThemeData(
     brightness: Brightness.light,

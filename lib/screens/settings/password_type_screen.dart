@@ -19,10 +19,11 @@ class _PatternScreenState extends State<PatternScreen> {
     _loadCurrentPattern();
   }
 
+  /// Loads the current unlock pattern from local storage.
   Future<void> _loadCurrentPattern() async {
     try {
-      final box = Hive.box('securityBox');
-      final pattern = box.get('unlockPattern', defaultValue: '4-digit');
+      final securityBox = Hive.box('securityBox');
+      final pattern = securityBox.get('unlockPattern', defaultValue: '4-digit');
       
       if (mounted) {
         setState(() {
@@ -31,24 +32,25 @@ class _PatternScreenState extends State<PatternScreen> {
         });
       }
       debugPrint('Loaded pattern: $_selectedPattern');
-    } catch (e) {
-      debugPrint('Error loading pattern: $e');
+    } catch (error) {
+      debugPrint('Error loading pattern: $error');
       if (mounted) {
         setState(() => _isLoading = false);
       }
     }
   }
 
+  /// Updates the unlock pattern in local storage and shows confirmation.
   Future<void> _updatePattern(String pattern) async {
     setState(() => _isLoading = true);
     
     try {
-      final box = Hive.box('securityBox');
-      await box.put('unlockPattern', pattern);
+      final securityBox = Hive.box('securityBox');
+      await securityBox.put('unlockPattern', pattern);
 
       // Verify it was saved
-      final saved = box.get('unlockPattern');
-      debugPrint(' Pattern saved: $saved (requested: $pattern)');
+      final saved = securityBox.get('unlockPattern');
+      debugPrint('Pattern saved: $saved (requested: $pattern)');
 
       setState(() {
         _selectedPattern = pattern;
@@ -58,14 +60,14 @@ class _PatternScreenState extends State<PatternScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(' Password changed to $pattern'),
+            content: Text('Password changed to $pattern'),
             backgroundColor: Colors.green,
             duration: const Duration(seconds: 1),
           ),
         );
       }
-    } catch (e) {
-      debugPrint('❌ Error updating pattern: $e');
+    } catch (error) {
+      debugPrint('Error updating pattern: $error');
       if (mounted) {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -77,6 +79,8 @@ class _PatternScreenState extends State<PatternScreen> {
       }
     }
   }
+
+  // ─── Build ───
 
   @override
   Widget build(BuildContext context) {
@@ -199,6 +203,9 @@ class _PatternScreenState extends State<PatternScreen> {
     );
   }
 
+  // ─── Pattern Option Widget ───
+
+  /// Builds a selectable pattern option card with icon, title, and description.
   Widget _buildPatternOption({
     required BuildContext context,
     required String title,

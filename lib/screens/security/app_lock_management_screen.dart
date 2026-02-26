@@ -56,14 +56,16 @@ class _AppLockManagementScreenState extends State<AppLockManagementScreen> {
     _loadInstalledApps();
   }
 
-  /// Load installed apps
+  // ─── App Loading ───
+
+  /// Loads installed apps from native Android code via platform channel.
   Future<void> _loadInstalledApps() async {
     try {
-      debugPrint('📱 Requesting installed apps from native code...');
+      debugPrint('Requesting installed apps from native code...');
       final List<dynamic> result =
           await platform.invokeMethod('getInstalledApps');
 
-      debugPrint('✅ Received ${result.length} apps from native');
+      debugPrint('Received ${result.length} apps from native');
 
       setState(() {
         _installedApps = result
@@ -77,17 +79,17 @@ class _AppLockManagementScreenState extends State<AppLockManagementScreen> {
         _isLoading = false;
       });
 
-      debugPrint('📝 Loaded ${_installedApps.length} apps into UI');
+      debugPrint('Loaded ${_installedApps.length} apps into UI');
 
       // Update appNamesMap in Hive for the Dashboard to use
-      final box = Hive.box('securityBox');
+      final securityBox = Hive.box('securityBox');
       Map<String, String> appNamesMap = {};
       for (var app in _installedApps) {
         appNamesMap[app["package"]] = app["name"];
       }
-      await box.put('appNamesMap', appNamesMap);
-    } catch (e) {
-      debugPrint('❌ ERROR loading installed apps: $e');
+      await securityBox.put('appNamesMap', appNamesMap);
+    } catch (error) {
+      debugPrint('Error loading installed apps: $error');
       setState(() {
         _installedApps = [];
         _isLoading = false;
@@ -95,24 +97,28 @@ class _AppLockManagementScreenState extends State<AppLockManagementScreen> {
     }
   }
 
-  /// Load locked apps from Hive
+  // ─── Locked Apps ───
+
+  /// Loads locked apps list from Hive storage.
   void _loadLockedApps() {
-    final box = Hive.box('securityBox');
+    final securityBox = Hive.box('securityBox');
     _lockedApps =
-        List<String>.from(box.get('lockedApps', defaultValue: []) as List);
+        List<String>.from(securityBox.get('lockedApps', defaultValue: []) as List);
     // Remove any system-critical apps that may have been locked previously
     final before = _lockedApps.length;
     _lockedApps.removeWhere((pkg) => _systemExcludedPackages.contains(pkg));
     if (_lockedApps.length != before) {
-      box.put('lockedApps', _lockedApps);
+      securityBox.put('lockedApps', _lockedApps);
       debugPrint(
-          '🛡️ Removed ${before - _lockedApps.length} system apps from locked list');
+          'Removed ${before - _lockedApps.length} system apps from locked list');
     }
   }
 
-  /// Toggle lock - with accessibility check BEFORE locking
+  // ─── Lock Toggle ───
+
+  /// Toggles app lock state with accessibility service verification.
   Future<void> _toggleAppLock(String packageName) async {
-    final box = Hive.box('securityBox');
+    final securityBox = Hive.box('securityBox');
 
     // Check if this is a NEW lock (app is being locked, not unlocked)
     final isLocking = !_lockedApps.contains(packageName);
@@ -124,7 +130,7 @@ class _AppLockManagementScreenState extends State<AppLockManagementScreen> {
             await platform.invokeMethod<bool>('isAccessibilityServiceEnabled');
 
         if (isEnabled != true) {
-          debugPrint('❌ Accessibility service NOT enabled - blocking lock');
+          debugPrint('Accessibility service not enabled - blocking lock');
           
           // Show popup that accessibility is required
           if (mounted) {
@@ -133,7 +139,7 @@ class _AppLockManagementScreenState extends State<AppLockManagementScreen> {
               barrierDismissible: false,
               builder: (BuildContext dialogContext) {
                 return AlertDialog(
-                  title: const Text('⚠️ Accessibility Required'),
+                  title: const Text('Accessibility Required'),
                   content: const Text(
                     'App locking requires accessibility permission.\n\n'
                     'Without it, the PIN screen won\'t show when you open locked apps.\n\n'
@@ -150,8 +156,8 @@ class _AppLockManagementScreenState extends State<AppLockManagementScreen> {
                         // Open accessibility settings with error handling
                         try {
                           platform.invokeMethod('openAccessibilitySettings');
-                        } catch (e) {
-                          debugPrint('Error opening accessibility settings: $e');
+                        } catch (error) {
+                          debugPrint('Error opening accessibility settings: $error');
                           if (mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
@@ -173,8 +179,8 @@ class _AppLockManagementScreenState extends State<AppLockManagementScreen> {
           // DO NOT proceed with locking
           return;
         }
-      } catch (e) {
-        debugPrint('Error checking accessibility: $e');
+      } catch (error) {
+        debugPrint('Error checking accessibility: $error');
         // On error, show warning and don't lock
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -197,28 +203,32 @@ class _AppLockManagementScreenState extends State<AppLockManagementScreen> {
       }
     });
 
-    await box.put('lockedApps', _lockedApps);
+    await securityBox.put('lockedApps', _lockedApps);
 
     // Show accessibility popup if locking (after successful check)
     if (isLocking && mounted) {
-      debugPrint('📱 User locked app: $packageName - Requesting accessibility service');
+      debugPrint('User locked app: $packageName - Requesting accessibility service');
       await AccessibilityServiceHelper.requestAccessibilityServiceWhenLocking(context);
     }
 
-    // ✅ Sync with Android native SharedPreferences
+    //  Sync with Android native SharedPreferences
     try {
       final lockedAppsStr = _lockedApps.join(',');
       await platform.invokeMethod('setLockedApps', {'apps': lockedAppsStr});
-    } catch (e) {
-      debugPrint('Error syncing locked apps: $e');
+    } catch (error) {
+      debugPrint('Error syncing locked apps: $error');
     }
   }
+
+  // ─── Computed Properties ───
 
   List<Map<String, dynamic>> get _unlockApps =>
       _installedApps.where((a) => !_lockedApps.contains(a["package"])).toList();
 
   List<Map<String, dynamic>> get _lockedAppsList =>
       _installedApps.where((a) => _lockedApps.contains(a["package"])).toList();
+
+  // ─── Build ───
 
   @override
   Widget build(BuildContext context) {
@@ -318,7 +328,9 @@ class _AppLockManagementScreenState extends State<AppLockManagementScreen> {
     );
   }
 
-  /// Tab Widget
+  // ─── UI Components ───
+
+  /// Builds a tab button for switching between locked and unlocked views.
   Widget _buildTab(String title, bool isActive, VoidCallback onTap) {
     final accentColor = ThemeConfig.accentColor(context);
     return Expanded(
@@ -348,7 +360,7 @@ class _AppLockManagementScreenState extends State<AppLockManagementScreen> {
     );
   }
 
-  /// Convert Base64 icon
+  /// Decodes a Base64-encoded app icon into an Image widget.
   Widget _buildIcon(String base64Icon) {
     try {
       Uint8List bytes = base64Decode(base64Icon);
@@ -375,7 +387,7 @@ class _AppLockManagementScreenState extends State<AppLockManagementScreen> {
           ),
         ),
       );
-    } catch (e) {
+    } catch (error) {
       return const Icon(Icons.apps);
     }
   }

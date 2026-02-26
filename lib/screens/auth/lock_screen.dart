@@ -51,24 +51,31 @@ class _LockScreenState extends State<LockScreen> {
     super.dispose();
   }
 
+  // ---------------------------------------------------------------------------
+  // PIN Loading
+  // ---------------------------------------------------------------------------
+
+  /// Loads PINs and security flags from Supabase for the current user.
+  ///
+  /// Syncs the biometric-enabled flag with [BiometricService] and caches
+  /// PINs to native SharedPreferences for the AppLockActivity.
   Future<void> _loadPins() async {
     try {
-      // 🆔 Get the unique user ID
       final userId = await UserIdentifierService.getUserId();
-      debugPrint('🔑 Loading PINs and security flags for user: $userId');
+      debugPrint('Loading PINs and security flags for user: $userId');
 
       final supabase = Supabase.instance.client;
 
-      // ✅ Query by specific user ID (not global broadcast)
+      // Query by specific user ID
       final data = await supabase
           .from('user_security')
           .select()
-          .eq('id', userId) // Query for THIS user only
+          .eq('id', userId)
           .maybeSingle();
 
       if (!mounted) return;
 
-      // 🔐 Check if biometric is supported on this device
+      // Check if biometric hardware is available on this device
       final isSupported = await BiometricService.isSupported();
 
       // Load and sync biometric_enabled flag from Supabase
@@ -77,10 +84,10 @@ class _LockScreenState extends State<LockScreen> {
         biometricEnabled = data['biometric_enabled'] as bool? ?? false;
         if (biometricEnabled) {
           BiometricService.enable();
-          debugPrint('✅ Biometric enabled from Supabase for user: $userId');
+          debugPrint('Biometric enabled from Supabase for user: $userId');
         } else {
           BiometricService.disable();
-          debugPrint('❌ Biometric disabled for user: $userId');
+          debugPrint('Biometric disabled for user: $userId');
         }
       }
 
@@ -91,19 +98,19 @@ class _LockScreenState extends State<LockScreen> {
           _biometricEnabled = biometricEnabled;
           _biometricSupported = isSupported;
           debugPrint(
-              '✅ PINs and security flags loaded successfully for user: $userId');
+              'PINs and security flags loaded successfully for user: $userId');
 
           // Cache PINs to SharedPreferences for native AppLockActivity
           _cachePinsToNative(data['real_pin'], data['decoy_pin']);
         } else {
-          debugPrint('⚠️ No PIN data found for user: $userId');
+          debugPrint('No PIN data found for user: $userId');
           _biometricEnabled = false;
           _biometricSupported = isSupported;
         }
         _isLoading = false;
       });
-    } catch (e) {
-      debugPrint('Error loading PINs: $e');
+    } catch (error) {
+      debugPrint('Error loading PINs: $error');
       if (!mounted) return;
       setState(() => _isLoading = false);
     }
@@ -118,12 +125,17 @@ class _LockScreenState extends State<LockScreen> {
         'real_pin': realPin,
         'decoy_pin': decoyPin,
       });
-      debugPrint('✅ PINs cached to native SharedPreferences');
-    } catch (e) {
-      debugPrint('⚠️ Failed to cache PINs to native: $e');
+      debugPrint('PINs cached to native SharedPreferences');
+    } catch (error) {
+      debugPrint('Warning: Failed to cache PINs to native: $error');
     }
   }
 
+  // ---------------------------------------------------------------------------
+  // PIN Input Handlers
+  // ---------------------------------------------------------------------------
+
+  /// Appends a digit to the entered PIN and triggers validation at 4 digits.
   void _onKeyPress(String value) {
     if (_isLoading || realPin == null) return;
     if (enteredPin.length >= 4) return;
@@ -135,6 +147,7 @@ class _LockScreenState extends State<LockScreen> {
     }
   }
 
+  /// Removes the last digit from the entered PIN.
   void _onDelete() {
     if (enteredPin.isEmpty) return;
     setState(() {
@@ -142,24 +155,35 @@ class _LockScreenState extends State<LockScreen> {
     });
   }
 
+  // ---------------------------------------------------------------------------
+  // PIN Validation
+  // ---------------------------------------------------------------------------
+
+  /// Validates the entered PIN against security locks and stored PINs.
+  ///
+  /// Checks are applied in priority order:
+  /// 1. Location lock — only real PIN accepted when outside trusted zone.
+  /// 2. Time lock — only real PIN accepted during locked hours.
+  /// 3. Panic lock — only real PIN accepted; deactivates panic on success.
+  /// 4. Normal mode — real PIN opens real dashboard, decoy opens fake.
   Future<void> _validatePin() async {
     if (realPin == null || decoyPin == null) return;
 
-    // 📍 LOCATION LOCK
+    // Location lock check
     if (await LocationLockService.isOutsideTrustedLocation()) {
       if (!mounted) return;
       _handleRestrictedUnlock('Location Lock active. Enter real PIN.');
       return;
     }
 
-    // ⏰ TIME LOCK
+    // Time lock check
     if (TimeLockService.isNightLockActive()) {
       if (!mounted) return;
       _handleRestrictedUnlock('Time Lock active. Enter real PIN.');
       return;
     }
 
-    // 🚨 PANIC LOCK
+    // Panic lock check
     if (PanicService.isActive()) {
       if (!mounted) return;
       _handleRestrictedUnlock(
@@ -169,7 +193,7 @@ class _LockScreenState extends State<LockScreen> {
       return;
     }
 
-    // 🔐 NORMAL MODE
+    // Normal mode — match against real or decoy PIN
     if (enteredPin == realPin) {
       failedAttempts = 0;
       if (mounted) {
@@ -187,6 +211,11 @@ class _LockScreenState extends State<LockScreen> {
     }
   }
 
+  /// Handles PIN entry when a security lock is active.
+  ///
+  /// Only the real PIN is accepted. Shows a [SnackBar] with [message] on
+  /// mismatch. When [deactivatePanic] is true, deactivates panic mode on
+  /// successful unlock.
   Future<void> _handleRestrictedUnlock(
     String message, {
     bool deactivatePanic = false,
@@ -214,6 +243,10 @@ class _LockScreenState extends State<LockScreen> {
     }
   }
 
+  /// Increments the failed-attempt counter and shows feedback.
+  ///
+  /// After 3 or more consecutive failures, captures an intruder selfie
+  /// via [IntruderService] and resets the counter.
   Future<void> _handleWrongPin() async {
     failedAttempts++;
 
@@ -247,14 +280,22 @@ class _LockScreenState extends State<LockScreen> {
     }
   }
 
-  // ✅ BIOMETRIC AUTH
+  // ---------------------------------------------------------------------------
+  // Biometric Authentication
+  // ---------------------------------------------------------------------------
+
+  /// Attempts biometric authentication (fingerprint or face).
+  ///
+  /// On success, checks whether any security lock is still active. If a lock
+  /// is active the user is prompted to enter their PIN instead. Otherwise,
+  /// navigates directly to the real dashboard.
   Future<void> _authenticateWithBiometrics() async {
     try {
       final response = await BiometricService.authenticate();
 
       if (!mounted) return;
 
-      debugPrint('🔐 Biometric response: $response');
+      debugPrint('Biometric response: $response');
 
       // Check if authentication was successful
       if (response['success'] != true) {
@@ -285,14 +326,14 @@ class _LockScreenState extends State<LockScreen> {
         return;
       }
 
-      // 🎉 Biometric successful and no locks - go to real dashboard
+      // Biometric successful and no locks — navigate to real dashboard
       Navigator.pushReplacementNamed(context, AppRoutes.realDashboard);
-    } catch (e) {
-      debugPrint('❌ Biometric error: $e');
+    } catch (error) {
+      debugPrint('Biometric error: $error');
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error: $e'),
+          content: Text('Error: $error'),
           backgroundColor: Colors.redAccent,
           duration: const Duration(seconds: 2),
         ),
@@ -338,7 +379,7 @@ class _LockScreenState extends State<LockScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        // 🚨 Lock Banners
+                        // Lock banners
                         if (PanicService.isActive())
                           _buildLockBanner(
                               'PANIC LOCK ACTIVE', Colors.redAccent),
@@ -354,10 +395,10 @@ class _LockScreenState extends State<LockScreen> {
                               : const SizedBox.shrink(),
                         ),
 
-                        // 🔐 Logo
+                        // Lock logo
                         _buildLogo(),
 
-                        // 📝 Text
+                        // Header text
                         Text(
                           'Enter the PIN',
                           style: TextStyle(
@@ -377,15 +418,15 @@ class _LockScreenState extends State<LockScreen> {
                         ),
                         const SizedBox(height: 24),
 
-                        // 🔵 PIN Dots
+                        // PIN dots
                         _buildPinDots(),
                         const SizedBox(height: 16),
 
-                        // 👆 Biometric Button
+                        // Biometric button
                         _buildBiometricButton(),
                         const SizedBox(height: 30),
 
-                        // 🔑 Keypad
+                        // Numeric keypad
                         PinKeypad(
                           onKeyPressed: _onKeyPress,
                           onDelete: _onDelete,
@@ -399,27 +440,32 @@ class _LockScreenState extends State<LockScreen> {
     );
   }
 
-  // 🔐 Animated Lock Logo
+  // ---------------------------------------------------------------------------
+  // UI Builders
+  // ---------------------------------------------------------------------------
+
+  /// Builds the circular lock icon with a themed gradient glow.
   Widget _buildLogo() {
     return Builder(
       builder: (context) {
+        final accentColor = ThemeConfig.accentColor(context);
         return Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             gradient: LinearGradient(
               colors: [
-                ThemeConfig.accentColor(context).withOpacity(0.3),
-                ThemeConfig.accentColor(context).withOpacity(0.1),
+                accentColor.withOpacity(0.3),
+                accentColor.withOpacity(0.1),
               ],
             ),
             border: Border.all(
-              color: ThemeConfig.accentColor(context).withOpacity(0.5),
+              color: accentColor.withOpacity(0.5),
               width: 2,
             ),
             boxShadow: [
               BoxShadow(
-                color: ThemeConfig.accentColor(context).withOpacity(0.3),
+                color: accentColor.withOpacity(0.3),
                 blurRadius: 20,
                 spreadRadius: 5,
               ),
@@ -428,14 +474,14 @@ class _LockScreenState extends State<LockScreen> {
           child: Icon(
             Icons.lock,
             size: 60,
-            color: ThemeConfig.accentColor(context),
+            color: accentColor,
           ),
         );
       },
     );
   }
 
-  // 🔁 Lock Banner
+  /// Builds a colored banner indicating an active security lock.
   Widget _buildLockBanner(String text, Color color) {
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
@@ -458,7 +504,7 @@ class _LockScreenState extends State<LockScreen> {
     );
   }
 
-  // 🔴 PIN Dots (static)
+  /// Builds the row of 4 PIN-entry indicator dots.
   Widget _buildPinDots() {
     final accentColor = ThemeConfig.accentColor(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -501,7 +547,8 @@ class _LockScreenState extends State<LockScreen> {
     );
   }
 
-  // 👆 Biometric Button (static)
+  /// Builds the fingerprint/face biometric button when biometric is enabled
+  /// and no panic or time lock is active.
   Widget _buildBiometricButton() {
     if (_biometricSupported &&
         _biometricEnabled &&
@@ -630,7 +677,7 @@ class _LockScreenState extends State<LockScreen> {
       biometricInfo += 'Available Biometric Types:\n';
 
       if (available.isEmpty) {
-        biometricInfo += '❌ No biometric sensors detected\n\n';
+        biometricInfo += ' No biometric sensors detected\n\n';
         biometricInfo += 'Action: Enroll biometric in device settings';
       } else {
         for (var bio in available) {
@@ -638,11 +685,11 @@ class _LockScreenState extends State<LockScreen> {
         }
         biometricInfo += '\nDetailed Status:\n';
         biometricInfo +=
-            'Face Recognition: ${faceSupported ? '✅ ENABLED' : '❌ NOT AVAILABLE'}\n';
+            'Face Recognition: ${faceSupported ? ' ENABLED' : ' NOT AVAILABLE'}\n';
         biometricInfo +=
-            'Fingerprint: ${fingerprintSupported ? '✅ ENABLED' : '❌ NOT AVAILABLE'}\n';
+            'Fingerprint: ${fingerprintSupported ? ' ENABLED' : ' NOT AVAILABLE'}\n';
         biometricInfo +=
-            '\nStatus: ✅ Your device supports biometric authentication';
+            '\nStatus:  Your device supports biometric authentication';
       }
 
       if (!mounted) return;
@@ -671,12 +718,12 @@ class _LockScreenState extends State<LockScreen> {
           ],
         ),
       );
-    } catch (e) {
-      debugPrint('❌ Error testing biometric sensor: $e');
+    } catch (error) {
+      debugPrint('Error testing biometric sensor: $error');
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error: $e'),
+          content: Text('Error: $error'),
           backgroundColor: ThemeConfig.errorColor(context),
         ),
       );

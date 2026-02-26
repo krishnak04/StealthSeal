@@ -1,33 +1,42 @@
 import 'package:hive/hive.dart';
 import 'package:flutter/material.dart';
 
+/// Available theme modes for the application.
 enum AppThemeMode { dark, light, system }
 
+/// Persists and exposes the user's chosen theme mode via Hive,
+/// with a [ValueNotifier] so widgets can react to changes.
 class ThemeService {
   static const String _boxName = 'security';
   static const String _themeKey = 'themeMode';
-  
-  /// ValueNotifier to notify listeners when theme changes
-  static final ValueNotifier<AppThemeMode> themeNotifier = ValueNotifier<AppThemeMode>(AppThemeMode.system);
 
-  /// Get or create the security box
-  static Box _box() => Hive.box(_boxName);
+  /// Notifies listeners whenever the theme mode changes.
+  static final ValueNotifier<AppThemeMode> themeNotifier =
+      ValueNotifier<AppThemeMode>(AppThemeMode.system);
 
-  /// Set theme mode
+  /// Returns the Hive security box.
+  static Box _securityBox() => Hive.box(_boxName);
+
+  // ──────────────────────────────────────────────
+  //  Getters & Setters
+  // ──────────────────────────────────────────────
+
+  /// Persists the given [mode] and notifies listeners.
   static Future<void> setThemeMode(AppThemeMode mode) async {
     try {
-      await _box().put(_themeKey, mode.toString());
-      themeNotifier.value = mode; // Notify listeners
-      debugPrint('✅ Theme mode set to: ${mode.toString()}');
-    } catch (e) {
-      debugPrint('❌ Error setting theme mode: $e');
+      await _securityBox().put(_themeKey, mode.toString());
+      themeNotifier.value = mode;
+      debugPrint('Theme mode set to: ${mode.toString()}');
+    } catch (error) {
+      debugPrint('Error setting theme mode: $error');
     }
   }
 
-  /// Get current theme mode
+  /// Reads the persisted theme mode from Hive.
   static AppThemeMode getThemeMode() {
     try {
-      final modeString = _box().get(_themeKey, defaultValue: 'AppThemeMode.system');
+      final modeString =
+          _securityBox().get(_themeKey, defaultValue: 'AppThemeMode.system');
       if (modeString == 'AppThemeMode.dark') {
         return AppThemeMode.dark;
       } else if (modeString == 'AppThemeMode.light') {
@@ -35,16 +44,21 @@ class ThemeService {
       } else {
         return AppThemeMode.system;
       }
-    } catch (e) {
-      debugPrint('❌ Error getting theme mode: $e');
-      return AppThemeMode.system; // Default to system
+    } catch (error) {
+      debugPrint('Error getting theme mode: $error');
+      return AppThemeMode.system;
     }
   }
 
-  /// Check if dark mode should be used
+  // ──────────────────────────────────────────────
+  //  Convenience Helpers
+  // ──────────────────────────────────────────────
+
+  /// Returns `true` if dark mode should be used, respecting the
+  /// system brightness when the mode is set to [AppThemeMode.system].
   static bool isDarkMode(BuildContext context) {
     final mode = getThemeMode();
-    
+
     if (mode == AppThemeMode.dark) {
       return true;
     } else if (mode == AppThemeMode.light) {
@@ -55,11 +69,11 @@ class ThemeService {
     }
   }
 
-  /// Toggle between dark, light, and system modes
+  /// Cycles through dark → light → system → dark.
   static Future<void> toggleThemeMode() async {
     final currentMode = getThemeMode();
     late AppThemeMode nextMode;
-    
+
     if (currentMode == AppThemeMode.dark) {
       nextMode = AppThemeMode.light;
     } else if (currentMode == AppThemeMode.light) {
@@ -67,11 +81,11 @@ class ThemeService {
     } else {
       nextMode = AppThemeMode.dark;
     }
-    
+
     await setThemeMode(nextMode);
   }
 
-  /// Get theme description text
+  /// Returns a human-readable label for the current theme mode.
   static String getThemeDescription() {
     final mode = getThemeMode();
     switch (mode) {
@@ -84,18 +98,22 @@ class ThemeService {
     }
   }
 
-  /// Legacy method for backward compatibility
+  // ──────────────────────────────────────────────
+  //  Legacy API (backward compatibility)
+  // ──────────────────────────────────────────────
+
+  /// Legacy method for backward compatibility.
   static bool isDarkModeEnabled() {
     final mode = getThemeMode();
     return mode == AppThemeMode.dark;
   }
 
-  /// Legacy method for backward compatibility
+  /// Legacy method for backward compatibility.
   static Future<void> enableDarkMode() async {
     await setThemeMode(AppThemeMode.dark);
   }
 
-  /// Legacy method for backward compatibility
+  /// Legacy method for backward compatibility.
   static Future<void> disableDarkMode() async {
     await setThemeMode(AppThemeMode.light);
   }

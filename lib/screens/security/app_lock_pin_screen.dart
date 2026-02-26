@@ -39,6 +39,8 @@ class _AppLockPinScreenState extends State<AppLockPinScreen> {
     _loadPins();
   }
 
+  // ─── PIN Loading ───
+
   /// Load PINs from Supabase (same source as main lock screen)
   Future<void> _loadPins() async {
     try {
@@ -60,17 +62,20 @@ class _AppLockPinScreenState extends State<AppLockPinScreen> {
           _isLoading = false;
         });
         debugPrint(
-            '🔑 App Lock PIN Screen - PINs loaded from Supabase: real=${_realPin != null}, decoy=${_decoyPin != null}');
+            'App Lock PIN Screen - PINs loaded from Supabase: real=${_realPin != null}, decoy=${_decoyPin != null}');
       } else {
-        debugPrint('⚠️ No PIN data found in Supabase for user: $userId');
+        debugPrint('No PIN data found in Supabase for user: $userId');
         setState(() => _isLoading = false);
       }
-    } catch (e) {
-      debugPrint('❌ Error loading PINs: $e');
+    } catch (error) {
+      debugPrint('Error loading PINs: $error');
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
+  // ─── PIN Input ───
+
+  /// Handles a digit key press on the PIN keypad.
   void _onKeyPress(String value) {
     if (_isLoading || _realPin == null) return;
     if (_enteredPin.length >= 4) return;
@@ -82,6 +87,7 @@ class _AppLockPinScreenState extends State<AppLockPinScreen> {
     }
   }
 
+  /// Deletes the last digit from the entered PIN.
   void _onDelete() {
     if (_enteredPin.isEmpty) return;
     setState(() {
@@ -89,13 +95,16 @@ class _AppLockPinScreenState extends State<AppLockPinScreen> {
     });
   }
 
+  // ─── PIN Validation ───
+
+  /// Validates the entered PIN against stored real and decoy PINs.
   Future<void> _validatePin() async {
     if (_realPin == null || _decoyPin == null) return;
 
     if (_enteredPin == _realPin || _enteredPin == _decoyPin) {
-      // ✅ Correct PIN - unlock the app
+      // Correct PIN - unlock the app
       _failedAttempts = 0;
-      debugPrint('✅ App unlocked: ${widget.packageName}');
+      debugPrint('App unlocked: ${widget.packageName}');
 
       // Temporarily remove from locked apps so it can open
       _temporarilyUnlockApp(widget.packageName);
@@ -105,9 +114,9 @@ class _AppLockPinScreenState extends State<AppLockPinScreen> {
         await _channel.invokeMethod('launchApp', {
           'packageName': widget.packageName,
         });
-        debugPrint('✅ Launched app: ${widget.packageName}');
-      } catch (e) {
-        debugPrint('❌ Error launching app: $e');
+        debugPrint('Launched app: ${widget.packageName}');
+      } catch (error) {
+        debugPrint('Error launching app: $error');
       }
 
       // Go back to dashboard
@@ -115,7 +124,7 @@ class _AppLockPinScreenState extends State<AppLockPinScreen> {
         Navigator.pop(context);
       }
     } else {
-      // ❌ Wrong PIN
+      // Wrong PIN
       _failedAttempts++;
 
       if (mounted) {
@@ -148,41 +157,45 @@ class _AppLockPinScreenState extends State<AppLockPinScreen> {
     }
   }
 
-  /// Temporarily unlock the app for 5 seconds so user can open it
+  // ─── Temporary Unlock ───
+
+  /// Temporarily unlocks an app for 5 seconds so the user can open it.
   void _temporarilyUnlockApp(String packageName) {
-    final box = Hive.box('securityBox');
-    final List<String> tempUnlocked = List<String>.from(
-        box.get('tempUnlockedApps', defaultValue: []) as List);
-    if (!tempUnlocked.contains(packageName)) {
-      tempUnlocked.add(packageName);
-      box.put('tempUnlockedApps', tempUnlocked);
+    final securityBox = Hive.box('securityBox');
+    final List<String> temporarilyUnlockedApps = List<String>.from(
+        securityBox.get('tempUnlockedApps', defaultValue: []) as List);
+    if (!temporarilyUnlockedApps.contains(packageName)) {
+      temporarilyUnlockedApps.add(packageName);
+      securityBox.put('tempUnlockedApps', temporarilyUnlockedApps);
     }
 
     // Also sync to native SharedPreferences so AccessibilityService knows
-    _syncTempUnlockedToNative(tempUnlocked);
+    _syncTempUnlockedToNative(temporarilyUnlockedApps);
 
     // Re-lock after 5 seconds
     Future.delayed(const Duration(seconds: 5), () {
-      final box = Hive.box('securityBox');
-      final List<String> current = List<String>.from(
-          box.get('tempUnlockedApps', defaultValue: []) as List);
-      current.remove(packageName);
-      box.put('tempUnlockedApps', current);
-      _syncTempUnlockedToNative(current);
-      debugPrint('🔒 Re-locked app after timeout: $packageName');
+      final securityBox = Hive.box('securityBox');
+      final List<String> currentTempApps = List<String>.from(
+          securityBox.get('tempUnlockedApps', defaultValue: []) as List);
+      currentTempApps.remove(packageName);
+      securityBox.put('tempUnlockedApps', currentTempApps);
+      _syncTempUnlockedToNative(currentTempApps);
+      debugPrint('Re-locked app after timeout: $packageName');
     });
   }
 
-  /// Sync temp unlocked apps to Android SharedPreferences
+  /// Syncs the temporarily unlocked apps list to Android SharedPreferences.
   Future<void> _syncTempUnlockedToNative(List<String> apps) async {
     try {
       await _channel.invokeMethod('setTempUnlockedApps', {
         'apps': apps.join(','),
       });
-    } catch (e) {
-      debugPrint('⚠️ Could not sync temp unlocked apps: $e');
+    } catch (error) {
+      debugPrint('Could not sync temp unlocked apps: $error');
     }
   }
+
+  // ─── Build ───
 
   @override
   Widget build(BuildContext context) {
@@ -222,7 +235,7 @@ class _AppLockPinScreenState extends State<AppLockPinScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        // 🔐 Lock Icon
+                        // Lock Icon
                         _buildLockIcon(),
                         const SizedBox(height: 20),
 
@@ -249,11 +262,11 @@ class _AppLockPinScreenState extends State<AppLockPinScreen> {
                         ),
                         const SizedBox(height: 30),
 
-                        // 🔵 PIN Dots
+                        // PIN Dots
                         _buildPinDots(),
                         const SizedBox(height: 30),
 
-                        // 🔑 Keypad (same as main lock screen)
+                        // Keypad
                         PinKeypad(
                           onKeyPressed: _onKeyPress,
                           onDelete: _onDelete,
@@ -295,6 +308,8 @@ class _AppLockPinScreenState extends State<AppLockPinScreen> {
       ),
     );
   }
+
+  // ─── UI Components ───
 
   /// Lock icon with glow effect (same style as main lock screen)
   Widget _buildLockIcon() {

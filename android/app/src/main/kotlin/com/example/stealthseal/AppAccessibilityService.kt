@@ -12,7 +12,7 @@ import java.util.concurrent.ConcurrentHashMap
 class AppAccessibilityService : AccessibilityService() {
 
     companion object {
-        private const val TAG = "🔐AppLockService"
+        private const val TAG = "AppLockService"
         private val lockedApps = ConcurrentHashMap<String, Boolean>()
 
         // ── Timestamp when each app was re-locked ──
@@ -82,7 +82,7 @@ class AppAccessibilityService : AccessibilityService() {
 
     override fun onServiceConnected() {
         super.onServiceConnected()
-        Log.d(TAG, "✅ Accessibility Service Connected!")
+        Log.d(TAG, "Accessibility Service Connected!")
         loadLockedApps()
         clearAllSessionUnlocks()
 
@@ -90,7 +90,7 @@ class AppAccessibilityService : AccessibilityService() {
         prefsListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
             if (key == "lockedApps") {
                 loadLockedApps()
-                Log.d(TAG, "📋 Locked apps updated (instant sync)")
+                Log.d(TAG, "Locked apps updated (instant sync)")
             }
         }
         prefs.registerOnSharedPreferenceChangeListener(prefsListener)
@@ -107,9 +107,9 @@ class AppAccessibilityService : AccessibilityService() {
                     if (trimmed.isNotEmpty()) lockedApps[trimmed] = true
                 }
             }
-            Log.d(TAG, "📋 Loaded ${lockedApps.size} locked apps")
+            Log.d(TAG, "Loaded ${lockedApps.size} locked apps")
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Error loading locked apps: ${e.message}")
+            Log.e(TAG, "Error loading locked apps: ${e.message}")
         }
     }
 
@@ -134,14 +134,14 @@ class AppAccessibilityService : AccessibilityService() {
         if (set.remove(packageName)) {
             prefs.edit().putString("sessionUnlockedApps", set.joinToString(",")).apply()
             reLockedAt[packageName] = System.currentTimeMillis()
-            Log.d(TAG, "🔒 Re-locked: $packageName")
+            Log.d(TAG, "Re-locked: $packageName")
         }
     }
 
     private fun clearAllSessionUnlocks() {
         val prefs = getSharedPreferences("stealthseal_prefs", Context.MODE_PRIVATE)
         prefs.edit().putString("sessionUnlockedApps", "").apply()
-        Log.d(TAG, "🧹 Cleared all session unlocks")
+        Log.d(TAG, "Cleared all session unlocks")
     }
 
     private fun getAppName(packageName: String): String {
@@ -180,7 +180,7 @@ class AppAccessibilityService : AccessibilityService() {
         // ══════════════════════════════════════════════════════════
         val timeSinceReLock = System.currentTimeMillis() - (reLockedAt[packageName] ?: 0)
         if (timeSinceReLock < 2500) {
-            Log.d(TAG, "⏳ Ghost (re-locked ${timeSinceReLock}ms ago): $packageName")
+            Log.d(TAG, "Ghost (re-locked ${timeSinceReLock}ms ago): $packageName")
             return
         }
 
@@ -193,7 +193,7 @@ class AppAccessibilityService : AccessibilityService() {
         // ══════════════════════════════════════════════════════════
         if (packageName == AppLockActivity.dismissedPackage &&
             System.currentTimeMillis() - AppLockActivity.dismissedAt < 2500) {
-            Log.d(TAG, "⏳ Ghost (PIN dismissed ${System.currentTimeMillis() - AppLockActivity.dismissedAt}ms ago): $packageName")
+            Log.d(TAG, "Ghost (PIN dismissed ${System.currentTimeMillis() - AppLockActivity.dismissedAt}ms ago): $packageName")
             return
         }
 
@@ -228,14 +228,14 @@ class AppAccessibilityService : AccessibilityService() {
         // 9. PIN ALREADY SHOWING — prevent duplicate
         // ══════════════════════════════════════════════════════════
         if (AppLockActivity.isShowing) {
-            Log.d(TAG, "⏳ PIN already showing for ${AppLockActivity.currentlyBlockedPackage}, skip $packageName")
+            Log.d(TAG, "PIN already showing for ${AppLockActivity.currentlyBlockedPackage}, skip $packageName")
             return
         }
 
         // ══════════════════════════════════════════════════════════
         // 10. LOCK IT — show PIN screen
         // ══════════════════════════════════════════════════════════
-        Log.d(TAG, "🔒 LOCKED: $packageName — showing PIN")
+        Log.d(TAG, "LOCKED: $packageName - showing PIN")
         launchLockScreen(packageName)
     }
 
@@ -249,14 +249,14 @@ class AppAccessibilityService : AccessibilityService() {
             intent.putExtra(AppLockActivity.EXTRA_LOCKED_PACKAGE, packageName)
             intent.putExtra(AppLockActivity.EXTRA_APP_NAME, appName)
             startActivity(intent)
-            Log.d(TAG, "✅ PIN launched for: $appName ($packageName)")
+            Log.d(TAG, "PIN launched for: $appName ($packageName)")
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Error launching PIN: ${e.message}")
+            Log.e(TAG, "Error launching PIN: ${e.message}")
         }
     }
 
     override fun onInterrupt() {
-        Log.d(TAG, "⚠️ Service Interrupted")
+        Log.d(TAG, "Service Interrupted")
     }
 
     override fun onDestroy() {

@@ -19,6 +19,9 @@ class _DebugScreenState extends State<DebugScreen> {
     _securityBox = Hive.box('securityBox');
   }
 
+  // ─── Debug Actions ───
+
+  /// Tests the accessibility service status and shows the result in a snackbar.
   Future<void> _testLock() async {
     final service = AppLockService();
     final isEnabled = await service.isAccessibilityServiceEnabled();
@@ -28,6 +31,8 @@ class _DebugScreenState extends State<DebugScreen> {
     );
   }
 
+  // ─── Build ───
+
   @override
   Widget build(BuildContext context) {
     final lockedApps = List<String>.from(_securityBox.get('lockedApps', defaultValue: []) as List);
@@ -36,7 +41,7 @@ class _DebugScreenState extends State<DebugScreen> {
     return Scaffold(
       backgroundColor: ThemeConfig.backgroundColor(context),
       appBar: AppBar(
-        title: const Text('🐛 Debug Information'),
+        title: const Text('Debug Information'),
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),

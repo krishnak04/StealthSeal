@@ -29,7 +29,7 @@ import android.widget.TextView
 class AppLockActivity : Activity() {
 
     companion object {
-        private const val TAG = "🔐AppLockActivity"
+        private const val TAG = "AppLockActivity"
         const val EXTRA_LOCKED_PACKAGE = "locked_package"
         const val EXTRA_APP_NAME = "app_name"
 
@@ -86,7 +86,7 @@ class AppLockActivity : Activity() {
         lockedPackage = intent.getStringExtra(EXTRA_LOCKED_PACKAGE) ?: ""
         appName = intent.getStringExtra(EXTRA_APP_NAME) ?: lockedPackage.split(".").lastOrNull() ?: "App"
 
-        Log.d(TAG, "🔒 PIN screen opened for: $appName ($lockedPackage)")
+        Log.d(TAG, "PIN screen opened for: $appName ($lockedPackage)")
 
         // Mark PIN screen as active
         isShowing = true
@@ -106,10 +106,10 @@ class AppLockActivity : Activity() {
         realPin = prefs.getString("cached_real_pin", null)
         decoyPin = prefs.getString("cached_decoy_pin", null)
 
-        Log.d(TAG, "🔑 PINs loaded: real=${realPin != null}, decoy=${decoyPin != null}")
+        Log.d(TAG, "PINs loaded: real=${realPin != null}, decoy=${decoyPin != null}")
 
         if (realPin == null) {
-            Log.e(TAG, "❌ No PINs found in SharedPreferences! App lock cannot validate.")
+            Log.e(TAG, "No PINs found in SharedPreferences! App lock cannot validate.")
         }
     }
 
@@ -191,10 +191,10 @@ class AppLockActivity : Activity() {
 
     private fun validatePin() {
         if (enteredPin == realPin || enteredPin == decoyPin) {
-            // ✅ Correct PIN
+            // Correct PIN
             failedAttempts = 0
             pinCorrect = true
-            Log.d(TAG, "✅ Correct PIN entered for: $lockedPackage")
+            Log.d(TAG, "Correct PIN entered for: $lockedPackage")
 
             errorText.visibility = View.GONE
 
@@ -205,14 +205,14 @@ class AppLockActivity : Activity() {
             unlockedSet.add(lockedPackage)
             prefs.edit().putString("sessionUnlockedApps", unlockedSet.joinToString(",")).apply()
 
-            Log.d(TAG, "🔓 Session-unlocked: $lockedPackage (total: ${unlockedSet.size})")
+            Log.d(TAG, "Session-unlocked: $lockedPackage (total: ${unlockedSet.size})")
 
             // Finish this activity — the locked app is still underneath
             finish()
         } else {
-            // ❌ Wrong PIN
+            // Wrong PIN
             failedAttempts++
-            Log.d(TAG, "❌ Wrong PIN attempt #$failedAttempts for: $lockedPackage")
+            Log.d(TAG, "Wrong PIN attempt #$failedAttempts for: $lockedPackage")
 
             // Vibrate
             try {
@@ -223,7 +223,7 @@ class AppLockActivity : Activity() {
             // Show error
             errorText.visibility = View.VISIBLE
             if (failedAttempts >= 3) {
-                errorText.text = "⚠ Multiple failed attempts detected"
+                errorText.text = "Multiple failed attempts detected"
                 // Reset counter but keep showing warning  
                 failedAttempts = 0
             } else {
@@ -270,10 +270,10 @@ class AppLockActivity : Activity() {
                 errorText.visibility = View.GONE
                 updateDots()
                 currentlyBlockedPackage = lockedPackage
-                Log.d(TAG, "🔒 PIN screen switched to: $appName ($lockedPackage)")
+                Log.d(TAG, "PIN screen switched to: $appName ($lockedPackage)")
             } else {
                 // Same app — just bring to front, don't reset PIN entry
-                Log.d(TAG, "🔒 PIN screen re-focused for same app: $lockedPackage")
+                Log.d(TAG, "PIN screen re-focused for same app: $lockedPackage")
             }
         }
     }
@@ -285,7 +285,7 @@ class AppLockActivity : Activity() {
      */
     override fun onUserLeaveHint() {
         super.onUserLeaveHint()
-        Log.d(TAG, "🏠 User pressed Home from PIN screen, finishing")
+        Log.d(TAG, "User pressed Home from PIN screen, finishing")
         // Go Home explicitly BEFORE finish to minimize the window where
         // the locked app is briefly foreground
         val homeIntent = Intent(Intent.ACTION_MAIN)
@@ -297,7 +297,7 @@ class AppLockActivity : Activity() {
 
     override fun onPause() {
         super.onPause()
-        Log.d(TAG, "⏸ PIN screen paused, keeping alive")
+        Log.d(TAG, "PIN screen paused, keeping alive")
     }
 
     override fun onDestroy() {
@@ -307,9 +307,9 @@ class AppLockActivity : Activity() {
         if (!pinCorrect) {
             dismissedAt = System.currentTimeMillis()
             dismissedPackage = lockedPackage
-            Log.d(TAG, "🗑 PIN dismissed WITHOUT correct PIN for: $lockedPackage")
+            Log.d(TAG, "PIN dismissed without correct PIN for: $lockedPackage")
         } else {
-            Log.d(TAG, "🗑 PIN destroyed after correct PIN for: $lockedPackage")
+            Log.d(TAG, "PIN destroyed after correct PIN for: $lockedPackage")
         }
     }
 }

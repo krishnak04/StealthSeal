@@ -62,6 +62,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  // ─── Appearance Section ───
+
+  /// Builds the appearance/theme selection section.
   Widget _buildAppearanceSection() {
     return Builder(
       builder: (context) => Container(
@@ -112,6 +115,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  /// Builds a selectable theme option row.
   Widget _buildThemeOption({
     required IconData icon,
     required String label,
@@ -173,6 +177,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  // ─── Security Section ───
+
+  /// Builds the security settings section with biometric toggle and password options.
   Widget _buildSecuritySection() {
     return Builder(
       builder: (context) => Container(
@@ -252,9 +259,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           .from('user_security')
                           .update({'biometric_enabled': value}).eq(
                               'id', userId);
-                      debugPrint(' Biometric updated in Supabase: $value');
-                    } catch (e) {
-                      debugPrint(' Error updating biometric in Supabase: $e');
+                      debugPrint('Biometric updated in Supabase: $value');
+                    } catch (error) {
+                      debugPrint('Error updating biometric in Supabase: $error');
                     }
 
                     setState(() => _biometricEnabled = value);
@@ -291,6 +298,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  // ─── Advanced Features Section ───
+
+  /// Builds the advanced features section with time, location, stealth, and permissions options.
   Widget _buildAdvancedFeaturesSection(BuildContext context) {
     return Builder(
       builder: (ctx) => Container(
@@ -360,6 +370,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  // ─── Information Section ───
+
+  /// Builds the information section with the About & Help link.
   Widget _buildInformationSection(BuildContext context) {
     return Builder(
       builder: (ctx) => Container(
@@ -399,6 +412,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  // ─── Shared Widgets ───
+
+  /// Builds a reusable settings item row with icon, label, and forward arrow.
   Widget _buildSettingsItem({
     required IconData icon,
     required String label,

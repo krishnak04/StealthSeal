@@ -15,28 +15,33 @@ class FakeDashboard extends StatefulWidget {
 class _FakeDashboardState extends State<FakeDashboard> with WidgetsBindingObserver {
   bool _isFirstLoad = true;
 
+  // ─── Lifecycle ───
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _isFirstLoad = true;
 
-    // 🔒 Start monitoring locked apps in real-time (even in fake dashboard)
+    // Start monitoring locked apps in real-time (even in fake dashboard)
     _initializeAppLockMonitoring();
   }
 
-  /// Initialize app lock monitoring service
+  // ─── App Lock Monitoring ───
+
+  /// Initializes the app lock monitoring service and registers a callback
+  /// that navigates to the PIN verification screen when a locked app is detected.
   void _initializeAppLockMonitoring() {
     final appLockService = AppLockService();
 
     // Set callback for when a locked app is detected
     appLockService.setOnLockedAppDetectedCallback((packageName) {
       if (mounted) {
-        debugPrint('🔒 Locked app detected from fake dashboard: $packageName - Showing PIN screen');
+        debugPrint('Locked app detected from fake dashboard: $packageName - Showing PIN screen');
         // Show the app lock PIN verification screen
-        final box = Hive.box('securityBox');
+        final securityBox = Hive.box('securityBox');
         final appNamesMap =
-            (box.get('appNamesMap', defaultValue: {}) ?? {}) as Map;
+            (securityBox.get('appNamesMap', defaultValue: {}) ?? {}) as Map;
         final appName =
             appNamesMap[packageName]?.toString() ?? packageName.split('.').last;
 
@@ -75,6 +80,9 @@ class _FakeDashboardState extends State<FakeDashboard> with WidgetsBindingObserv
       Navigator.pushReplacementNamed(context, AppRoutes.lock);
     }
   }
+
+  // ─── Build ───
+
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
@@ -101,7 +109,9 @@ class _FakeDashboardState extends State<FakeDashboard> with WidgetsBindingObserv
     );
   }
 
-  // AppBar
+  // ─── AppBar ───
+
+  /// Builds the centered app bar with a shield icon and title.
   PreferredSizeWidget _buildAppBar(BuildContext context) {
     return AppBar(
       elevation: 0,
@@ -124,7 +134,9 @@ class _FakeDashboardState extends State<FakeDashboard> with WidgetsBindingObserv
     );
   }
 
-  // Welcome Card
+  // ─── Welcome Card ───
+
+  /// Builds the welcome card displaying the dashboard heading and status message.
   Widget _buildWelcomeCard(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(20),
@@ -160,7 +172,9 @@ class _FakeDashboardState extends State<FakeDashboard> with WidgetsBindingObserv
     );
   }
 
-  // Stats Card
+  // ─── Stats Card ───
+
+  /// Builds the account status card with summary statistics.
   Widget _buildStatsCard(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(20),
@@ -197,6 +211,7 @@ class _FakeDashboardState extends State<FakeDashboard> with WidgetsBindingObserv
     );
   }
 
+  /// Builds a single stat item with a circular badge, [value], [label], and [color].
   Widget _buildStatItem(BuildContext context, String value, String label, Color color) {
     return Column(
       children: [
@@ -232,7 +247,9 @@ class _FakeDashboardState extends State<FakeDashboard> with WidgetsBindingObserv
     );
   }
 
-  // Fake Actions Card
+  // ─── Fake Actions Card ───
+
+  /// Builds the quick-actions card containing a list of decoy action tiles.
   Widget _buildFakeActionsCard(BuildContext context) {
     final actions = [
       _FakeActionData(
@@ -303,6 +320,7 @@ class _FakeDashboardState extends State<FakeDashboard> with WidgetsBindingObserv
     );
   }
 
+  /// Builds a single action tile row for the given [action] data.
   Widget _buildFakeActionTile(BuildContext context, _FakeActionData action) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -367,7 +385,9 @@ class _FakeDashboardState extends State<FakeDashboard> with WidgetsBindingObserv
     );
   }
 
-  // Security Info Card (for decoy)
+  // ─── Security Info Card ───
+
+  /// Builds the security status card shown as part of the decoy interface.
   Widget _buildSecurityInfoCard(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(20),

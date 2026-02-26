@@ -49,7 +49,7 @@ class MainActivity : FlutterFragmentActivity() {
                             .putString("lockedApps", apps)
                             .putString("sessionUnlockedApps", "")  // Clear all session unlocks
                             .apply()
-                        Log.d("MainActivity", "✅ Locked apps synced: $apps (sessions cleared)")
+                        Log.d("MainActivity", "Locked apps synced: $apps (sessions cleared)")
                         result.success(true)
                     }
                     "cachePins" -> {
@@ -60,7 +60,7 @@ class MainActivity : FlutterFragmentActivity() {
                             .putString("cached_real_pin", realPin)
                             .putString("cached_decoy_pin", decoyPin)
                             .apply()
-                        Log.d("MainActivity", "✅ PINs cached to SharedPreferences")
+                        Log.d("MainActivity", "PINs cached to SharedPreferences")
                         result.success(true)
                     }
                     "requestAccessibilityService" -> {
@@ -82,14 +82,14 @@ class MainActivity : FlutterFragmentActivity() {
 
     private fun handleGetInstalledApps(result: MethodChannel.Result) {
         try {
-            Log.d("MainActivity", "📱 Starting to fetch installed apps...")
+            Log.d("MainActivity", "Starting to fetch installed apps...")
             val pm = packageManager
             val mainIntent = Intent(Intent.ACTION_MAIN, null)
             mainIntent.addCategory(Intent.CATEGORY_LAUNCHER)
 
-            Log.d("MainActivity", "🔍 Querying intent activities for launcher apps...")
+            Log.d("MainActivity", "Querying intent activities for launcher apps...")
             val resolveInfoList = pm.queryIntentActivities(mainIntent, 0)
-            Log.d("MainActivity", "✅ Found ${resolveInfoList.size} installed apps")
+            Log.d("MainActivity", "Found ${resolveInfoList.size} installed apps")
             
             val appList = mutableListOf<Map<String, String>>()
             val addedPackages = mutableSetOf<String>()
@@ -114,16 +114,16 @@ class MainActivity : FlutterFragmentActivity() {
                         "package" to packageName,
                         "icon" to base64Icon
                     ))
-                    Log.d("MainActivity", "✅ Added app: $name ($packageName)")
+                    Log.d("MainActivity", "Added app: $name ($packageName)")
                 } catch (e: Exception) {
-                    Log.e("MainActivity", "⚠️ Failed to process app $packageName: ${e.message}")
+                    Log.e("MainActivity", "Failed to process app $packageName: ${e.message}")
                 }
             }
 
-            Log.d("MainActivity", "📤 Returning ${appList.size} apps to Flutter")
+            Log.d("MainActivity", "Returning ${appList.size} apps to Flutter")
             result.success(appList)
         } catch (e: Exception) {
-            Log.e("MainActivity", "❌ ERROR fetching installed apps: ${e.message}")
+            Log.e("MainActivity", "ERROR fetching installed apps: ${e.message}")
             e.printStackTrace()
             result.error("ERROR", "Failed to fetch apps: ${e.message}", null)
         }
@@ -149,30 +149,30 @@ class MainActivity : FlutterFragmentActivity() {
 
     private fun handleOpenAccessibilitySettings() {
         try {
-            Log.d("MainActivity", "🔧 Opening accessibility settings...")
+            Log.d("MainActivity", "Opening accessibility settings...")
             val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
             intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
             startActivity(intent)
-            Log.d("MainActivity", "✅ Accessibility settings opened")
+            Log.d("MainActivity", "Accessibility settings opened")
         } catch (e: Exception) {
-            Log.e("MainActivity", "❌ Error opening accessibility settings: ${e.message}")
+            Log.e("MainActivity", "Error opening accessibility settings: ${e.message}")
         }
     }
 
     private fun handleLaunchApp(packageName: String, result: MethodChannel.Result) {
         try {
-            Log.d("MainActivity", "🚀 Launching app: $packageName")
+            Log.d("MainActivity", "Launching app: $packageName")
             val launchIntent = packageManager.getLaunchIntentForPackage(packageName)
             if (launchIntent != null) {
                 launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 startActivity(launchIntent)
                 result.success(true)
             } else {
-                Log.e("MainActivity", "❌ No launch intent for: $packageName")
+                Log.e("MainActivity", "No launch intent for: $packageName")
                 result.error("NO_INTENT", "Cannot launch $packageName", null)
             }
         } catch (e: Exception) {
-            Log.e("MainActivity", "❌ Error launching app: ${e.message}")
+            Log.e("MainActivity", "Error launching app: ${e.message}")
             result.error("ERROR", e.message, null)
         }
     }
@@ -181,9 +181,9 @@ class MainActivity : FlutterFragmentActivity() {
         try {
             val intent = Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS)
             startActivity(intent)
-            Log.d("MainActivity", "✅ Opened Accessibility Settings")
+            Log.d("MainActivity", "Opened Accessibility Settings")
         } catch (e: Exception) {
-            Log.e("MainActivity", "❌ Error opening settings: ${e.message}")
+            Log.e("MainActivity", "Error opening settings: ${e.message}")
         }
     }
 

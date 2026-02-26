@@ -16,6 +16,7 @@ class RealDashboard extends StatefulWidget {
 }
 
 class _RealDashboardState extends State<RealDashboard> {
+  /// Tracks whether the Android accessibility service is currently enabled.
   bool _accessibilityEnabled = true;
 
   @override
@@ -25,70 +26,85 @@ class _RealDashboardState extends State<RealDashboard> {
     _checkAccessibilityService();
   }
 
-  /// Check if accessibility service is enabled
+  // ─── Accessibility & App Lock Setup ────────────────────────────────
+
+  /// Verifies accessibility service status and warns the user if disabled.
   Future<void> _checkAccessibilityService() async {
-    final service = AppLockService();
-    final isEnabled = await service.isAccessibilityServiceEnabled();
-    
+    final appLockService = AppLockService();
+    final isServiceEnabled = await appLockService.isAccessibilityServiceEnabled();
+
     if (mounted) {
       setState(() {
-        _accessibilityEnabled = isEnabled;
+        _accessibilityEnabled = isServiceEnabled;
       });
     }
 
-    if (!isEnabled) {
-      if (mounted) {
-        debugPrint('Accessibility service not enabled !');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text(
-              'Enable Accessibility Service for App Lock to work. Go to Settings > Accessibility > StealthSeal',
-            ),
-            duration: const Duration(seconds: 2),
-            backgroundColor: const Color.fromARGB(255, 214, 77, 77),
+    if (!isServiceEnabled && mounted) {
+      debugPrint('Accessibility service not enabled !');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text(
+            'Enable Accessibility Service for App Lock to work. '
+            'Go to Settings > Accessibility > StealthSeal',
           ),
-        );
-      }
+          duration: const Duration(seconds: 2),
+          backgroundColor: const Color.fromARGB(255, 214, 77, 77),
+        ),
+      );
     }
   }
 
-  /// ✅ Set up callback for locked app detection
+  /// Registers a callback so the app lock service can trigger the PIN
+  /// screen when a locked app is opened.
   void _setupAppLockCallback() {
-    final service = AppLockService();
+    final appLockService = AppLockService();
 
-    service.setOnLockedAppDetectedCallback((packageName) {
+    appLockService.setOnLockedAppDetectedCallback((packageName) {
       if (mounted) {
         _showAppLockPinScreen(packageName);
       }
     });
   }
 
-  /// Show the dedicated App Lock PIN verification screen
+  /// Navigates to the PIN verification screen for a locked app.
+  ///
+  /// Resolves a human-readable app name from Hive's cached name map,
+  /// falling back to the last segment of the package name.
   void _showAppLockPinScreen(String packageName) {
     if (!Hive.isBoxOpen('securityBox')) return;
-    final box = Hive.box('securityBox');
-    final appNamesMap =
-        (box.get('appNamesMap', defaultValue: {}) ?? {}) as Map;
 
-    final appName =
-        appNamesMap[packageName]?.toString() ?? packageName.split('.').last;
+    final securityBox = Hive.box('securityBox');
+    final cachedAppNames =
+        (securityBox.get('appNamesMap', defaultValue: {}) ?? {}) as Map;
+
+    final displayName =
+        cachedAppNames[packageName]?.toString() ?? packageName.split('.').last;
 
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => AppLockPinScreen(
           packageName: packageName,
-          appName: appName,
+          appName: displayName,
         ),
       ),
     );
   }
 
+  // ─── Panic Lock ─────────────────────────────────────────────────────
+
+  /// Shows a confirmation dialog before activating panic mode.
+  ///
+  /// On confirmation, enables panic lock and redirects to the lock screen.
   void _showPanicDialog(BuildContext context) {
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (BuildContext dialogContext) {
+        final primaryTextColor = ThemeConfig.textPrimary(dialogContext);
+        final secondaryTextColor = ThemeConfig.textSecondary(dialogContext);
+        final dangerColor = ThemeConfig.errorColor(dialogContext);
+
         return AlertDialog(
           backgroundColor: ThemeConfig.surfaceColor(dialogContext),
           shape: RoundedRectangleBorder(
@@ -97,21 +113,22 @@ class _RealDashboardState extends State<RealDashboard> {
           title: Text(
             "Activate Panic Lock?",
             style: TextStyle(
-              color: ThemeConfig.textPrimary(dialogContext),
+              color: primaryTextColor,
               fontSize: 18,
               fontWeight: FontWeight.bold,
             ),
           ),
           content: Text(
-            "Are you sure you want to instantly lock all apps and trigger the security overlay?",
-            style: TextStyle(color: ThemeConfig.textSecondary(dialogContext)),
+            "Are you sure you want to instantly lock all apps "
+            "and trigger the security overlay?",
+            style: TextStyle(color: secondaryTextColor),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialogContext),
               child: Text(
                 "Cancel",
-                style: TextStyle(color: ThemeConfig.textSecondary(dialogContext)),
+                style: TextStyle(color: secondaryTextColor),
               ),
             ),
             TextButton(
@@ -122,7 +139,7 @@ class _RealDashboardState extends State<RealDashboard> {
               },
               child: Text(
                 "Activate",
-                style: TextStyle(color: ThemeConfig.errorColor(dialogContext)),
+                style: TextStyle(color: dangerColor),
               ),
             ),
           ],
@@ -131,24 +148,33 @@ class _RealDashboardState extends State<RealDashboard> {
     );
   }
 
+  // ─── Data Helpers ───────────────────────────────────────────────────
+
+  /// Returns the number of intruder selfie logs stored in Hive.
   int getIntruderCount() {
     if (!Hive.isBoxOpen('securityBox')) return 0;
-    final box = Hive.box('securityBox');
-    final List logs = box.get('intruderLogs', defaultValue: []);
-    return logs.length;
+    final securityBox = Hive.box('securityBox');
+    final List intruderLogs = securityBox.get('intruderLogs', defaultValue: []);
+    return intruderLogs.length;
   }
 
+  /// Returns the number of apps currently locked by the user.
   int getLockedAppsCount() {
     if (!Hive.isBoxOpen('securityBox')) return 0;
-    final box = Hive.box('securityBox');
-    final List locked = box.get('lockedApps', defaultValue: []);
-    return locked.length;
+    final securityBox = Hive.box('securityBox');
+    final List lockedAppsList = securityBox.get('lockedApps', defaultValue: []);
+    return lockedAppsList.length;
   }
+
+  // ─── Build ─────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
-    final intruderCount = getIntruderCount();
-    final lockedCount = getLockedAppsCount();
+    final totalIntruders = getIntruderCount();
+    final totalLockedApps = getLockedAppsCount();
+
+    final accent = ThemeConfig.accentColor(context);
+    final textPrimary = ThemeConfig.textPrimary(context);
 
     return Scaffold(
       backgroundColor: ThemeConfig.backgroundColor(context),
@@ -159,23 +185,26 @@ class _RealDashboardState extends State<RealDashboard> {
         title: Text(
           "StealthSeal",
           style: TextStyle(
-            color: ThemeConfig.accentColor(context),
+            color: accent,
             fontSize: 30,
             fontWeight: FontWeight.bold,
           ),
         ),
         actions: [
+          // Refresh dashboard counts
           IconButton(
-            icon: Icon(Icons.refresh, color: ThemeConfig.textPrimary(context)),
+            icon: Icon(Icons.refresh, color: textPrimary),
             onPressed: () => setState(() {}),
           ),
+          // Navigate to settings
           IconButton(
-            icon: Icon(Icons.settings, color: ThemeConfig.textPrimary(context)),
+            icon: Icon(Icons.settings, color: textPrimary),
             onPressed: () =>
                 Navigator.pushNamed(context, AppRoutes.settings),
           ),
+          // Manual lock
           IconButton(
-            icon: Icon(Icons.lock, color: ThemeConfig.textPrimary(context)),
+            icon: Icon(Icons.lock, color: textPrimary),
             onPressed: () =>
                 Navigator.pushReplacementNamed(context, AppRoutes.lock),
           ),
@@ -186,145 +215,21 @@ class _RealDashboardState extends State<RealDashboard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            /// 🔵 SECURITY STATUS
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: ThemeConfig.surfaceColor(context),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: ThemeConfig.accentColor(context).withOpacity(0.3),
-                  width: 1,
-                ),
-              ),
-              child: Column(
-                children: [
-                  Row(
-                    children: [
-                      Icon(Icons.shield,
-                          color: ThemeConfig.accentColor(context), size: 20),
-                      const SizedBox(width: 8),
-                      Text(
-                        "Security Status",
-                        style: TextStyle(
-                          color: ThemeConfig.accentColor(context),
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      Column(
-                        children: [
-                          Text(
-                            "$lockedCount",
-                            style: TextStyle(
-                              color: ThemeConfig.accentColor(context),
-                              fontSize: 32,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          Text(
-                            "Apps Locked",
-                            style: TextStyle(
-                              color: ThemeConfig.textSecondary(context),
-                              fontSize: 13,
-                            ),
-                          ),
-                        ],
-                      ),
-                      Column(
-                        children: [
-                          Text(
-                            "$intruderCount",
-                            style: TextStyle(
-                              color: ThemeConfig.errorColor(context),
-                              fontSize: 32,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          Text(
-                            "Intruders",
-                            style: TextStyle(
-                              color: ThemeConfig.textSecondary(context),
-                              fontSize: 13,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  )
-                ],
-              ),
+            // ── Security Status Card ──
+            _buildSecurityStatusCard(
+              context,
+              lockedAppsCount: totalLockedApps,
+              intruderCount: totalIntruders,
             ),
 
             const SizedBox(height: 24),
 
-            /// 🔵 QUICK ACTIONS
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: ThemeConfig.surfaceColor(context),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: ThemeConfig.borderColor(context),
-                  width: 1,
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    "Quick Actions",
-                    style: TextStyle(
-                      color: ThemeConfig.textPrimary(context),
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  _buildActionButton(
-                    icon: Icons.apps,
-                    label: "Manage App Locks",
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const AppLockManagementScreen(),
-                      ),
-                    ),
-                    context: context,
-                  ),
-                  const SizedBox(height: 10),
-                  _buildActionButton(
-                    icon: Icons.warning_amber,
-                    label: "Intruder Logs",
-                    badge: intruderCount > 0 ? intruderCount.toString() : null,
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const IntruderLogsScreen(),
-                      ),
-                    ),
-                    context: context,
-                  ),
-                  const SizedBox(height: 10),
-                  _buildActionButton(
-                    icon: Icons.settings,
-                    label: "Settings",
-                    onTap: () =>
-                        Navigator.pushNamed(context, AppRoutes.settings),
-                    context: context,
-                  ),
-                ],
-              ),
-            ),
+            // ── Quick Actions Card ──
+            _buildQuickActionsCard(context, totalIntruders),
 
             const SizedBox(height: 24),
 
+            // ── Emergency Panic Card ──
             _buildEmergencyCard(context),
           ],
         ),
@@ -332,6 +237,164 @@ class _RealDashboardState extends State<RealDashboard> {
     );
   }
 
+  // ─── Section Builders ──────────────────────────────────────────────
+
+  /// Security overview showing locked-app and intruder counts.
+  Widget _buildSecurityStatusCard(
+    BuildContext context, {
+    required int lockedAppsCount,
+    required int intruderCount,
+  }) {
+    final accent = ThemeConfig.accentColor(context);
+    final secondaryText = ThemeConfig.textSecondary(context);
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: ThemeConfig.surfaceColor(context),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: accent.withOpacity(0.3),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        children: [
+          // Header row
+          Row(
+            children: [
+              Icon(Icons.shield, color: accent, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                "Security Status",
+                style: TextStyle(
+                  color: accent,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          // Stats row
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              // Locked apps stat
+              Column(
+                children: [
+                  Text(
+                    "$lockedAppsCount",
+                    style: TextStyle(
+                      color: accent,
+                      fontSize: 32,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    "Apps Locked",
+                    style: TextStyle(
+                      color: secondaryText,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+              // Intruders stat
+              Column(
+                children: [
+                  Text(
+                    "$intruderCount",
+                    style: TextStyle(
+                      color: ThemeConfig.errorColor(context),
+                      fontSize: 32,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    "Intruders",
+                    style: TextStyle(
+                      color: secondaryText,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Quick action shortcuts: Manage locks, view intruder logs, settings.
+  Widget _buildQuickActionsCard(BuildContext context, int intruderCount) {
+    final hasBadge = intruderCount > 0 ? intruderCount.toString() : null;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: ThemeConfig.surfaceColor(context),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: ThemeConfig.borderColor(context),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            "Quick Actions",
+            style: TextStyle(
+              color: ThemeConfig.textPrimary(context),
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 12),
+          _buildActionButton(
+            icon: Icons.apps,
+            label: "Manage App Locks",
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const AppLockManagementScreen(),
+              ),
+            ),
+            context: context,
+          ),
+          const SizedBox(height: 10),
+          _buildActionButton(
+            icon: Icons.warning_amber,
+            label: "Intruder Logs",
+            badge: hasBadge,
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const IntruderLogsScreen(),
+              ),
+            ),
+            context: context,
+          ),
+          const SizedBox(height: 10),
+          _buildActionButton(
+            icon: Icons.settings,
+            label: "Settings",
+            onTap: () =>
+                Navigator.pushNamed(context, AppRoutes.settings),
+            context: context,
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─── Reusable Widgets ──────────────────────────────────────────────
+
+  /// A tappable row with an icon, label, and optional notification badge.
+  ///
+  /// When [badge] is provided, a red pill is shown instead of the arrow.
   Widget _buildActionButton({
     required IconData icon,
     required String label,
@@ -364,6 +427,7 @@ class _RealDashboardState extends State<RealDashboard> {
               ),
             ),
             const Spacer(),
+            // Show count badge or a simple chevron
             if (badge != null)
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -381,15 +445,21 @@ class _RealDashboardState extends State<RealDashboard> {
                 ),
               )
             else
-              Icon(Icons.arrow_forward_ios,
-                  color: ThemeConfig.textSecondary(context), size: 16),
+              Icon(
+                Icons.arrow_forward_ios,
+                color: ThemeConfig.textSecondary(context),
+                size: 16,
+              ),
           ],
         ),
       ),
     );
   }
 
+  /// Full-width emergency card with a destructive "Panic Lock" button.
   Widget _buildEmergencyCard(BuildContext context) {
+    final dangerColor = ThemeConfig.errorColor(context);
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -412,19 +482,24 @@ class _RealDashboardState extends State<RealDashboard> {
             ),
           ),
           const SizedBox(height: 16),
+
+          // Panic button
           SizedBox(
             width: double.infinity,
             height: 48,
             child: ElevatedButton.icon(
               onPressed: () => _showPanicDialog(context),
               style: ElevatedButton.styleFrom(
-                backgroundColor: ThemeConfig.errorColor(context),
+                backgroundColor: dangerColor,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
                 ),
               ),
-              icon: const Icon(Icons.warning_rounded,
-                  size: 20, color: Colors.white),
+              icon: const Icon(
+                Icons.warning_rounded,
+                size: 20,
+                color: Colors.white,
+              ),
               label: const Text(
                 'Activate Panic Lock',
                 style: TextStyle(
@@ -436,6 +511,8 @@ class _RealDashboardState extends State<RealDashboard> {
             ),
           ),
           const SizedBox(height: 8),
+
+          // Explanation text
           Center(
             child: Text(
               'Instantly locks all apps and displays security overlay',

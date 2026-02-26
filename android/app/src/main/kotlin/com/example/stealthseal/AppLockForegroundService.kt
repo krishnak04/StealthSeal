@@ -21,7 +21,7 @@ import android.util.Log
 class AppLockForegroundService : Service() {
 
     companion object {
-        private const val TAG = "🔐AppLockFgService"
+        private const val TAG = "AppLockFgService"
         private const val CHANNEL_ID = "stealthseal_applock_channel"
         private const val NOTIFICATION_ID = 1001
 
@@ -32,25 +32,25 @@ class AppLockForegroundService : Service() {
             } else {
                 context.startService(intent)
             }
-            Log.d(TAG, "✅ Foreground service start requested")
+            Log.d(TAG, "Foreground service start requested")
         }
 
         fun stop(context: Context) {
             val intent = Intent(context, AppLockForegroundService::class.java)
             context.stopService(intent)
-            Log.d(TAG, "🛑 Foreground service stop requested")
+            Log.d(TAG, "Foreground service stop requested")
         }
     }
 
     override fun onCreate() {
         super.onCreate()
-        Log.d(TAG, "✅ Foreground service created")
+        Log.d(TAG, "Foreground service created")
         createNotificationChannel()
         startForeground(NOTIFICATION_ID, buildNotification())
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        Log.d(TAG, "✅ Foreground service started")
+        Log.d(TAG, "Foreground service started")
         // Return START_STICKY so Android restarts the service if killed
         return START_STICKY
     }
@@ -59,7 +59,7 @@ class AppLockForegroundService : Service() {
 
     override fun onTaskRemoved(rootIntent: Intent?) {
         super.onTaskRemoved(rootIntent)
-        Log.d(TAG, "📱 Task removed (app swiped from recents) — service stays alive")
+        Log.d(TAG, "Task removed (app swiped from recents) - service stays alive")
         // Service continues running, no need to do anything special
     }
 
@@ -77,7 +77,7 @@ class AppLockForegroundService : Service() {
 
             val manager = getSystemService(NotificationManager::class.java)
             manager.createNotificationChannel(channel)
-            Log.d(TAG, "✅ Notification channel created")
+            Log.d(TAG, "Notification channel created")
         }
     }
 

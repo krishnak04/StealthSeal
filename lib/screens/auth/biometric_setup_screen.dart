@@ -17,7 +17,6 @@ class _BiometricSetupScreenState extends State<BiometricSetupScreen> {
   bool _biometricEnabled = false;
   String? _statusMessage;
   bool _isLoading = true;
-  // Animations removed: static UI retained for simplicity
 
   @override
   void initState() {
@@ -30,6 +29,11 @@ class _BiometricSetupScreenState extends State<BiometricSetupScreen> {
     super.dispose();
   }
 
+  // ---------------------------------------------------------------------------
+  // Biometric Support Check
+  // ---------------------------------------------------------------------------
+
+  /// Queries the device for biometric hardware support and updates state.
   Future<void> _checkBiometricSupport() async {
     try {
       final isSupported = await BiometricService.isSupported();
@@ -39,8 +43,8 @@ class _BiometricSetupScreenState extends State<BiometricSetupScreen> {
           _isLoading = false;
         });
       }
-    } catch (e) {
-      debugPrint('Error checking biometric support: $e');
+    } catch (error) {
+      debugPrint('Error checking biometric support: $error');
       if (mounted) {
         setState(() {
           _isBiometricSupported = false;
@@ -50,6 +54,14 @@ class _BiometricSetupScreenState extends State<BiometricSetupScreen> {
     }
   }
 
+  // ---------------------------------------------------------------------------
+  // Registration & Skip
+  // ---------------------------------------------------------------------------
+
+  /// Registers the user's biometric credential.
+  ///
+  /// Authenticates using the device sensor, then persists the enabled flag
+  /// to Supabase and local storage. Navigates to the lock screen on success.
   Future<void> _registerBiometric() async {
     if (!_isBiometricSupported) {
       _showError('Biometric not supported on this device');
@@ -75,14 +87,13 @@ class _BiometricSetupScreenState extends State<BiometricSetupScreen> {
         return;
       }
 
-      // 🆔 Get user ID
       final userId = await UserIdentifierService.getUserId();
-      debugPrint('📱 Registering biometric for user: $userId');
+      debugPrint('Registering biometric for user: $userId');
 
       // Save biometric settings to Supabase
       final supabase = Supabase.instance.client;
 
-      // ✅ Update by user ID (not auth user)
+      // Update by user ID
       await supabase.from('user_security').update({
         'biometric_enabled': true,
       }).eq('id', userId);
@@ -103,18 +114,21 @@ class _BiometricSetupScreenState extends State<BiometricSetupScreen> {
       if (mounted) {
         Navigator.pushReplacementNamed(context, AppRoutes.lock);
       }
-    } catch (e) {
-      debugPrint('Error registering biometric: $e');
+    } catch (error) {
+      debugPrint('Error registering biometric: $error');
       if (mounted) {
         setState(() {
           _isRegistering = false;
           _statusMessage = 'Failed to register biometric';
         });
-        _showError('Error: $e');
+        _showError('Error: $error');
       }
     }
   }
 
+  /// Skips biometric registration and navigates to the lock screen.
+  ///
+  /// Ensures the biometric flag is disabled both locally and in Supabase.
   Future<void> _skipBiometric() async {
     try {
       setState(() {
@@ -125,31 +139,35 @@ class _BiometricSetupScreenState extends State<BiometricSetupScreen> {
       // Ensure biometric is disabled
       BiometricService.disable();
 
-      // 🆔 Get user ID
       final userId = await UserIdentifierService.getUserId();
-      debugPrint('⏭️ Skipping biometric for user: $userId');
+      debugPrint('Skipping biometric for user: $userId');
 
       // Update database to disable biometric
       final supabase = Supabase.instance.client;
 
-      // ✅ Update by user ID (not auth user)
+      // Update by user ID
       await supabase.from('user_security').update({
         'biometric_enabled': false,
       }).eq('id', userId);
 
       if (!mounted) return;
       Navigator.pushReplacementNamed(context, AppRoutes.lock);
-    } catch (e) {
-      debugPrint('Error skipping biometric setup: $e');
+    } catch (error) {
+      debugPrint('Error skipping biometric setup: $error');
       if (mounted) {
         setState(() {
           _isRegistering = false;
         });
-        _showError('Error: $e');
+        _showError('Error: $error');
       }
     }
   }
 
+  // ---------------------------------------------------------------------------
+  // UI Feedback
+  // ---------------------------------------------------------------------------
+
+  /// Shows a red [SnackBar] with the given error [message].
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -158,6 +176,10 @@ class _BiometricSetupScreenState extends State<BiometricSetupScreen> {
       ),
     );
   }
+
+  // ---------------------------------------------------------------------------
+  // Build
+  // ---------------------------------------------------------------------------
 
   @override
   Widget build(BuildContext context) {
@@ -208,7 +230,11 @@ class _BiometricSetupScreenState extends State<BiometricSetupScreen> {
     );
   }
 
-  // 👆 Animated Icon with Pulse
+  // ---------------------------------------------------------------------------
+  // UI Builders
+  // ---------------------------------------------------------------------------
+
+  /// Builds the circular fingerprint icon with a gradient glow.
   Widget _buildIcon() {
     return Container(
       padding: const EdgeInsets.all(24),
@@ -240,7 +266,7 @@ class _BiometricSetupScreenState extends State<BiometricSetupScreen> {
     );
   }
 
-  // 📝 Animated Title
+  /// Builds the screen title text.
   Widget _buildTitle() {
     return const Text(
       'Secure Your Account',
@@ -253,7 +279,7 @@ class _BiometricSetupScreenState extends State<BiometricSetupScreen> {
     );
   }
 
-  // 📄 Animated Subtitle
+  /// Builds the descriptive subtitle based on device biometric support.
   Widget _buildSubtitle() {
     return Text(
       _isBiometricSupported
@@ -268,7 +294,7 @@ class _BiometricSetupScreenState extends State<BiometricSetupScreen> {
     );
   }
 
-  // ✅ Animated Status Message
+  /// Builds a status banner indicating registration progress or result.
   Widget _buildStatusMessage() {
     return Padding(
       padding: const EdgeInsets.only(bottom: 20),
@@ -299,7 +325,7 @@ class _BiometricSetupScreenState extends State<BiometricSetupScreen> {
     );
   }
 
-  // 📋 Animated Features List
+  /// Builds the list of biometric feature highlights.
   Widget _buildFeaturesList() {
     final features = [
       _FeatureData(
@@ -357,10 +383,8 @@ class _BiometricSetupScreenState extends State<BiometricSetupScreen> {
     );
   }
 
-  // 🔘 Animated Buttons
-  // Buttons are static now; keep existing _buildButtons implementation below
-
-  // 🔘 Button Logic
+  /// Builds the action buttons (register, skip, or continue) based on
+  /// the current biometric support and registration state.
   Widget _buildButtons() {
     if (_isBiometricSupported && !_biometricEnabled) {
       return Column(
@@ -481,6 +505,7 @@ class _BiometricSetupScreenState extends State<BiometricSetupScreen> {
       );
     }
   }
+  /// Builds a single feature row with an [icon], [title], and [description].
   Widget _buildFeatureItem(IconData icon, String title, String description) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,

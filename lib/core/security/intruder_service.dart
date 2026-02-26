@@ -1,11 +1,20 @@
 import 'dart:io';
 
 import 'package:camera/camera.dart';
+import 'package:flutter/foundation.dart';
 import 'package:hive/hive.dart';
 import 'package:path_provider/path_provider.dart';
 
+/// Captures and logs intruder selfies on repeated failed PIN attempts.
+///
+/// Uses the front camera to take a photo and stores metadata
+/// (image path, timestamp, reason, entered PIN) in Hive.
+/// Fails silently to avoid disrupting the lock screen UX.
 class IntruderService {
-  /// Capture intruder selfie and store metadata safely
+  /// Captures an intruder selfie and persists metadata to Hive.
+  ///
+  /// [reason] describes why the capture was triggered.
+  /// [enteredPin] is the PIN that was entered (masked by default).
   static Future<void> captureIntruderSelfie({
     String reason = 'Captured Intruder Image',
     String? enteredPin,
@@ -17,38 +26,39 @@ class IntruderService {
         (camera) => camera.lensDirection == CameraLensDirection.front,
       );
 
-      final controller = CameraController(
+      final cameraController = CameraController(
         frontCamera,
         ResolutionPreset.low,
         enableAudio: false,
       );
 
-      await controller.initialize();
+      await cameraController.initialize();
 
       final directory = await getApplicationDocumentsDirectory();
       final imagePath =
           '${directory.path}/intruder_${DateTime.now().millisecondsSinceEpoch}.jpg';
 
-      final XFile picture = await controller.takePicture();
+      final XFile picture = await cameraController.takePicture();
       await File(picture.path).copy(imagePath);
 
-      await controller.dispose();
+      await cameraController.dispose();
 
-      // ✅ SAVE FULL METADATA
-      final box = Hive.box('securityBox');
-      final List logs = box.get('intruderLogs', defaultValue: []);
+      // Save capture metadata to Hive intruder logs
+      final securityBox = Hive.box('securityBox');
+      final List intruderLogs =
+          securityBox.get('intruderLogs', defaultValue: []);
 
-      logs.add({
+      intruderLogs.add({
         'imagePath': imagePath,
         'timestamp': DateTime.now().toIso8601String(),
         'reason': reason,
         'enteredPin': enteredPin ?? '***',
       });
 
-      await box.put('intruderLogs', logs);
-    } catch (e) {
+      await securityBox.put('intruderLogs', intruderLogs);
+    } catch (error) {
       // Fail silently to avoid lock-screen crash
-      print('IntruderService Error: $e');
+      debugPrint('IntruderService Error: $error');
     }
   }
 }

@@ -21,10 +21,16 @@ class _StealthModeSettingsScreenState extends State<StealthModeSettingsScreen> {
     _loadSettings();
   }
 
+  // ─── Settings Loading ───
+
+  /// Loads the persisted stealth mode preference from Hive local storage.
   void _loadSettings() {
     _selectedMode = _securityBox.get('stealthMode', defaultValue: 'normal');
   }
 
+  // ─── Mode Selection ───
+
+  /// Applies the given [mode] as the active stealth mode and persists it.
   void _setStealthMode(String mode) {
     setState(() => _selectedMode = mode);
     _securityBox.put('stealthMode', mode);
@@ -37,6 +43,8 @@ class _StealthModeSettingsScreenState extends State<StealthModeSettingsScreen> {
       ),
     );
   }
+
+  // ─── Build ───
 
   @override
   Widget build(BuildContext context) {
@@ -65,7 +73,7 @@ class _StealthModeSettingsScreenState extends State<StealthModeSettingsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Warning Box
+              // ─── Warning Box ───
               Container(
                 decoration: BoxDecoration(
                   color: ThemeConfig.surfaceColor(context),
@@ -100,7 +108,7 @@ class _StealthModeSettingsScreenState extends State<StealthModeSettingsScreen> {
               ),
               const SizedBox(height: 24),
 
-              // Normal Mode
+              // ─── Normal Mode ───
               GestureDetector(
                 onTap: () => _setStealthMode('normal'),
                 child: Container(
@@ -164,7 +172,7 @@ class _StealthModeSettingsScreenState extends State<StealthModeSettingsScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Hidden Icon
+              // ─── Hidden Icon ───
               GestureDetector(
                 onTap: () => _setStealthMode('hidden'),
                 child: Container(
@@ -228,7 +236,7 @@ class _StealthModeSettingsScreenState extends State<StealthModeSettingsScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Calculator Disguise
+              // ─── Calculator Disguise ───
               GestureDetector(
                 onTap: () => _setStealthMode('calculator'),
                 child: Container(
@@ -310,7 +318,7 @@ class _StealthModeSettingsScreenState extends State<StealthModeSettingsScreen> {
               ),
               const SizedBox(height: 24),
 
-              // Info Box
+              // ─── Info Box ───
               Container(
                 decoration: BoxDecoration(
                   color: ThemeConfig.surfaceColor(context),

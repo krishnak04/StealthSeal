@@ -31,11 +31,14 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     _loadCurrentPins();
   }
 
+  // ─── PIN Loading ───
+
+  /// Loads current real and decoy PINs from local storage, falling back to Supabase.
   Future<void> _loadCurrentPins() async {
     try {
-      final box = Hive.box('securityBox');
-      _currentRealPin = box.get('realPin', defaultValue: '');
-      _currentDecoyPin = box.get('decoyPin', defaultValue: '');
+      final securityBox = Hive.box('securityBox');
+      _currentRealPin = securityBox.get('realPin', defaultValue: '');
+      _currentDecoyPin = securityBox.get('decoyPin', defaultValue: '');
 
       if (_currentRealPin.isEmpty || _currentDecoyPin.isEmpty) {
         // Try loading from Supabase
@@ -51,8 +54,8 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
           _currentDecoyPin = response['decoy_pin'] ?? '';
         }
       }
-    } catch (e) {
-      debugPrint('Error loading current pins: $e');
+    } catch (error) {
+      debugPrint('Error loading current pins: $error');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -64,6 +67,9 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     }
   }
 
+  // ─── Password Change Logic ───
+
+  /// Validates inputs and updates the matched PIN (real or decoy) in Supabase and local storage.
   Future<void> _changePassword() async {
     // Validation
     if (_currentPasswordController.text.isEmpty) {
@@ -113,8 +119,8 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
             .from('user_security')
             .update({'real_pin': newPassword}).eq('id', userId);
 
-        final box = Hive.box('securityBox');
-        await box.put('realPin', newPassword);
+        final securityBox = Hive.box('securityBox');
+        await securityBox.put('realPin', newPassword);
         _currentRealPin = newPassword;
 
         _showSuccessSnackBar('Real password changed successfully');
@@ -124,8 +130,8 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
             .from('user_security')
             .update({'decoy_pin': newPassword}).eq('id', userId);
 
-        final box = Hive.box('securityBox');
-        await box.put('decoyPin', newPassword);
+        final securityBox = Hive.box('securityBox');
+        await securityBox.put('decoyPin', newPassword);
         _currentDecoyPin = newPassword;
 
         _showSuccessSnackBar('Decoy password changed successfully');
@@ -135,14 +141,17 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       _currentPasswordController.clear();
       _newPasswordController.clear();
       _confirmPasswordController.clear();
-    } catch (e) {
-      debugPrint('Error changing password: $e');
-      _showErrorSnackBar('Failed to change password: $e');
+    } catch (error) {
+      debugPrint('Error changing password: $error');
+      _showErrorSnackBar('Failed to change password: $error');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
+  // ─── Snackbar Helpers ───
+
+  /// Displays an error snackbar with the given [message].
   void _showErrorSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -153,6 +162,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     );
   }
 
+  /// Displays a success snackbar with the given [message].
   void _showSuccessSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -162,6 +172,8 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       ),
     );
   }
+
+  // ─── Build ───
 
   @override
   Widget build(BuildContext context) {

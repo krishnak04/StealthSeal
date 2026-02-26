@@ -11,10 +11,11 @@ class IntruderLogsScreen extends StatefulWidget {
 }
 
 class _IntruderLogsScreenState extends State<IntruderLogsScreen> {
+  // ─── Build ───
   @override
   Widget build(BuildContext context) {
-    final box = Hive.box('securityBox');
-    final List logs = box.get('intruderLogs', defaultValue: []);
+    final securityBox = Hive.box('securityBox');
+    final List logs = securityBox.get('intruderLogs', defaultValue: []);
 
     return Scaffold(
       appBar: AppBar(
@@ -159,6 +160,8 @@ class _IntruderLogsScreenState extends State<IntruderLogsScreen> {
     );
   }
 
+  // ─── Full Image Dialog ───
+  /// Displays the full intruder image in a dialog with details.
   void _showFullImage(
     BuildContext context,
     String? imagePath,
@@ -200,6 +203,8 @@ class _IntruderLogsScreenState extends State<IntruderLogsScreen> {
     );
   }
 
+  // ─── Delete Confirmation ───
+  /// Shows a confirmation dialog before deleting an intruder record.
   void _confirmDelete(
     BuildContext context,
     dynamic log,
@@ -253,7 +258,7 @@ class _IntruderLogsScreenState extends State<IntruderLogsScreen> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // 📸 Show the intruder image in real-time (reduced height)
+                      // Intruder image preview
                       if (imageExists)
                         Container(
                           margin: const EdgeInsets.only(bottom: 16),
@@ -303,7 +308,7 @@ class _IntruderLogsScreenState extends State<IntruderLogsScreen> {
                           ),
                         ),
                       
-                      // 📋 Intruder Details
+                      // Intruder Details
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
@@ -381,8 +386,8 @@ class _IntruderLogsScreenState extends State<IntruderLogsScreen> {
                     ),
                     ElevatedButton(
                       onPressed: () async {
-                        final box = Hive.box('securityBox');
-                        final List logs = box.get('intruderLogs', defaultValue: []);
+                        final securityBox = Hive.box('securityBox');
+                        final List logs = securityBox.get('intruderLogs', defaultValue: []);
 
                         if (log['imagePath'] != null) {
                           final file = File(log['imagePath']);
@@ -392,7 +397,7 @@ class _IntruderLogsScreenState extends State<IntruderLogsScreen> {
                         }
 
                         logs.remove(log);
-                        await box.put('intruderLogs', logs);
+                        await securityBox.put('intruderLogs', logs);
 
                         if (mounted) {
                           Navigator.pop(context);

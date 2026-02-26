@@ -4,7 +4,7 @@ import 'package:device_preview/device_preview.dart';
 import 'package:stealthseal/core/security/time_lock_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-// Core imports
+// Core
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_service.dart';
 import 'core/routes/app_routes.dart';
@@ -24,21 +24,17 @@ import 'screens/debug/debug_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 🔹 Initialize Hive
+  // Initialize local storage boxes
   await Hive.initFlutter();
+  await Hive.openBox('securityBox'); // Intruder logs, locked apps, panic state
+  await Hive.openBox('security');    // Night lock, biometric flags
+  await Hive.openBox('userBox');     // User identification
 
-  // 🔹 OPEN boxes (this was the main bug)
-  await Hive.openBox('securityBox'); // intruder logs
-  await Hive.openBox('security');    // night lock, biometric, flags
-  await Hive.openBox('userBox');     // user identification
-
-  // 🔹 Initialize User Identifier Service
+  // Initialize services
   await UserIdentifierService.initialize();
+  AppLockService().initialize(); // Listens for native app-lock events
 
-  // 🔹 Initialize App Lock Service (global, listens for native events)
-  AppLockService().initialize();
-
-  // 🔹 Initialize Supabase
+  // Connect to Supabase backend
   await Supabase.initialize(
     url: 'https://aixxkzjrxqwnriygxaev.supabase.co',
     anonKey:
@@ -47,12 +43,13 @@ void main() async {
 
   runApp(
     DevicePreview(
-      enabled: false, // DISABLED FOR DEBUGGING - set true for release
+      enabled: false, // Set true to enable DevicePreview for testing
       builder: (_) => const StealthSealApp(),
     ),
   );
 }
 
+/// Root widget — manages theme switching and route registration.
 class StealthSealApp extends StatefulWidget {
   const StealthSealApp({super.key});
 
@@ -64,9 +61,11 @@ class _StealthSealAppState extends State<StealthSealApp> {
   @override
   void initState() {
     super.initState();
-    // Initialize theme notifier with current value
+
+    // Sync the theme notifier with the persisted preference
     ThemeService.themeNotifier.value = ThemeService.getThemeMode();
-    // Listen to theme changes and rebuild
+
+    // Rebuild the app whenever the user switches themes
     ThemeService.themeNotifier.addListener(() {
       setState(() {});
     });
@@ -74,19 +73,22 @@ class _StealthSealAppState extends State<StealthSealApp> {
 
   @override
   Widget build(BuildContext context) {
-    final themeMode = ThemeService.themeNotifier.value;
-    
+    final currentTheme = ThemeService.themeNotifier.value;
+
+    // Map our custom enum to Flutter's built-in ThemeMode
+    final flutterThemeMode = switch (currentTheme) {
+      AppThemeMode.dark => ThemeMode.dark,
+      AppThemeMode.light => ThemeMode.light,
+      AppThemeMode.system => ThemeMode.system,
+    };
+
     return MaterialApp(
-      navigatorKey: AppLockService.navigatorKey, // Set navigator key for global navigation
+      navigatorKey: AppLockService.navigatorKey, // Global nav for app-lock overlay
       useInheritedMediaQuery: true,
       locale: DevicePreview.locale(context),
       builder: DevicePreview.appBuilder,
       debugShowCheckedModeBanner: false,
-      themeMode: themeMode == AppThemeMode.dark 
-          ? ThemeMode.dark 
-          : themeMode == AppThemeMode.light 
-              ? ThemeMode.light 
-              : ThemeMode.system,
+      themeMode: flutterThemeMode,
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       initialRoute: AppRoutes.splash,
