@@ -23,14 +23,6 @@ class _SplashScreenState extends State<SplashScreen> {
     _checkUserStatus();
   }
 
-  // ---------------------------------------------------------------------------
-  // Accessibility Service
-  // ---------------------------------------------------------------------------
-
-  /// Requests accessibility service permission on app startup.
-  ///
-  /// Prompts the user at most once. If the service is already enabled or the
-  /// user was previously prompted, the dialog is skipped.
   Future<void> _requestAccessibilityService() async {
     try {
       const platform = MethodChannel('com.stealthseal.app/applock');
@@ -43,7 +35,6 @@ class _SplashScreenState extends State<SplashScreen> {
         return;
       }
 
-      // Only prompt the user once; skip if previously shown
       final securityBox = Hive.box('securityBox');
       final alreadyPrompted =
           securityBox.get('accessibility_prompt_shown', defaultValue: false) as bool;
@@ -101,11 +92,6 @@ class _SplashScreenState extends State<SplashScreen> {
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // Navigation
-  // ---------------------------------------------------------------------------
-
-  /// Navigates to [routeName], replacing the current screen on the stack.
   Future<void> _navigateToScreen(String routeName) async {
     debugPrint('Navigating to: $routeName');
     if (mounted) {
@@ -113,53 +99,70 @@ class _SplashScreenState extends State<SplashScreen> {
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // User Status Check
-  // ---------------------------------------------------------------------------
-
-  /// Queries Supabase to determine if the current user is registered.
-  ///
-  /// Registered users are sent to the lock screen; new users are sent to
-  /// the PIN setup screen. Falls back to setup on any error.
   Future<void> _checkUserStatus() async {
     try {
       debugPrint('Starting user status check...');
       setState(() => _status = 'Checking registration...');
 
-      // Allow the splash animation to display briefly
       await Future.delayed(const Duration(seconds: 2));
 
       final userId = await UserIdentifierService.getUserId();
       debugPrint('User ID: $userId');
 
-      final supabase = Supabase.instance.client;
-      debugPrint('Connected to Supabase');
+      // Check local Hive cache first for offline resilience
+      final securityBox = Hive.box('securityBox');
+      final isPinSetupDone = securityBox.get('isPinSetupDone', defaultValue: false) as bool;
+      final localRealPin = securityBox.get('realPin', defaultValue: '') as String;
+      final localDecoyPin = securityBox.get('decoyPin', defaultValue: '') as String;
+      final hasLocalPins = localRealPin.isNotEmpty && localDecoyPin.isNotEmpty;
 
-      setState(() => _status = 'Querying database...');
-      debugPrint('Checking if user is registered...');
+      debugPrint('Local check: isPinSetupDone=$isPinSetupDone, hasLocalPins=$hasLocalPins');
 
-      // Query by specific user ID
-      final existingUser = await supabase
-          .from('user_security')
-          .select()
-          .eq('id', userId)
-          .maybeSingle();
+      // Try Supabase but don't block on failure
+      try {
+        final supabase = Supabase.instance.client;
+        debugPrint('Connected to Supabase');
 
-      debugPrint('Database response: $existingUser');
+        setState(() => _status = 'Querying database...');
+        debugPrint('Checking if user is registered...');
 
-      if (!mounted) {
-        debugPrint('Widget unmounted, skipping navigation');
+        final existingUser = await supabase
+            .from('user_security')
+            .select()
+            .eq('id', userId)
+            .maybeSingle()
+            .timeout(const Duration(seconds: 8));
+
+        debugPrint('Database response: $existingUser');
+
+        if (!mounted) return;
+
+        if (existingUser != null) {
+          debugPrint('User registered - Navigating to Lock Screen');
+          setState(() => _status = 'Redirecting to login...');
+          await Future.delayed(const Duration(milliseconds: 500));
+          await _navigateToScreen(AppRoutes.lock);
+        } else {
+          debugPrint('New user - Navigating to Setup Screen');
+          setState(() => _status = 'Starting registration...');
+          await Future.delayed(const Duration(milliseconds: 500));
+          await _navigateToScreen(AppRoutes.setup);
+        }
         return;
+      } catch (supabaseError) {
+        debugPrint('Supabase unreachable: $supabaseError');
       }
 
-      // If user has PINs saved, go to lock screen; otherwise go to setup
-      if (existingUser != null) {
-        debugPrint('User registered - Navigating to Lock Screen');
-        setState(() => _status = 'Redirecting to login...');
+      // Supabase failed — use local Hive data as fallback
+      if (!mounted) return;
+
+      if (isPinSetupDone && hasLocalPins) {
+        debugPrint('Using cached PINs — Navigating to Lock Screen (offline mode)');
+        setState(() => _status = 'Offline mode — using cached data...');
         await Future.delayed(const Duration(milliseconds: 500));
         await _navigateToScreen(AppRoutes.lock);
       } else {
-        debugPrint('New user - Navigating to Setup Screen');
+        debugPrint('No cached PINs — Navigating to Setup Screen');
         setState(() => _status = 'Starting registration...');
         await Future.delayed(const Duration(milliseconds: 500));
         await _navigateToScreen(AppRoutes.setup);
@@ -168,10 +171,23 @@ class _SplashScreenState extends State<SplashScreen> {
       debugPrint('Error checking user status: $error');
       debugPrint('Stack trace: ${StackTrace.current}');
 
-      setState(() => _status = 'Error: $error\n\nDefaulting to setup...');
+      // Last resort: check Hive even if everything else failed
+      try {
+        final securityBox = Hive.box('securityBox');
+        final isPinSetupDone = securityBox.get('isPinSetupDone', defaultValue: false) as bool;
+        final localRealPin = securityBox.get('realPin', defaultValue: '') as String;
 
-      // On error, wait 3 seconds then default to setup screen
-      await Future.delayed(const Duration(seconds: 3));
+        if (isPinSetupDone && localRealPin.isNotEmpty && mounted) {
+          debugPrint('Fallback: cached PINs found — going to Lock Screen');
+          setState(() => _status = 'Offline mode...');
+          await Future.delayed(const Duration(milliseconds: 500));
+          await _navigateToScreen(AppRoutes.lock);
+          return;
+        }
+      } catch (_) {}
+
+      setState(() => _status = 'Connection error. Starting setup...');
+      await Future.delayed(const Duration(seconds: 2));
       if (mounted) {
         debugPrint('Defaulting to Setup Screen due to error');
         await _navigateToScreen(AppRoutes.setup);

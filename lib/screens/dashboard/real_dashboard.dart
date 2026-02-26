@@ -16,8 +16,6 @@ class RealDashboard extends StatefulWidget {
 }
 
 class _RealDashboardState extends State<RealDashboard> {
-  /// Tracks whether the Android accessibility service is currently enabled.
-  bool _accessibilityEnabled = true;
 
   @override
   void initState() {
@@ -26,17 +24,12 @@ class _RealDashboardState extends State<RealDashboard> {
     _checkAccessibilityService();
   }
 
-  // ─── Accessibility & App Lock Setup ────────────────────────────────
-
-  /// Verifies accessibility service status and warns the user if disabled.
   Future<void> _checkAccessibilityService() async {
     final appLockService = AppLockService();
     final isServiceEnabled = await appLockService.isAccessibilityServiceEnabled();
 
     if (mounted) {
-      setState(() {
-        _accessibilityEnabled = isServiceEnabled;
-      });
+      setState(() {});
     }
 
     if (!isServiceEnabled && mounted) {
@@ -54,8 +47,6 @@ class _RealDashboardState extends State<RealDashboard> {
     }
   }
 
-  /// Registers a callback so the app lock service can trigger the PIN
-  /// screen when a locked app is opened.
   void _setupAppLockCallback() {
     final appLockService = AppLockService();
 
@@ -66,10 +57,6 @@ class _RealDashboardState extends State<RealDashboard> {
     });
   }
 
-  /// Navigates to the PIN verification screen for a locked app.
-  ///
-  /// Resolves a human-readable app name from Hive's cached name map,
-  /// falling back to the last segment of the package name.
   void _showAppLockPinScreen(String packageName) {
     if (!Hive.isBoxOpen('securityBox')) return;
 
@@ -91,11 +78,6 @@ class _RealDashboardState extends State<RealDashboard> {
     );
   }
 
-  // ─── Panic Lock ─────────────────────────────────────────────────────
-
-  /// Shows a confirmation dialog before activating panic mode.
-  ///
-  /// On confirmation, enables panic lock and redirects to the lock screen.
   void _showPanicDialog(BuildContext context) {
     showDialog(
       context: context,
@@ -148,9 +130,6 @@ class _RealDashboardState extends State<RealDashboard> {
     );
   }
 
-  // ─── Data Helpers ───────────────────────────────────────────────────
-
-  /// Returns the number of intruder selfie logs stored in Hive.
   int getIntruderCount() {
     if (!Hive.isBoxOpen('securityBox')) return 0;
     final securityBox = Hive.box('securityBox');
@@ -158,15 +137,12 @@ class _RealDashboardState extends State<RealDashboard> {
     return intruderLogs.length;
   }
 
-  /// Returns the number of apps currently locked by the user.
   int getLockedAppsCount() {
     if (!Hive.isBoxOpen('securityBox')) return 0;
     final securityBox = Hive.box('securityBox');
     final List lockedAppsList = securityBox.get('lockedApps', defaultValue: []);
     return lockedAppsList.length;
   }
-
-  // ─── Build ─────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -191,18 +167,18 @@ class _RealDashboardState extends State<RealDashboard> {
           ),
         ),
         actions: [
-          // Refresh dashboard counts
+
           IconButton(
             icon: Icon(Icons.refresh, color: textPrimary),
             onPressed: () => setState(() {}),
           ),
-          // Navigate to settings
+
           IconButton(
             icon: Icon(Icons.settings, color: textPrimary),
             onPressed: () =>
                 Navigator.pushNamed(context, AppRoutes.settings),
           ),
-          // Manual lock
+
           IconButton(
             icon: Icon(Icons.lock, color: textPrimary),
             onPressed: () =>
@@ -215,7 +191,7 @@ class _RealDashboardState extends State<RealDashboard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Security Status Card ──
+
             _buildSecurityStatusCard(
               context,
               lockedAppsCount: totalLockedApps,
@@ -224,12 +200,10 @@ class _RealDashboardState extends State<RealDashboard> {
 
             const SizedBox(height: 24),
 
-            // ── Quick Actions Card ──
             _buildQuickActionsCard(context, totalIntruders),
 
             const SizedBox(height: 24),
 
-            // ── Emergency Panic Card ──
             _buildEmergencyCard(context),
           ],
         ),
@@ -237,9 +211,6 @@ class _RealDashboardState extends State<RealDashboard> {
     );
   }
 
-  // ─── Section Builders ──────────────────────────────────────────────
-
-  /// Security overview showing locked-app and intruder counts.
   Widget _buildSecurityStatusCard(
     BuildContext context, {
     required int lockedAppsCount,
@@ -254,13 +225,13 @@ class _RealDashboardState extends State<RealDashboard> {
         color: ThemeConfig.surfaceColor(context),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: accent.withOpacity(0.3),
+          color: accent.withValues(alpha: 0.3),
           width: 1,
         ),
       ),
       child: Column(
         children: [
-          // Header row
+
           Row(
             children: [
               Icon(Icons.shield, color: accent, size: 20),
@@ -276,11 +247,11 @@ class _RealDashboardState extends State<RealDashboard> {
             ],
           ),
           const SizedBox(height: 20),
-          // Stats row
+
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              // Locked apps stat
+
               Column(
                 children: [
                   Text(
@@ -300,7 +271,7 @@ class _RealDashboardState extends State<RealDashboard> {
                   ),
                 ],
               ),
-              // Intruders stat
+
               Column(
                 children: [
                   Text(
@@ -327,7 +298,6 @@ class _RealDashboardState extends State<RealDashboard> {
     );
   }
 
-  /// Quick action shortcuts: Manage locks, view intruder logs, settings.
   Widget _buildQuickActionsCard(BuildContext context, int intruderCount) {
     final hasBadge = intruderCount > 0 ? intruderCount.toString() : null;
 
@@ -390,11 +360,6 @@ class _RealDashboardState extends State<RealDashboard> {
     );
   }
 
-  // ─── Reusable Widgets ──────────────────────────────────────────────
-
-  /// A tappable row with an icon, label, and optional notification badge.
-  ///
-  /// When [badge] is provided, a red pill is shown instead of the arrow.
   Widget _buildActionButton({
     required IconData icon,
     required String label,
@@ -427,7 +392,7 @@ class _RealDashboardState extends State<RealDashboard> {
               ),
             ),
             const Spacer(),
-            // Show count badge or a simple chevron
+
             if (badge != null)
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -456,7 +421,6 @@ class _RealDashboardState extends State<RealDashboard> {
     );
   }
 
-  /// Full-width emergency card with a destructive "Panic Lock" button.
   Widget _buildEmergencyCard(BuildContext context) {
     final dangerColor = ThemeConfig.errorColor(context);
 
@@ -483,7 +447,6 @@ class _RealDashboardState extends State<RealDashboard> {
           ),
           const SizedBox(height: 16),
 
-          // Panic button
           SizedBox(
             width: double.infinity,
             height: 48,
@@ -512,7 +475,6 @@ class _RealDashboardState extends State<RealDashboard> {
           ),
           const SizedBox(height: 8),
 
-          // Explanation text
           Center(
             child: Text(
               'Instantly locks all apps and displays security overlay',

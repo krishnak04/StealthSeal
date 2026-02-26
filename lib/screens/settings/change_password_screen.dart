@@ -31,9 +31,6 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     _loadCurrentPins();
   }
 
-  // ─── PIN Loading ───
-
-  /// Loads current real and decoy PINs from local storage, falling back to Supabase.
   Future<void> _loadCurrentPins() async {
     try {
       final securityBox = Hive.box('securityBox');
@@ -41,7 +38,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       _currentDecoyPin = securityBox.get('decoyPin', defaultValue: '');
 
       if (_currentRealPin.isEmpty || _currentDecoyPin.isEmpty) {
-        // Try loading from Supabase
+
         final userId = await UserIdentifierService.getUserId();
         final response = await Supabase.instance.client
             .from('user_security')
@@ -67,11 +64,8 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     }
   }
 
-  // ─── Password Change Logic ───
-
-  /// Validates inputs and updates the matched PIN (real or decoy) in Supabase and local storage.
   Future<void> _changePassword() async {
-    // Validation
+
     if (_currentPasswordController.text.isEmpty) {
       _showErrorSnackBar('Please enter your current password');
       return;
@@ -97,7 +91,6 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       return;
     }
 
-    // Check if current password matches real or decoy pin
     if (_currentPasswordController.text != _currentRealPin &&
         _currentPasswordController.text != _currentDecoyPin) {
       _showErrorSnackBar('Current password is incorrect');
@@ -110,11 +103,10 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       final userId = await UserIdentifierService.getUserId();
       final newPassword = _newPasswordController.text;
 
-      // Determine which PIN to update (real or decoy)
       bool isUpdatingRealPin = _currentPasswordController.text == _currentRealPin;
 
       if (isUpdatingRealPin) {
-        // Update real PIN
+
         await Supabase.instance.client
             .from('user_security')
             .update({'real_pin': newPassword}).eq('id', userId);
@@ -125,7 +117,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
 
         _showSuccessSnackBar('Real password changed successfully');
       } else {
-        // Update decoy PIN
+
         await Supabase.instance.client
             .from('user_security')
             .update({'decoy_pin': newPassword}).eq('id', userId);
@@ -137,7 +129,6 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
         _showSuccessSnackBar('Decoy password changed successfully');
       }
 
-      // Clear fields
       _currentPasswordController.clear();
       _newPasswordController.clear();
       _confirmPasswordController.clear();
@@ -149,9 +140,6 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     }
   }
 
-  // ─── Snackbar Helpers ───
-
-  /// Displays an error snackbar with the given [message].
   void _showErrorSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -162,7 +150,6 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     );
   }
 
-  /// Displays a success snackbar with the given [message].
   void _showSuccessSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -172,8 +159,6 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       ),
     );
   }
-
-  // ─── Build ───
 
   @override
   Widget build(BuildContext context) {
@@ -196,7 +181,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: ThemeConfig.infoColor(context).withOpacity(0.1),
+                color: ThemeConfig.infoColor(context).withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
                   color: ThemeConfig.infoColor(context),

@@ -14,8 +14,6 @@ class _AboutHelpScreenState extends State<AboutHelpScreen> {
     super.initState();
   }
 
-  // ─── Build ───
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -41,26 +39,26 @@ class _AboutHelpScreenState extends State<AboutHelpScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
         child: Column(
           children: [
-            // ─── App Logo and Title Section ───
+
             Container(
               decoration: BoxDecoration(
                 color: ThemeConfig.surfaceColor(context),
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: ThemeConfig.accentColor(context).withOpacity(0.3),
+                  color: ThemeConfig.accentColor(context).withValues(alpha: 0.3),
                   width: 1,
                 ),
               ),
                 padding: const EdgeInsets.all(32),
                 child: Column(
                   children: [
-                    // Shield Logo
+
                     Container(
                       width: 80,
                       height: 80,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: ThemeConfig.accentColor(context).withOpacity(0.1),
+                        color: ThemeConfig.accentColor(context).withValues(alpha: 0.1),
                       ),
                       child: Icon(
                         Icons.shield,
@@ -99,7 +97,6 @@ class _AboutHelpScreenState extends State<AboutHelpScreen> {
               ),
             const SizedBox(height: 24),
 
-            // ─── About This App ───
             Container(
               decoration: BoxDecoration(
                 color: ThemeConfig.surfaceColor(context),
@@ -144,7 +141,6 @@ class _AboutHelpScreenState extends State<AboutHelpScreen> {
             ),
             const SizedBox(height: 24),
 
-            // ─── Development Team ───
             Container(
               decoration: BoxDecoration(
                 color: ThemeConfig.surfaceColor(context),
@@ -179,7 +175,6 @@ class _AboutHelpScreenState extends State<AboutHelpScreen> {
             ),
             const SizedBox(height: 24),
 
-            // ─── Key Features ───
             Container(
               decoration: BoxDecoration(
                 color: ThemeConfig.surfaceColor(context),
@@ -218,13 +213,12 @@ class _AboutHelpScreenState extends State<AboutHelpScreen> {
             ),
             const SizedBox(height: 24),
 
-            // ─── Support Info ───
             Container(
               decoration: BoxDecoration(
                 color: ThemeConfig.infoBackground(context),
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: ThemeConfig.infoColor(context).withOpacity(0.3),
+                  color: ThemeConfig.infoColor(context).withValues(alpha: 0.3),
                   width: 1,
                 ),
               ),
@@ -258,9 +252,6 @@ class _AboutHelpScreenState extends State<AboutHelpScreen> {
     );
   }
 
-  // ─── Helper Widgets ───
-
-  /// Builds a labeled team information row with [label] and [value].
   Widget _buildTeamRow(String label, String value, BuildContext context) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -284,7 +275,6 @@ class _AboutHelpScreenState extends State<AboutHelpScreen> {
     );
   }
 
-  /// Builds a feature list item with a check icon and description.
   Widget _buildFeatureItem(String feature, BuildContext context) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,

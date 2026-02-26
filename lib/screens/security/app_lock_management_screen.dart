@@ -23,7 +23,6 @@ class _AppLockManagementScreenState extends State<AppLockManagementScreen> {
   bool _showLockedTab = false;
   bool _isLoading = true;
 
-  // System-critical apps that should never be lockable
   static const _systemExcludedPackages = {
     'com.example.stealthseal',
     'com.android.systemui',
@@ -56,9 +55,6 @@ class _AppLockManagementScreenState extends State<AppLockManagementScreen> {
     _loadInstalledApps();
   }
 
-  // ─── App Loading ───
-
-  /// Loads installed apps from native Android code via platform channel.
   Future<void> _loadInstalledApps() async {
     try {
       debugPrint('Requesting installed apps from native code...');
@@ -81,7 +77,6 @@ class _AppLockManagementScreenState extends State<AppLockManagementScreen> {
 
       debugPrint('Loaded ${_installedApps.length} apps into UI');
 
-      // Update appNamesMap in Hive for the Dashboard to use
       final securityBox = Hive.box('securityBox');
       Map<String, String> appNamesMap = {};
       for (var app in _installedApps) {
@@ -97,14 +92,11 @@ class _AppLockManagementScreenState extends State<AppLockManagementScreen> {
     }
   }
 
-  // ─── Locked Apps ───
-
-  /// Loads locked apps list from Hive storage.
   void _loadLockedApps() {
     final securityBox = Hive.box('securityBox');
     _lockedApps =
         List<String>.from(securityBox.get('lockedApps', defaultValue: []) as List);
-    // Remove any system-critical apps that may have been locked previously
+
     final before = _lockedApps.length;
     _lockedApps.removeWhere((pkg) => _systemExcludedPackages.contains(pkg));
     if (_lockedApps.length != before) {
@@ -114,16 +106,11 @@ class _AppLockManagementScreenState extends State<AppLockManagementScreen> {
     }
   }
 
-  // ─── Lock Toggle ───
-
-  /// Toggles app lock state with accessibility service verification.
   Future<void> _toggleAppLock(String packageName) async {
     final securityBox = Hive.box('securityBox');
 
-    // Check if this is a NEW lock (app is being locked, not unlocked)
     final isLocking = !_lockedApps.contains(packageName);
 
-    // If trying to LOCK an app, check accessibility first
     if (isLocking) {
       try {
         final isEnabled =
@@ -131,8 +118,7 @@ class _AppLockManagementScreenState extends State<AppLockManagementScreen> {
 
         if (isEnabled != true) {
           debugPrint('Accessibility service not enabled - blocking lock');
-          
-          // Show popup that accessibility is required
+
           if (mounted) {
             showDialog(
               context: context,
@@ -153,7 +139,7 @@ class _AppLockManagementScreenState extends State<AppLockManagementScreen> {
                     TextButton(
                       onPressed: () {
                         Navigator.pop(dialogContext);
-                        // Open accessibility settings with error handling
+
                         try {
                           platform.invokeMethod('openAccessibilitySettings');
                         } catch (error) {
@@ -175,13 +161,12 @@ class _AppLockManagementScreenState extends State<AppLockManagementScreen> {
               },
             );
           }
-          
-          // DO NOT proceed with locking
+
           return;
         }
       } catch (error) {
         debugPrint('Error checking accessibility: $error');
-        // On error, show warning and don't lock
+
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -194,7 +179,6 @@ class _AppLockManagementScreenState extends State<AppLockManagementScreen> {
       }
     }
 
-    // Accessibility is enabled (or this is an UNLOCK), proceed with lock toggle
     setState(() {
       if (_lockedApps.contains(packageName)) {
         _lockedApps.remove(packageName);
@@ -205,13 +189,11 @@ class _AppLockManagementScreenState extends State<AppLockManagementScreen> {
 
     await securityBox.put('lockedApps', _lockedApps);
 
-    // Show accessibility popup if locking (after successful check)
     if (isLocking && mounted) {
       debugPrint('User locked app: $packageName - Requesting accessibility service');
       await AccessibilityServiceHelper.requestAccessibilityServiceWhenLocking(context);
     }
 
-    //  Sync with Android native SharedPreferences
     try {
       final lockedAppsStr = _lockedApps.join(',');
       await platform.invokeMethod('setLockedApps', {'apps': lockedAppsStr});
@@ -220,15 +202,11 @@ class _AppLockManagementScreenState extends State<AppLockManagementScreen> {
     }
   }
 
-  // ─── Computed Properties ───
-
   List<Map<String, dynamic>> get _unlockApps =>
       _installedApps.where((a) => !_lockedApps.contains(a["package"])).toList();
 
   List<Map<String, dynamic>> get _lockedAppsList =>
       _installedApps.where((a) => _lockedApps.contains(a["package"])).toList();
-
-  // ─── Build ───
 
   @override
   Widget build(BuildContext context) {
@@ -270,7 +248,6 @@ class _AppLockManagementScreenState extends State<AppLockManagementScreen> {
                   children: [
                     const SizedBox(height: 10),
 
-                    /// Tabs
                     Row(
                       children: [
                         _buildTab(
@@ -287,7 +264,6 @@ class _AppLockManagementScreenState extends State<AppLockManagementScreen> {
 
                     const SizedBox(height: 10),
 
-                    /// App List
                     Expanded(
                       child: ListView.builder(
                         itemCount: _showLockedTab
@@ -328,9 +304,6 @@ class _AppLockManagementScreenState extends State<AppLockManagementScreen> {
     );
   }
 
-  // ─── UI Components ───
-
-  /// Builds a tab button for switching between locked and unlocked views.
   Widget _buildTab(String title, bool isActive, VoidCallback onTap) {
     final accentColor = ThemeConfig.accentColor(context);
     return Expanded(
@@ -360,7 +333,6 @@ class _AppLockManagementScreenState extends State<AppLockManagementScreen> {
     );
   }
 
-  /// Decodes a Base64-encoded app icon into an Image widget.
   Widget _buildIcon(String base64Icon) {
     try {
       Uint8List bytes = base64Decode(base64Icon);
@@ -371,7 +343,7 @@ class _AppLockManagementScreenState extends State<AppLockManagementScreen> {
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
+              color: Colors.black.withValues(alpha: 0.1),
               blurRadius: 4,
               offset: const Offset(0, 2),
             ),

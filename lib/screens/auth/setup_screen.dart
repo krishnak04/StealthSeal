@@ -25,14 +25,6 @@ class _SetupScreenState extends State<SetupScreen> {
 
   bool _isSaving = false;
 
-  // ---------------------------------------------------------------------------
-  // PIN Input Handlers
-  // ---------------------------------------------------------------------------
-
-  /// Handles a digit key press during PIN entry.
-  ///
-  /// Appends [value] to the current PIN step, advances to the next step
-  /// when 4 digits are entered, and validates confirmation matches.
   void _onKeyPress(String value) {
     if (_isSaving) return;
 
@@ -87,7 +79,6 @@ class _SetupScreenState extends State<SetupScreen> {
     });
   }
 
-  /// Deletes the last entered digit from the current PIN step.
   void _onDelete() {
     if (_isSaving) return;
 
@@ -126,14 +117,6 @@ class _SetupScreenState extends State<SetupScreen> {
     });
   }
 
-  // ---------------------------------------------------------------------------
-  // Storage
-  // ---------------------------------------------------------------------------
-
-  /// Persists the real and decoy PINs to Supabase and local storage.
-  ///
-  /// On success, caches PINs to native SharedPreferences for the native
-  /// AppLockActivity and marks setup as complete in Hive.
   Future<void> _finishSetup() async {
     setState(() {
       _isSaving = true;
@@ -143,18 +126,14 @@ class _SetupScreenState extends State<SetupScreen> {
       final userId = await UserIdentifierService.getUserId();
       debugPrint('Saving PINs for user: $userId');
 
-      final supabase = Supabase.instance.client;
+      // Step 1: Save to Hive FIRST (guaranteed local storage)
+      final securityBox = Hive.box('securityBox');
+      securityBox.put('realPin', realPin);
+      securityBox.put('decoyPin', decoyPin);
+      securityBox.put('isPinSetupDone', true);
+      debugPrint('PINs saved locally to Hive');
 
-      await supabase.from('user_security').insert({
-        'id': userId,
-        'real_pin': realPin,
-        'decoy_pin': decoyPin,
-        'biometric_enabled': false,
-      });
-
-      debugPrint('PINs saved successfully for user: $userId');
-
-      // Cache PINs to native SharedPreferences for AppLockActivity
+      // Step 2: Cache to native SharedPreferences (for app lock)
       try {
         const platform = MethodChannel('com.stealthseal.app/applock');
         await platform.invokeMethod('cachePins', {
@@ -166,12 +145,23 @@ class _SetupScreenState extends State<SetupScreen> {
         debugPrint('Warning: Failed to cache PINs: $error');
       }
 
-      final securityBox = Hive.box('securityBox');
-      securityBox.put('isPinSetupDone', true);
+      // Step 3: Sync to Supabase (best-effort, non-blocking on failure)
+      try {
+        final supabase = Supabase.instance.client;
+        await supabase.from('user_security').upsert({
+          'id': userId,
+          'real_pin': realPin,
+          'decoy_pin': decoyPin,
+          'biometric_enabled': false,
+        }).timeout(const Duration(seconds: 8));
+        debugPrint('PINs synced to Supabase successfully');
+      } catch (supabaseError) {
+        debugPrint('Warning: Supabase sync failed (will retry later): $supabaseError');
+        // PINs are safely stored in Hive, so we continue
+      }
 
       if (!mounted) return;
 
-      // Show success message dialog
       _showSuccessDialog();
     } catch (error) {
       debugPrint('Error saving PINs: $error');
@@ -184,12 +174,6 @@ class _SetupScreenState extends State<SetupScreen> {
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // UI Feedback
-  // ---------------------------------------------------------------------------
-
-  /// Displays a success dialog after PINs are saved, then navigates to
-  /// the biometric setup screen.
   void _showSuccessDialog() {
     showDialog(
       context: context,
@@ -231,7 +215,7 @@ class _SetupScreenState extends State<SetupScreen> {
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: () {
-                  Navigator.pop(ctx); // Close dialog
+                  Navigator.pop(ctx);
                   if (mounted) {
                     Navigator.pushReplacementNamed(
                       context,
@@ -262,7 +246,6 @@ class _SetupScreenState extends State<SetupScreen> {
     );
   }
 
-  /// Shows a red [SnackBar] with the given error [message].
   void _showError(String message) {
     ScaffoldMessenger.of(
       context,
@@ -271,10 +254,6 @@ class _SetupScreenState extends State<SetupScreen> {
       backgroundColor: Colors.redAccent,
     ));
   }
-
-  // ---------------------------------------------------------------------------
-  // Computed Properties
-  // ---------------------------------------------------------------------------
 
   String get title {
     switch (step) {
@@ -338,7 +317,6 @@ class _SetupScreenState extends State<SetupScreen> {
             Text(subtitle, style: const TextStyle(color: Colors.white70)),
             const SizedBox(height: 30),
 
-            // PIN DOTS
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: List.generate(
@@ -359,7 +337,6 @@ class _SetupScreenState extends State<SetupScreen> {
 
             const SizedBox(height: 30),
 
-            // If saving, show spinner, otherwise show keypad
             _isSaving
                 ? const CircularProgressIndicator(color: Colors.cyan)
                 : PinKeypad(onKeyPressed: _onKeyPress, onDelete: _onDelete),

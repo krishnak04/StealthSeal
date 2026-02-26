@@ -19,19 +19,15 @@ class _DebugScreenState extends State<DebugScreen> {
     _securityBox = Hive.box('securityBox');
   }
 
-  // ─── Debug Actions ───
-
-  /// Tests the accessibility service status and shows the result in a snackbar.
   Future<void> _testLock() async {
     final service = AppLockService();
     final isEnabled = await service.isAccessibilityServiceEnabled();
-    
+
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Accessibility Service: $isEnabled')),
     );
   }
-
-  // ─── Build ───
 
   @override
   Widget build(BuildContext context) {
@@ -46,7 +42,7 @@ class _DebugScreenState extends State<DebugScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          /// Accessibility Service Status
+
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
@@ -75,7 +71,6 @@ class _DebugScreenState extends State<DebugScreen> {
           ),
           const SizedBox(height: 16),
 
-          /// Locked Apps List
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
@@ -115,7 +110,6 @@ class _DebugScreenState extends State<DebugScreen> {
           ),
           const SizedBox(height: 16),
 
-          /// App Names Map
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(

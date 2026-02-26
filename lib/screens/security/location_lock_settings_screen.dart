@@ -28,9 +28,6 @@ class _LocationLockSettingsScreenState
     _loadSettings();
   }
 
-  // ─── Settings Loading ───
-
-  /// Loads location-lock settings (enabled flag, coordinates, radius) from Hive.
   void _loadSettings() {
     _locationLockEnabled =
         _securityBox.get('locationLockEnabled', defaultValue: false);
@@ -41,9 +38,6 @@ class _LocationLockSettingsScreenState
         TextEditingController(text: _trustedRadius.toStringAsFixed(0));
   }
 
-  // ─── Location Logic ───
-
-  /// Toggles the location-lock feature and updates the [LocationLockService].
   void _toggleLocationLock(bool value) {
     setState(() => _locationLockEnabled = value);
     if (value) {
@@ -57,7 +51,6 @@ class _LocationLockSettingsScreenState
     }
   }
 
-  /// Fetches the device’s current GPS position and stores it as the trusted location.
   Future<void> _setCurrentLocation() async {
     try {
       final position = await Geolocator.getCurrentPosition(
@@ -102,7 +95,6 @@ class _LocationLockSettingsScreenState
     }
   }
 
-  /// Parses the radius text field and persists the updated radius value.
   void _updateRadius() {
     final value = double.tryParse(_radiusController.text) ?? _trustedRadius;
     setState(() => _trustedRadius = value);
@@ -122,8 +114,6 @@ class _LocationLockSettingsScreenState
     _radiusController.dispose();
     super.dispose();
   }
-
-  // ─── Build ───
 
   @override
   Widget build(BuildContext context) {
@@ -152,7 +142,7 @@ class _LocationLockSettingsScreenState
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ─── Enable Location Lock Toggle ───
+
               Container(
                 decoration: BoxDecoration(
                   color: ThemeConfig.surfaceColor(context),
@@ -199,7 +189,6 @@ class _LocationLockSettingsScreenState
               ),
               const SizedBox(height: 24),
 
-              // ─── Map View Section ───
               Container(
                 decoration: BoxDecoration(
                   color: ThemeConfig.surfaceColor(context),
@@ -239,7 +228,6 @@ class _LocationLockSettingsScreenState
               ),
               const SizedBox(height: 24),
 
-              // ─── Safe Zone Radius ───
               Container(
                 decoration: BoxDecoration(
                   color: ThemeConfig.surfaceColor(context),
@@ -306,7 +294,6 @@ class _LocationLockSettingsScreenState
               ),
               const SizedBox(height: 24),
 
-              // ─── Set Current Location Button ───
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
@@ -346,13 +333,12 @@ class _LocationLockSettingsScreenState
               ),
               const SizedBox(height: 24),
 
-              // ─── Info Box ───
               Container(
                 decoration: BoxDecoration(
                   color: ThemeConfig.surfaceColor(context),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: ThemeConfig.accentColor(context).withOpacity(0.3),
+                    color: ThemeConfig.accentColor(context).withValues(alpha: 0.3),
                     width: 1,
                   ),
                 ),

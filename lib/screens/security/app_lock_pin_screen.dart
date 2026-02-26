@@ -7,8 +7,6 @@ import '../../core/security/intruder_service.dart';
 import '../../core/services/user_identifier_service.dart';
 import '../../widgets/pin_keypad.dart';
 
-/// Full-screen PIN entry screen shown when a locked app is opened.
-/// Looks and feels exactly like the main StealthSeal lock screen.
 class AppLockPinScreen extends StatefulWidget {
   final String packageName;
   final String appName;
@@ -39,9 +37,6 @@ class _AppLockPinScreenState extends State<AppLockPinScreen> {
     _loadPins();
   }
 
-  // ─── PIN Loading ───
-
-  /// Load PINs from Supabase (same source as main lock screen)
   Future<void> _loadPins() async {
     try {
       final userId = await UserIdentifierService.getUserId();
@@ -73,9 +68,6 @@ class _AppLockPinScreenState extends State<AppLockPinScreen> {
     }
   }
 
-  // ─── PIN Input ───
-
-  /// Handles a digit key press on the PIN keypad.
   void _onKeyPress(String value) {
     if (_isLoading || _realPin == null) return;
     if (_enteredPin.length >= 4) return;
@@ -87,7 +79,6 @@ class _AppLockPinScreenState extends State<AppLockPinScreen> {
     }
   }
 
-  /// Deletes the last digit from the entered PIN.
   void _onDelete() {
     if (_enteredPin.isEmpty) return;
     setState(() {
@@ -95,21 +86,16 @@ class _AppLockPinScreenState extends State<AppLockPinScreen> {
     });
   }
 
-  // ─── PIN Validation ───
-
-  /// Validates the entered PIN against stored real and decoy PINs.
   Future<void> _validatePin() async {
     if (_realPin == null || _decoyPin == null) return;
 
     if (_enteredPin == _realPin || _enteredPin == _decoyPin) {
-      // Correct PIN - unlock the app
+
       _failedAttempts = 0;
       debugPrint('App unlocked: ${widget.packageName}');
 
-      // Temporarily remove from locked apps so it can open
       _temporarilyUnlockApp(widget.packageName);
 
-      // Launch the app
       try {
         await _channel.invokeMethod('launchApp', {
           'packageName': widget.packageName,
@@ -119,12 +105,11 @@ class _AppLockPinScreenState extends State<AppLockPinScreen> {
         debugPrint('Error launching app: $error');
       }
 
-      // Go back to dashboard
       if (mounted) {
         Navigator.pop(context);
       }
     } else {
-      // Wrong PIN
+
       _failedAttempts++;
 
       if (mounted) {
@@ -137,13 +122,12 @@ class _AppLockPinScreenState extends State<AppLockPinScreen> {
             ),
             backgroundColor: _failedAttempts >= 3
                 ? ThemeConfig.errorColor(context)
-                : ThemeConfig.accentColor(context).withOpacity(0.8),
+                : ThemeConfig.accentColor(context).withValues(alpha: 0.8),
             duration: const Duration(seconds: 1),
           ),
         );
       }
 
-      // Capture intruder on 3+ failed attempts
       if (_failedAttempts >= 3) {
         _failedAttempts = 0;
         await IntruderService.captureIntruderSelfie(
@@ -157,9 +141,6 @@ class _AppLockPinScreenState extends State<AppLockPinScreen> {
     }
   }
 
-  // ─── Temporary Unlock ───
-
-  /// Temporarily unlocks an app for 5 seconds so the user can open it.
   void _temporarilyUnlockApp(String packageName) {
     final securityBox = Hive.box('securityBox');
     final List<String> temporarilyUnlockedApps = List<String>.from(
@@ -169,10 +150,8 @@ class _AppLockPinScreenState extends State<AppLockPinScreen> {
       securityBox.put('tempUnlockedApps', temporarilyUnlockedApps);
     }
 
-    // Also sync to native SharedPreferences so AccessibilityService knows
     _syncTempUnlockedToNative(temporarilyUnlockedApps);
 
-    // Re-lock after 5 seconds
     Future.delayed(const Duration(seconds: 5), () {
       final securityBox = Hive.box('securityBox');
       final List<String> currentTempApps = List<String>.from(
@@ -184,7 +163,6 @@ class _AppLockPinScreenState extends State<AppLockPinScreen> {
     });
   }
 
-  /// Syncs the temporarily unlocked apps list to Android SharedPreferences.
   Future<void> _syncTempUnlockedToNative(List<String> apps) async {
     try {
       await _channel.invokeMethod('setTempUnlockedApps', {
@@ -195,12 +173,10 @@ class _AppLockPinScreenState extends State<AppLockPinScreen> {
     }
   }
 
-  // ─── Build ───
-
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () async => false, // Prevent back button bypass
+    return PopScope(
+      canPop: false,
       child: Scaffold(
         resizeToAvoidBottomInset: false,
         body: Container(
@@ -219,9 +195,9 @@ class _AppLockPinScreenState extends State<AppLockPinScreen> {
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                     colors: [
-                      const Color(0xFF0a0e27).withOpacity(0.98),
-                      const Color(0xFF1a1a3e).withOpacity(0.98),
-                      const Color(0xFF0f0f2e).withOpacity(0.98),
+                      const Color(0xFF0a0e27).withValues(alpha: 0.98),
+                      const Color(0xFF1a1a3e).withValues(alpha: 0.98),
+                      const Color(0xFF0f0f2e).withValues(alpha: 0.98),
                     ],
                   ),
           ),
@@ -235,11 +211,10 @@ class _AppLockPinScreenState extends State<AppLockPinScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        // Lock Icon
+
                         _buildLockIcon(),
                         const SizedBox(height: 20),
 
-                        // App Name
                         Text(
                           '${widget.appName} is Locked',
                           style: TextStyle(
@@ -252,7 +227,6 @@ class _AppLockPinScreenState extends State<AppLockPinScreen> {
                         ),
                         const SizedBox(height: 8),
 
-                        // Subtitle
                         Text(
                           'Enter StealthSeal PIN to unlock',
                           style: TextStyle(
@@ -262,26 +236,23 @@ class _AppLockPinScreenState extends State<AppLockPinScreen> {
                         ),
                         const SizedBox(height: 30),
 
-                        // PIN Dots
                         _buildPinDots(),
                         const SizedBox(height: 30),
 
-                        // Keypad
                         PinKeypad(
                           onKeyPressed: _onKeyPress,
                           onDelete: _onDelete,
                         ),
                         const SizedBox(height: 20),
 
-                        // Failed attempts warning
                         if (_failedAttempts >= 2)
                           Container(
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              color: Colors.red.withOpacity(0.1),
+                              color: Colors.red.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(8),
                               border: Border.all(
-                                  color: Colors.red.withOpacity(0.5)),
+                                  color: Colors.red.withValues(alpha: 0.5)),
                             ),
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
@@ -309,9 +280,6 @@ class _AppLockPinScreenState extends State<AppLockPinScreen> {
     );
   }
 
-  // ─── UI Components ───
-
-  /// Lock icon with glow effect (same style as main lock screen)
   Widget _buildLockIcon() {
     return Container(
       padding: const EdgeInsets.all(20),
@@ -319,17 +287,17 @@ class _AppLockPinScreenState extends State<AppLockPinScreen> {
         shape: BoxShape.circle,
         gradient: LinearGradient(
           colors: [
-            ThemeConfig.accentColor(context).withOpacity(0.3),
-            ThemeConfig.accentColor(context).withOpacity(0.1),
+            ThemeConfig.accentColor(context).withValues(alpha: 0.3),
+            ThemeConfig.accentColor(context).withValues(alpha: 0.1),
           ],
         ),
         border: Border.all(
-          color: ThemeConfig.accentColor(context).withOpacity(0.5),
+          color: ThemeConfig.accentColor(context).withValues(alpha: 0.5),
           width: 2,
         ),
         boxShadow: [
           BoxShadow(
-            color: ThemeConfig.accentColor(context).withOpacity(0.3),
+            color: ThemeConfig.accentColor(context).withValues(alpha: 0.3),
             blurRadius: 20,
             spreadRadius: 5,
           ),
@@ -343,7 +311,6 @@ class _AppLockPinScreenState extends State<AppLockPinScreen> {
     );
   }
 
-  /// PIN dots display (same style as main lock screen)
   Widget _buildPinDots() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -359,13 +326,13 @@ class _AppLockPinScreenState extends State<AppLockPinScreen> {
                 ? ThemeConfig.accentColor(context)
                 : Colors.transparent,
             border: Border.all(
-              color: ThemeConfig.accentColor(context).withOpacity(0.5),
+              color: ThemeConfig.accentColor(context).withValues(alpha: 0.5),
               width: 2,
             ),
             boxShadow: isFilled
                 ? [
                     BoxShadow(
-                      color: ThemeConfig.accentColor(context).withOpacity(0.5),
+                      color: ThemeConfig.accentColor(context).withValues(alpha: 0.5),
                       blurRadius: 10,
                       spreadRadius: 2,
                     ),

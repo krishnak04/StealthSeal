@@ -29,11 +29,6 @@ class _BiometricSetupScreenState extends State<BiometricSetupScreen> {
     super.dispose();
   }
 
-  // ---------------------------------------------------------------------------
-  // Biometric Support Check
-  // ---------------------------------------------------------------------------
-
-  /// Queries the device for biometric hardware support and updates state.
   Future<void> _checkBiometricSupport() async {
     try {
       final isSupported = await BiometricService.isSupported();
@@ -54,14 +49,6 @@ class _BiometricSetupScreenState extends State<BiometricSetupScreen> {
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // Registration & Skip
-  // ---------------------------------------------------------------------------
-
-  /// Registers the user's biometric credential.
-  ///
-  /// Authenticates using the device sensor, then persists the enabled flag
-  /// to Supabase and local storage. Navigates to the lock screen on success.
   Future<void> _registerBiometric() async {
     if (!_isBiometricSupported) {
       _showError('Biometric not supported on this device');
@@ -74,7 +61,7 @@ class _BiometricSetupScreenState extends State<BiometricSetupScreen> {
     });
 
     try {
-      // Attempt biometric authentication
+
       final response = await BiometricService.authenticate();
 
       if (response['success'] != true) {
@@ -90,15 +77,12 @@ class _BiometricSetupScreenState extends State<BiometricSetupScreen> {
       final userId = await UserIdentifierService.getUserId();
       debugPrint('Registering biometric for user: $userId');
 
-      // Save biometric settings to Supabase
       final supabase = Supabase.instance.client;
 
-      // Update by user ID
       await supabase.from('user_security').update({
         'biometric_enabled': true,
       }).eq('id', userId);
 
-      // Enable biometric in local service
       BiometricService.enable();
 
       if (!mounted) return;
@@ -109,7 +93,6 @@ class _BiometricSetupScreenState extends State<BiometricSetupScreen> {
         _biometricEnabled = true;
       });
 
-      // Navigate to lock screen after 2 seconds
       await Future.delayed(const Duration(seconds: 2));
       if (mounted) {
         Navigator.pushReplacementNamed(context, AppRoutes.lock);
@@ -126,9 +109,6 @@ class _BiometricSetupScreenState extends State<BiometricSetupScreen> {
     }
   }
 
-  /// Skips biometric registration and navigates to the lock screen.
-  ///
-  /// Ensures the biometric flag is disabled both locally and in Supabase.
   Future<void> _skipBiometric() async {
     try {
       setState(() {
@@ -136,16 +116,13 @@ class _BiometricSetupScreenState extends State<BiometricSetupScreen> {
         _statusMessage = 'Skipping biometric setup...';
       });
 
-      // Ensure biometric is disabled
       BiometricService.disable();
 
       final userId = await UserIdentifierService.getUserId();
       debugPrint('Skipping biometric for user: $userId');
 
-      // Update database to disable biometric
       final supabase = Supabase.instance.client;
 
-      // Update by user ID
       await supabase.from('user_security').update({
         'biometric_enabled': false,
       }).eq('id', userId);
@@ -163,11 +140,6 @@ class _BiometricSetupScreenState extends State<BiometricSetupScreen> {
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // UI Feedback
-  // ---------------------------------------------------------------------------
-
-  /// Shows a red [SnackBar] with the given error [message].
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -177,14 +149,10 @@ class _BiometricSetupScreenState extends State<BiometricSetupScreen> {
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // Build
-  // ---------------------------------------------------------------------------
-
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () async => false, // Prevent back button
+    return PopScope(
+      canPop: false,
       child: Scaffold(
         body: Container(
           decoration: BoxDecoration(
@@ -192,9 +160,9 @@ class _BiometricSetupScreenState extends State<BiometricSetupScreen> {
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                const Color(0xFF0a0e27).withOpacity(0.98),
-                const Color(0xFF1a1a3e).withOpacity(0.98),
-                const Color(0xFF0f0f2e).withOpacity(0.98),
+                const Color(0xFF0a0e27).withValues(alpha: 0.98),
+                const Color(0xFF1a1a3e).withValues(alpha: 0.98),
+                const Color(0xFF0f0f2e).withValues(alpha: 0.98),
               ],
             ),
           ),
@@ -230,11 +198,6 @@ class _BiometricSetupScreenState extends State<BiometricSetupScreen> {
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // UI Builders
-  // ---------------------------------------------------------------------------
-
-  /// Builds the circular fingerprint icon with a gradient glow.
   Widget _buildIcon() {
     return Container(
       padding: const EdgeInsets.all(24),
@@ -242,17 +205,17 @@ class _BiometricSetupScreenState extends State<BiometricSetupScreen> {
         shape: BoxShape.circle,
         gradient: LinearGradient(
           colors: [
-            Colors.cyan.withOpacity(0.2),
-            Colors.blue.withOpacity(0.1),
+            Colors.cyan.withValues(alpha: 0.2),
+            Colors.blue.withValues(alpha: 0.1),
           ],
         ),
         border: Border.all(
-          color: Colors.cyan.withOpacity(0.4),
+          color: Colors.cyan.withValues(alpha: 0.4),
           width: 2,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.cyan.withOpacity(0.3),
+            color: Colors.cyan.withValues(alpha: 0.3),
             blurRadius: 20,
             spreadRadius: 5,
           ),
@@ -266,7 +229,6 @@ class _BiometricSetupScreenState extends State<BiometricSetupScreen> {
     );
   }
 
-  /// Builds the screen title text.
   Widget _buildTitle() {
     return const Text(
       'Secure Your Account',
@@ -279,7 +241,6 @@ class _BiometricSetupScreenState extends State<BiometricSetupScreen> {
     );
   }
 
-  /// Builds the descriptive subtitle based on device biometric support.
   Widget _buildSubtitle() {
     return Text(
       _isBiometricSupported
@@ -294,7 +255,6 @@ class _BiometricSetupScreenState extends State<BiometricSetupScreen> {
     );
   }
 
-  /// Builds a status banner indicating registration progress or result.
   Widget _buildStatusMessage() {
     return Padding(
       padding: const EdgeInsets.only(bottom: 20),
@@ -302,13 +262,13 @@ class _BiometricSetupScreenState extends State<BiometricSetupScreen> {
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: _biometricEnabled
-              ? Colors.green.withOpacity(0.15)
-              : Colors.orange.withOpacity(0.15),
+              ? Colors.green.withValues(alpha: 0.15)
+              : Colors.orange.withValues(alpha: 0.15),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: _biometricEnabled
-                ? Colors.green.withOpacity(0.3)
-                : Colors.orange.withOpacity(0.3),
+                ? Colors.green.withValues(alpha: 0.3)
+                : Colors.orange.withValues(alpha: 0.3),
             width: 1.5,
           ),
         ),
@@ -325,7 +285,6 @@ class _BiometricSetupScreenState extends State<BiometricSetupScreen> {
     );
   }
 
-  /// Builds the list of biometric feature highlights.
   Widget _buildFeaturesList() {
     final features = [
       _FeatureData(
@@ -350,18 +309,18 @@ class _BiometricSetupScreenState extends State<BiometricSetupScreen> {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            Colors.cyan.withOpacity(0.1),
-            Colors.blue.withOpacity(0.05),
+            Colors.cyan.withValues(alpha: 0.1),
+            Colors.blue.withValues(alpha: 0.05),
           ],
         ),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: Colors.cyan.withOpacity(0.2),
+          color: Colors.cyan.withValues(alpha: 0.2),
           width: 1.5,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.cyan.withOpacity(0.1),
+            color: Colors.cyan.withValues(alpha: 0.1),
             blurRadius: 15,
             spreadRadius: 0,
           ),
@@ -383,8 +342,6 @@ class _BiometricSetupScreenState extends State<BiometricSetupScreen> {
     );
   }
 
-  /// Builds the action buttons (register, skip, or continue) based on
-  /// the current biometric support and registration state.
   Widget _buildButtons() {
     if (_isBiometricSupported && !_biometricEnabled) {
       return Column(
@@ -400,7 +357,7 @@ class _BiometricSetupScreenState extends State<BiometricSetupScreen> {
                   borderRadius: BorderRadius.circular(14),
                 ),
                 elevation: 8,
-                shadowColor: Colors.cyan.withOpacity(0.5),
+                shadowColor: Colors.cyan.withValues(alpha: 0.5),
               ),
               child: _isRegistering
                   ? const SizedBox(
@@ -433,7 +390,7 @@ class _BiometricSetupScreenState extends State<BiometricSetupScreen> {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14),
                   side: BorderSide(
-                    color: Colors.white.withOpacity(0.2),
+                    color: Colors.white.withValues(alpha: 0.2),
                     width: 1.5,
                   ),
                 ),
@@ -467,7 +424,7 @@ class _BiometricSetupScreenState extends State<BiometricSetupScreen> {
               borderRadius: BorderRadius.circular(14),
             ),
             elevation: 8,
-            shadowColor: Colors.cyan.withOpacity(0.5),
+            shadowColor: Colors.cyan.withValues(alpha: 0.5),
           ),
           child: const Text(
             'Continue to Lock Screen',
@@ -491,7 +448,7 @@ class _BiometricSetupScreenState extends State<BiometricSetupScreen> {
               borderRadius: BorderRadius.circular(14),
             ),
             elevation: 8,
-            shadowColor: Colors.cyan.withOpacity(0.5),
+            shadowColor: Colors.cyan.withValues(alpha: 0.5),
           ),
           child: const Text(
             'Continue to Lock Screen',
@@ -505,7 +462,7 @@ class _BiometricSetupScreenState extends State<BiometricSetupScreen> {
       );
     }
   }
-  /// Builds a single feature row with an [icon], [title], and [description].
+
   Widget _buildFeatureItem(IconData icon, String title, String description) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -513,7 +470,7 @@ class _BiometricSetupScreenState extends State<BiometricSetupScreen> {
         Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: Colors.cyan.withOpacity(0.15),
+            color: Colors.cyan.withValues(alpha: 0.15),
             borderRadius: BorderRadius.circular(10),
           ),
           child: Icon(

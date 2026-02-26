@@ -19,12 +19,11 @@ class _PatternScreenState extends State<PatternScreen> {
     _loadCurrentPattern();
   }
 
-  /// Loads the current unlock pattern from local storage.
   Future<void> _loadCurrentPattern() async {
     try {
       final securityBox = Hive.box('securityBox');
       final pattern = securityBox.get('unlockPattern', defaultValue: '4-digit');
-      
+
       if (mounted) {
         setState(() {
           _selectedPattern = pattern;
@@ -40,15 +39,13 @@ class _PatternScreenState extends State<PatternScreen> {
     }
   }
 
-  /// Updates the unlock pattern in local storage and shows confirmation.
   Future<void> _updatePattern(String pattern) async {
     setState(() => _isLoading = true);
-    
+
     try {
       final securityBox = Hive.box('securityBox');
       await securityBox.put('unlockPattern', pattern);
 
-      // Verify it was saved
       final saved = securityBox.get('unlockPattern');
       debugPrint('Pattern saved: $saved (requested: $pattern)');
 
@@ -79,8 +76,6 @@ class _PatternScreenState extends State<PatternScreen> {
       }
     }
   }
-
-  // ─── Build ───
 
   @override
   Widget build(BuildContext context) {
@@ -160,7 +155,7 @@ class _PatternScreenState extends State<PatternScreen> {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: ThemeConfig.infoColor(context).withOpacity(0.1),
+                      color: ThemeConfig.infoColor(context).withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
                         color: ThemeConfig.infoColor(context),
@@ -203,9 +198,6 @@ class _PatternScreenState extends State<PatternScreen> {
     );
   }
 
-  // ─── Pattern Option Widget ───
-
-  /// Builds a selectable pattern option card with icon, title, and description.
   Widget _buildPatternOption({
     required BuildContext context,
     required String title,
@@ -221,7 +213,7 @@ class _PatternScreenState extends State<PatternScreen> {
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: isSelected
-              ? ThemeConfig.accentColor(context).withOpacity(0.15)
+              ? ThemeConfig.accentColor(context).withValues(alpha: 0.15)
               : ThemeConfig.surfaceColor(context),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
@@ -236,7 +228,7 @@ class _PatternScreenState extends State<PatternScreen> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: ThemeConfig.accentColor(context).withOpacity(0.2),
+                color: ThemeConfig.accentColor(context).withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(

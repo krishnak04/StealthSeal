@@ -62,9 +62,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  // ─── Appearance Section ───
-
-  /// Builds the appearance/theme selection section.
   Widget _buildAppearanceSection() {
     return Builder(
       builder: (context) => Container(
@@ -115,7 +112,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  /// Builds a selectable theme option row.
   Widget _buildThemeOption({
     required IconData icon,
     required String label,
@@ -127,7 +123,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         await ThemeService.setThemeMode(value);
         setState(() => _selectedTheme = value);
 
-        if (mounted) {
+        if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Theme changed to $label'),
@@ -141,7 +137,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: _selectedTheme == value
-              ? ThemeConfig.accentColor(context).withOpacity(0.2)
+              ? ThemeConfig.accentColor(context).withValues(alpha: 0.2)
               : ThemeConfig.inputBackground(context),
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
@@ -177,9 +173,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  // ─── Security Section ───
-
-  /// Builds the security settings section with biometric toggle and password options.
   Widget _buildSecuritySection() {
     return Builder(
       builder: (context) => Container(
@@ -236,7 +229,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     if (value) {
                       final supported = await BiometricService.isSupported();
                       if (!supported) {
-                        if (mounted) {
+                        if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: const Text(
@@ -252,7 +245,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       BiometricService.disable();
                     }
 
-                    // Update Supabase
                     try {
                       final userId = await UserIdentifierService.getUserId();
                       await Supabase.instance.client
@@ -298,9 +290,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  // ─── Advanced Features Section ───
-
-  /// Builds the advanced features section with time, location, stealth, and permissions options.
   Widget _buildAdvancedFeaturesSection(BuildContext context) {
     return Builder(
       builder: (ctx) => Container(
@@ -370,9 +359,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  // ─── Information Section ───
-
-  /// Builds the information section with the About & Help link.
   Widget _buildInformationSection(BuildContext context) {
     return Builder(
       builder: (ctx) => Container(
@@ -412,9 +398,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  // ─── Shared Widgets ───
-
-  /// Builds a reusable settings item row with icon, label, and forward arrow.
   Widget _buildSettingsItem({
     required IconData icon,
     required String label,

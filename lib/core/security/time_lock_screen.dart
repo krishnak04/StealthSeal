@@ -2,9 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import '../../utils/hive_keys.dart';
 
-/// Screen for configuring the night-lock time window.
-///
-/// Lets the user enable/disable the lock and pick start/end times.
 class TimeLockScreen extends StatefulWidget {
   const TimeLockScreen({super.key});
 
@@ -13,10 +10,9 @@ class TimeLockScreen extends StatefulWidget {
 }
 
 class _TimeLockScreenState extends State<TimeLockScreen> {
-  /// Hive box used for persisting security settings.
+
   final securityBox = Hive.box('security');
 
-  /// Opens a time picker to set the night-lock start time.
   Future<void> _pickStartTime() async {
     final picked = await showTimePicker(
       context: context,
@@ -33,7 +29,6 @@ class _TimeLockScreenState extends State<TimeLockScreen> {
     }
   }
 
-  /// Opens a time picker to set the night-lock end time.
   Future<void> _pickEndTime() async {
     final picked = await showTimePicker(
       context: context,

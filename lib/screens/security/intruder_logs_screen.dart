@@ -11,7 +11,7 @@ class IntruderLogsScreen extends StatefulWidget {
 }
 
 class _IntruderLogsScreenState extends State<IntruderLogsScreen> {
-  // ─── Build ───
+
   @override
   Widget build(BuildContext context) {
     final securityBox = Hive.box('securityBox');
@@ -69,7 +69,7 @@ class _IntruderLogsScreenState extends State<IntruderLogsScreen> {
                     ),
                     child: Row(
                       children: [
-                        // Image
+
                         ClipRRect(
                           borderRadius: BorderRadius.circular(10),
                           child: Container(
@@ -91,7 +91,7 @@ class _IntruderLogsScreenState extends State<IntruderLogsScreen> {
                           ),
                         ),
                         const SizedBox(width: 14),
-                        // Details
+
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -135,7 +135,7 @@ class _IntruderLogsScreenState extends State<IntruderLogsScreen> {
                             ],
                           ),
                         ),
-                        // New Badge
+
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
@@ -160,8 +160,6 @@ class _IntruderLogsScreenState extends State<IntruderLogsScreen> {
     );
   }
 
-  // ─── Full Image Dialog ───
-  /// Displays the full intruder image in a dialog with details.
   void _showFullImage(
     BuildContext context,
     String? imagePath,
@@ -203,8 +201,6 @@ class _IntruderLogsScreenState extends State<IntruderLogsScreen> {
     );
   }
 
-  // ─── Delete Confirmation ───
-  /// Shows a confirmation dialog before deleting an intruder record.
   void _confirmDelete(
     BuildContext context,
     dynamic log,
@@ -213,7 +209,7 @@ class _IntruderLogsScreenState extends State<IntruderLogsScreen> {
     final bool imageExists = imagePath != null && File(imagePath).existsSync();
     final String pin = log['enteredPin']?.toString() ?? '***';
     final String timestamp = log['timestamp'] ?? '';
-    
+
     DateTime? time;
     try {
       time = DateTime.parse(timestamp);
@@ -236,7 +232,7 @@ class _IntruderLogsScreenState extends State<IntruderLogsScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Header
+
               Padding(
                 padding: const EdgeInsets.all(16),
                 child: Text(
@@ -249,8 +245,7 @@ class _IntruderLogsScreenState extends State<IntruderLogsScreen> {
                   textAlign: TextAlign.center,
                 ),
               ),
-              
-              // Scrollable Content
+
               Expanded(
                 child: SingleChildScrollView(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -258,7 +253,7 @@ class _IntruderLogsScreenState extends State<IntruderLogsScreen> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Intruder image preview
+
                       if (imageExists)
                         Container(
                           margin: const EdgeInsets.only(bottom: 16),
@@ -270,7 +265,7 @@ class _IntruderLogsScreenState extends State<IntruderLogsScreen> {
                             ),
                             boxShadow: [
                               BoxShadow(
-                                color: ThemeConfig.errorColor(ctx).withOpacity(0.3),
+                                color: ThemeConfig.errorColor(ctx).withValues(alpha: 0.3),
                                 blurRadius: 10,
                                 spreadRadius: 2,
                               ),
@@ -307,14 +302,13 @@ class _IntruderLogsScreenState extends State<IntruderLogsScreen> {
                             ),
                           ),
                         ),
-                      
-                      // Intruder Details
+
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: ThemeConfig.errorColor(ctx).withOpacity(0.1),
+                          color: ThemeConfig.errorColor(ctx).withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: ThemeConfig.errorColor(ctx).withOpacity(0.3)),
+                          border: Border.all(color: ThemeConfig.errorColor(ctx).withValues(alpha: 0.3)),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -357,7 +351,7 @@ class _IntruderLogsScreenState extends State<IntruderLogsScreen> {
                           ],
                         ),
                       ),
-                      
+
                       const SizedBox(height: 12),
                       Text(
                         'Are you sure you want to permanently delete this intruder record?',
@@ -370,8 +364,7 @@ class _IntruderLogsScreenState extends State<IntruderLogsScreen> {
                   ),
                 ),
               ),
-              
-              // Action Buttons
+
               Padding(
                 padding: const EdgeInsets.all(16),
                 child: Row(
@@ -399,10 +392,9 @@ class _IntruderLogsScreenState extends State<IntruderLogsScreen> {
                         logs.remove(log);
                         await securityBox.put('intruderLogs', logs);
 
-                        if (mounted) {
+                        if (context.mounted) {
                           Navigator.pop(context);
-                          
-                          // Show deletion confirmation
+
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Row(
@@ -416,7 +408,7 @@ class _IntruderLogsScreenState extends State<IntruderLogsScreen> {
                               duration: const Duration(seconds: 2),
                             ),
                           );
-                          
+
                           setState(() {});
                         }
                       },

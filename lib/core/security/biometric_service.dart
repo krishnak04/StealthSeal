@@ -2,23 +2,11 @@ import 'package:flutter/foundation.dart';
 import 'package:hive/hive.dart';
 import 'package:local_auth/local_auth.dart';
 
-/// Provides biometric authentication (fingerprint / face) backed by
-/// the `local_auth` plugin, with an enable/disable flag stored in Hive.
-///
-/// Biometric auth is a convenience fast-path; it does **not** bypass
-/// Panic, Time, or Location locks — the PIN is still required when
-/// any of those locks are active.
 class BiometricService {
   static final LocalAuthentication _auth = LocalAuthentication();
 
-  /// Returns the Hive security box safely (avoids static init crash).
   static Box _securityBox() => Hive.box('security');
 
-  // ──────────────────────────────────────────────
-  //  Enable / Disable
-  // ──────────────────────────────────────────────
-
-  /// Synchronously enable biometric for immediate effect.
   static void enable() {
     try {
       _securityBox().put('biometricEnabled', true);
@@ -28,7 +16,6 @@ class BiometricService {
     }
   }
 
-  /// Synchronously disable biometric for immediate effect.
   static void disable() {
     try {
       _securityBox().put('biometricEnabled', false);
@@ -38,7 +25,6 @@ class BiometricService {
     }
   }
 
-  /// Returns `true` if biometric authentication is enabled.
   static bool isEnabled() {
     try {
       return _securityBox().get('biometricEnabled', defaultValue: false);
@@ -48,12 +34,6 @@ class BiometricService {
     }
   }
 
-  // ──────────────────────────────────────────────
-  //  Device Support
-  // ──────────────────────────────────────────────
-
-  /// Returns `true` if the device supports biometric authentication
-  /// and at least one biometric type is enrolled.
   static Future<bool> isSupported() async {
     try {
       final canCheck = await _auth.canCheckBiometrics;
@@ -65,7 +45,6 @@ class BiometricService {
       debugPrint('   - isDeviceSupported: $deviceSupported');
       debugPrint('   - availableBiometrics: $availableBiometrics');
 
-      // Return true if device can check biometrics AND has any biometric type available
       return canCheck && availableBiometrics.isNotEmpty;
     } catch (error) {
       debugPrint('BiometricService: Device support check error = $error');
@@ -73,8 +52,6 @@ class BiometricService {
     }
   }
 
-  /// Returns the list of biometric types available on the device
-  /// (e.g., fingerprint, face, iris).
   static Future<List<BiometricType>> getAvailableBiometrics() async {
     try {
       final available = await _auth.getAvailableBiometrics();
@@ -83,7 +60,6 @@ class BiometricService {
         debugPrint('   - $biometric');
       }
 
-      // Check specifically for fingerprint (covers in-display, side-mounted, etc.)
       final hasFingerprint = available.contains(BiometricType.fingerprint);
       final hasFace = available.contains(BiometricType.face);
 
@@ -96,7 +72,6 @@ class BiometricService {
     }
   }
 
-  /// Returns `true` if face recognition is available on the device.
   static Future<bool> isFaceSupported() async {
     try {
       final available = await _auth.getAvailableBiometrics();
@@ -115,7 +90,6 @@ class BiometricService {
     }
   }
 
-  /// Returns `true` if fingerprint authentication is available.
   static Future<bool> isFingerprintSupported() async {
     try {
       final available = await _auth.getAvailableBiometrics();
@@ -133,21 +107,10 @@ class BiometricService {
     }
   }
 
-  // ──────────────────────────────────────────────
-  //  Authenticate
-  // ──────────────────────────────────────────────
-
-  /// Attempts biometric authentication and returns a result map.
-  ///
-  /// The returned map contains:
-  /// - `success` (bool): whether authentication succeeded.
-  /// - `message` (String): human-readable description.
-  /// - `code` (String): machine-readable status code.
   static Future<Map<String, dynamic>> authenticate() async {
     try {
       debugPrint('Starting Biometric Authentication...');
 
-      // Step 1: Check if device can check biometrics
       final canCheck = await _auth.canCheckBiometrics;
       debugPrint('Step 1 - Can check biometrics: $canCheck');
 
@@ -160,7 +123,6 @@ class BiometricService {
         };
       }
 
-      // Step 2: Get available biometric types
       final availableBiometrics = await _auth.getAvailableBiometrics();
       debugPrint('Step 2 - Available biometrics: $availableBiometrics');
 
@@ -174,11 +136,9 @@ class BiometricService {
         };
       }
 
-      // Step 3: Check if device is supported
       final deviceSupported = await _auth.isDeviceSupported();
       debugPrint('Step 3 - Device is supported: $deviceSupported');
 
-      // Step 3.5: Determine what biometrics are available
       final hasFingerprint =
           availableBiometrics.contains(BiometricType.fingerprint);
       final hasFace =
@@ -187,7 +147,6 @@ class BiometricService {
       debugPrint(
           'Step 3.5 - Has Fingerprint: $hasFingerprint, Has Face: $hasFace');
 
-      // Create appropriate reason message based on available biometrics
       String reasonMessage = 'Authenticate with ';
       if (hasFingerprint && hasFace) {
         reasonMessage += 'your fingerprint or face';
@@ -200,17 +159,16 @@ class BiometricService {
       }
       reasonMessage += ' to unlock StealthSeal';
 
-      // Step 4: Attempt authentication with optimized settings
       debugPrint('Step 4 - Attempting biometric authentication...');
       debugPrint('   Reason: $reasonMessage');
 
       final authResult = await _auth.authenticate(
         localizedReason: reasonMessage,
         options: const AuthenticationOptions(
-          stickyAuth: false,           // Don't keep auth dialog open
-          useErrorDialogs: true,       // Show native error dialogs
-          sensitiveTransaction: true,  // Explicit user confirmation
-          biometricOnly: false,        // Allow both biometric and device credentials
+          stickyAuth: false,
+          useErrorDialogs: true,
+          sensitiveTransaction: true,
+          biometricOnly: false,
         ),
       );
 
@@ -237,7 +195,6 @@ class BiometricService {
       String errorCode = 'UNKNOWN_ERROR';
       String exceptionStr = error.toString().toLowerCase();
 
-      // Detailed error handling for common biometric issues
       if (exceptionStr.contains('no_biometrics') ||
           exceptionStr.contains('no biometric') ||
           exceptionStr.contains('not enrolled')) {
@@ -272,17 +229,10 @@ class BiometricService {
     }
   }
 
-  // ──────────────────────────────────────────────
-  //  Utilities
-  // ──────────────────────────────────────────────
-
-  /// Forces a re-initialization of the biometric sensor.
-  ///
-  /// Useful if the sensor needs a reset after an error state.
   static Future<void> reinitializeBiometric() async {
     try {
       debugPrint('Reinitializing biometric...');
-      // Get biometrics again to refresh
+
       await _auth.getAvailableBiometrics();
       debugPrint('Biometric reinitialized');
     } catch (error) {

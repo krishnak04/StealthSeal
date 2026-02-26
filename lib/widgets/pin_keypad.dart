@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-/// Reusable numeric keypad widget for PIN entry screens.
 class PinKeypad extends StatelessWidget {
   final Function(String) onKeyPressed;
   final VoidCallback onDelete;
@@ -11,9 +10,6 @@ class PinKeypad extends StatelessWidget {
     required this.onDelete,
   });
 
-  // ─── Key Builder ───
-
-  /// Builds a single key button with the given label and tap handler.
   Widget _buildKey(String text, {VoidCallback? onTap}) {
     return GestureDetector(
       onTap: onTap,
@@ -33,8 +29,6 @@ class PinKeypad extends StatelessWidget {
       ),
     );
   }
-
-  // ─── Build ───
 
   @override
   Widget build(BuildContext context) {

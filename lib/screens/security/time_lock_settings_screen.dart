@@ -22,9 +22,6 @@ class _TimeLockSettingsScreenState extends State<TimeLockSettingsScreen> {
     _loadSettings();
   }
 
-  // ─── Settings Loading ───
-
-  /// Loads the current time-lock settings from Hive local storage.
   void _loadSettings() {
     _timeLockEnabled =
         _securityBox.get('nightLockEnabled', defaultValue: false);
@@ -38,9 +35,6 @@ class _TimeLockSettingsScreenState extends State<TimeLockSettingsScreen> {
     _endTime = TimeOfDay(hour: endHour, minute: endMinute);
   }
 
-  // ─── Time Picker Logic ───
-
-  /// Opens a time picker dialog and persists the selected lock-start time.
   Future<void> _selectStartTime(BuildContext context) async {
     final TimeOfDay? picked = await showTimePicker(
       context: context,
@@ -62,7 +56,6 @@ class _TimeLockSettingsScreenState extends State<TimeLockSettingsScreen> {
     }
   }
 
-  /// Opens a time picker dialog and persists the selected lock-end time.
   Future<void> _selectEndTime(BuildContext context) async {
     final TimeOfDay? picked = await showTimePicker(
       context: context,
@@ -84,7 +77,6 @@ class _TimeLockSettingsScreenState extends State<TimeLockSettingsScreen> {
     }
   }
 
-  /// Toggles the time-lock feature on or off and saves the state to Hive.
   Future<void> _toggleTimeLock(bool value) async {
     setState(() {
       _timeLockEnabled = value;
@@ -92,12 +84,9 @@ class _TimeLockSettingsScreenState extends State<TimeLockSettingsScreen> {
     await _securityBox.put('nightLockEnabled', value);
   }
 
-  /// Formats a [TimeOfDay] into a zero-padded `HH:MM` string.
   String _formatTime(TimeOfDay time) {
     return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
   }
-
-  // ─── Build ───
 
   @override
   Widget build(BuildContext context) {
@@ -126,7 +115,7 @@ class _TimeLockSettingsScreenState extends State<TimeLockSettingsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ─── Enable Time Lock Card ───
+
               Container(
                 decoration: BoxDecoration(
                   color: ThemeConfig.surfaceColor(context),
@@ -173,7 +162,6 @@ class _TimeLockSettingsScreenState extends State<TimeLockSettingsScreen> {
               ),
               const SizedBox(height: 20),
 
-              // ─── Time Settings Card ───
               Container(
                 decoration: BoxDecoration(
                   color: ThemeConfig.surfaceColor(context),
@@ -187,7 +175,7 @@ class _TimeLockSettingsScreenState extends State<TimeLockSettingsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // ─── Lock Start Time ───
+
                     Text(
                       'Lock Start Time',
                       style: TextStyle(
@@ -233,7 +221,6 @@ class _TimeLockSettingsScreenState extends State<TimeLockSettingsScreen> {
                     ),
                     const SizedBox(height: 14),
 
-                    // ─── Lock End Time ───
                     Text(
                       'Lock End Time',
                       style: TextStyle(
@@ -278,12 +265,11 @@ class _TimeLockSettingsScreenState extends State<TimeLockSettingsScreen> {
                       ),
                     ),
 
-                    // ─── Active Period ───
                     Container(
                       margin: const EdgeInsets.only(top: 15),
                       decoration: BoxDecoration(
                         color:
-                            ThemeConfig.accentColor(context).withOpacity(0.1),
+                            ThemeConfig.accentColor(context).withValues(alpha: 0.1),
                         border: Border.all(
                           color: ThemeConfig.accentColor(context),
                           width: 1,

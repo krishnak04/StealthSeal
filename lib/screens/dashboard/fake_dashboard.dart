@@ -15,30 +15,22 @@ class FakeDashboard extends StatefulWidget {
 class _FakeDashboardState extends State<FakeDashboard> with WidgetsBindingObserver {
   bool _isFirstLoad = true;
 
-  // ─── Lifecycle ───
-
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _isFirstLoad = true;
 
-    // Start monitoring locked apps in real-time (even in fake dashboard)
     _initializeAppLockMonitoring();
   }
 
-  // ─── App Lock Monitoring ───
-
-  /// Initializes the app lock monitoring service and registers a callback
-  /// that navigates to the PIN verification screen when a locked app is detected.
   void _initializeAppLockMonitoring() {
     final appLockService = AppLockService();
 
-    // Set callback for when a locked app is detected
     appLockService.setOnLockedAppDetectedCallback((packageName) {
       if (mounted) {
         debugPrint('Locked app detected from fake dashboard: $packageName - Showing PIN screen');
-        // Show the app lock PIN verification screen
+
         final securityBox = Hive.box('securityBox');
         final appNamesMap =
             (securityBox.get('appNamesMap', defaultValue: {}) ?? {}) as Map;
@@ -61,32 +53,29 @@ class _FakeDashboardState extends State<FakeDashboard> with WidgetsBindingObserv
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    // Clear app lock callback when leaving the fake dashboard
+
     AppLockService().dispose();
     super.dispose();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // Force lock when app resumes (user returns from background)
+
     if (state == AppLifecycleState.resumed) {
-      // Skip check on first load
+
       if (_isFirstLoad) {
         _isFirstLoad = false;
         return;
       }
-      
-      // Always force re-lock for security - return to lock screen
+
       Navigator.pushReplacementNamed(context, AppRoutes.lock);
     }
   }
 
-  // ─── Build ───
-
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () async => false, // Prevent back button
+    return PopScope(
+      canPop: false,
       child: Scaffold(
         appBar: _buildAppBar(context),
         backgroundColor: ThemeConfig.backgroundColor(context),
@@ -109,9 +98,6 @@ class _FakeDashboardState extends State<FakeDashboard> with WidgetsBindingObserv
     );
   }
 
-  // ─── AppBar ───
-
-  /// Builds the centered app bar with a shield icon and title.
   PreferredSizeWidget _buildAppBar(BuildContext context) {
     return AppBar(
       elevation: 0,
@@ -134,9 +120,6 @@ class _FakeDashboardState extends State<FakeDashboard> with WidgetsBindingObserv
     );
   }
 
-  // ─── Welcome Card ───
-
-  /// Builds the welcome card displaying the dashboard heading and status message.
   Widget _buildWelcomeCard(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(20),
@@ -144,7 +127,7 @@ class _FakeDashboardState extends State<FakeDashboard> with WidgetsBindingObserv
         color: ThemeConfig.surfaceColor(context),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: ThemeConfig.accentColor(context).withOpacity(0.3),
+          color: ThemeConfig.accentColor(context).withValues(alpha: 0.3),
           width: 1.5,
         ),
       ),
@@ -172,9 +155,6 @@ class _FakeDashboardState extends State<FakeDashboard> with WidgetsBindingObserv
     );
   }
 
-  // ─── Stats Card ───
-
-  /// Builds the account status card with summary statistics.
   Widget _buildStatsCard(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(20),
@@ -182,7 +162,7 @@ class _FakeDashboardState extends State<FakeDashboard> with WidgetsBindingObserv
         color: ThemeConfig.surfaceColor(context),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: ThemeConfig.accentColor(context).withOpacity(0.2),
+          color: ThemeConfig.accentColor(context).withValues(alpha: 0.2),
           width: 1.5,
         ),
       ),
@@ -211,7 +191,6 @@ class _FakeDashboardState extends State<FakeDashboard> with WidgetsBindingObserv
     );
   }
 
-  /// Builds a single stat item with a circular badge, [value], [label], and [color].
   Widget _buildStatItem(BuildContext context, String value, String label, Color color) {
     return Column(
       children: [
@@ -219,9 +198,9 @@ class _FakeDashboardState extends State<FakeDashboard> with WidgetsBindingObserv
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: color.withOpacity(0.15),
+            color: color.withValues(alpha: 0.15),
             border: Border.all(
-              color: color.withOpacity(0.4),
+              color: color.withValues(alpha: 0.4),
               width: 2,
             ),
           ),
@@ -247,9 +226,6 @@ class _FakeDashboardState extends State<FakeDashboard> with WidgetsBindingObserv
     );
   }
 
-  // ─── Fake Actions Card ───
-
-  /// Builds the quick-actions card containing a list of decoy action tiles.
   Widget _buildFakeActionsCard(BuildContext context) {
     final actions = [
       _FakeActionData(
@@ -291,7 +267,7 @@ class _FakeDashboardState extends State<FakeDashboard> with WidgetsBindingObserv
         color: ThemeConfig.surfaceColor(context),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: ThemeConfig.accentColor(context).withOpacity(0.2),
+          color: ThemeConfig.accentColor(context).withValues(alpha: 0.2),
           width: 1.5,
         ),
       ),
@@ -320,7 +296,6 @@ class _FakeDashboardState extends State<FakeDashboard> with WidgetsBindingObserv
     );
   }
 
-  /// Builds a single action tile row for the given [action] data.
   Widget _buildFakeActionTile(BuildContext context, _FakeActionData action) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -329,7 +304,7 @@ class _FakeDashboardState extends State<FakeDashboard> with WidgetsBindingObserv
         color: ThemeConfig.inputBackground(context),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: action.color.withOpacity(0.2),
+          color: action.color.withValues(alpha: 0.2),
           width: 1,
         ),
       ),
@@ -338,7 +313,7 @@ class _FakeDashboardState extends State<FakeDashboard> with WidgetsBindingObserv
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: action.color.withOpacity(0.15),
+              color: action.color.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(action.icon, color: action.color, size: 20),
@@ -379,15 +354,12 @@ class _FakeDashboardState extends State<FakeDashboard> with WidgetsBindingObserv
               ),
             ),
           const SizedBox(width: 8),
-          Icon(Icons.chevron_right, color: action.color.withOpacity(0.6)),
+          Icon(Icons.chevron_right, color: action.color.withValues(alpha: 0.6)),
         ],
       ),
     );
   }
 
-  // ─── Security Info Card ───
-
-  /// Builds the security status card shown as part of the decoy interface.
   Widget _buildSecurityInfoCard(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(20),
@@ -395,7 +367,7 @@ class _FakeDashboardState extends State<FakeDashboard> with WidgetsBindingObserv
         color: ThemeConfig.surfaceColor(context),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: Colors.green.withOpacity(0.3),
+          color: Colors.green.withValues(alpha: 0.3),
           width: 1.5,
         ),
       ),
@@ -404,7 +376,7 @@ class _FakeDashboardState extends State<FakeDashboard> with WidgetsBindingObserv
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.green.withOpacity(0.15),
+              color: Colors.green.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(12),
             ),
             child: const Icon(

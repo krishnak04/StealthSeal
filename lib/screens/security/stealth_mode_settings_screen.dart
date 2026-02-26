@@ -12,7 +12,7 @@ class StealthModeSettingsScreen extends StatefulWidget {
 
 class _StealthModeSettingsScreenState extends State<StealthModeSettingsScreen> {
   late Box _securityBox;
-  late String _selectedMode; // 'normal', 'hidden', 'calculator'
+  late String _selectedMode;
 
   @override
   void initState() {
@@ -21,16 +21,10 @@ class _StealthModeSettingsScreenState extends State<StealthModeSettingsScreen> {
     _loadSettings();
   }
 
-  // ─── Settings Loading ───
-
-  /// Loads the persisted stealth mode preference from Hive local storage.
   void _loadSettings() {
     _selectedMode = _securityBox.get('stealthMode', defaultValue: 'normal');
   }
 
-  // ─── Mode Selection ───
-
-  /// Applies the given [mode] as the active stealth mode and persists it.
   void _setStealthMode(String mode) {
     setState(() => _selectedMode = mode);
     _securityBox.put('stealthMode', mode);
@@ -43,8 +37,6 @@ class _StealthModeSettingsScreenState extends State<StealthModeSettingsScreen> {
       ),
     );
   }
-
-  // ─── Build ───
 
   @override
   Widget build(BuildContext context) {
@@ -70,16 +62,23 @@ class _StealthModeSettingsScreenState extends State<StealthModeSettingsScreen> {
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // ─── Warning Box ───
+          child: RadioGroup<String>(
+            groupValue: _selectedMode,
+            onChanged: (String? value) {
+              if (value != null) {
+                _setStealthMode(value);
+              }
+            },
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+
               Container(
                 decoration: BoxDecoration(
                   color: ThemeConfig.surfaceColor(context),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: const Color(0xFFFFB74D).withOpacity(0.3),
+                    color: const Color(0xFFFFB74D).withValues(alpha: 0.3),
                     width: 1,
                   ),
                 ),
@@ -108,7 +107,6 @@ class _StealthModeSettingsScreenState extends State<StealthModeSettingsScreen> {
               ),
               const SizedBox(height: 24),
 
-              // ─── Normal Mode ───
               GestureDetector(
                 onTap: () => _setStealthMode('normal'),
                 child: Container(
@@ -155,12 +153,6 @@ class _StealthModeSettingsScreenState extends State<StealthModeSettingsScreen> {
                       const Spacer(),
                       Radio<String>(
                         value: 'normal',
-                        groupValue: _selectedMode,
-                        onChanged: (value) {
-                          if (value != null) {
-                            _setStealthMode(value);
-                          }
-                        },
                         activeColor: ThemeConfig.accentColor(context),
                         fillColor: WidgetStateProperty.all(
                           ThemeConfig.accentColor(context),
@@ -172,7 +164,6 @@ class _StealthModeSettingsScreenState extends State<StealthModeSettingsScreen> {
               ),
               const SizedBox(height: 16),
 
-              // ─── Hidden Icon ───
               GestureDetector(
                 onTap: () => _setStealthMode('hidden'),
                 child: Container(
@@ -219,12 +210,6 @@ class _StealthModeSettingsScreenState extends State<StealthModeSettingsScreen> {
                       const Spacer(),
                       Radio<String>(
                         value: 'hidden',
-                        groupValue: _selectedMode,
-                        onChanged: (value) {
-                          if (value != null) {
-                            _setStealthMode(value);
-                          }
-                        },
                         activeColor: ThemeConfig.accentColor(context),
                         fillColor: WidgetStateProperty.all(
                           ThemeConfig.accentColor(context),
@@ -236,7 +221,6 @@ class _StealthModeSettingsScreenState extends State<StealthModeSettingsScreen> {
               ),
               const SizedBox(height: 16),
 
-              // ─── Calculator Disguise ───
               GestureDetector(
                 onTap: () => _setStealthMode('calculator'),
                 child: Container(
@@ -286,12 +270,6 @@ class _StealthModeSettingsScreenState extends State<StealthModeSettingsScreen> {
                         children: [
                           Radio<String>(
                             value: 'calculator',
-                            groupValue: _selectedMode,
-                            onChanged: (value) {
-                              if (value != null) {
-                                _setStealthMode(value);
-                              }
-                            },
                             activeColor: ThemeConfig.accentColor(context),
                             fillColor: WidgetStateProperty.all(
                               ThemeConfig.accentColor(context),
@@ -318,13 +296,12 @@ class _StealthModeSettingsScreenState extends State<StealthModeSettingsScreen> {
               ),
               const SizedBox(height: 24),
 
-              // ─── Info Box ───
               Container(
                 decoration: BoxDecoration(
                   color: ThemeConfig.surfaceColor(context),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: ThemeConfig.accentColor(context).withOpacity(0.3),
+                    color: ThemeConfig.accentColor(context).withValues(alpha: 0.3),
                     width: 1,
                   ),
                 ),
@@ -352,6 +329,7 @@ class _StealthModeSettingsScreenState extends State<StealthModeSettingsScreen> {
                 ),
               ),
             ],
+          ),
           ),
         ),
       ),
