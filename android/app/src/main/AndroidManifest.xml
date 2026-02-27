@@ -98,6 +98,7 @@
             android:showWhenLocked="true"
             android:taskAffinity="com.example.stealthseal.applock"
             android:excludeFromRecents="true"
+            android:enableOnBackInvokedCallback="false"
             android:theme="@style/AppLockTheme">
         </activity>
 
