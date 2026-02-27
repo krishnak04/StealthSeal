@@ -117,13 +117,6 @@ class _FakeDashboardState extends State<FakeDashboard> with WidgetsBindingObserv
           ),
         ],
       ),
-      actions: [
-        IconButton(
-          icon: Icon(Icons.lock, color: ThemeConfig.textPrimary(context)),
-          onPressed: () =>
-              Navigator.pushReplacementNamed(context, AppRoutes.lock),
-        ),
-      ],
     );
   }
 

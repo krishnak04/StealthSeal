@@ -47,7 +47,8 @@
     android:name="com.example.stealthseal.AppAccessibilityService"
     android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
     android:exported="false"
-    android:enabled="true">
+    android:enabled="true"
+    android:stopWithTask="false">
 
     <intent-filter>
         <action android:name="android.accessibilityservice.AccessibilityService" />

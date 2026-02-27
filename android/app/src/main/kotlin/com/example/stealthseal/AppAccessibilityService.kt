@@ -7,6 +7,7 @@ import android.content.Intent
 import android.content.SharedPreferences
 import android.content.Context
 import android.content.pm.PackageManager
+import android.app.Service
 import java.util.concurrent.ConcurrentHashMap
 
 class AppAccessibilityService : AccessibilityService() {
@@ -94,6 +95,17 @@ class AppAccessibilityService : AccessibilityService() {
             }
         }
         prefs.registerOnSharedPreferenceChangeListener(prefsListener)
+    }
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        // Ensure service restarts if killed by the system
+        return Service.START_STICKY
+    }
+
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        // Service should keep running even when app is swiped from recents
+        Log.d(TAG, "App removed from recents — service still running")
+        super.onTaskRemoved(rootIntent)
     }
 
     private fun loadLockedApps() {
