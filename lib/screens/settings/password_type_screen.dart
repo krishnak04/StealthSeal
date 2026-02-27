@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../../core/theme/theme_config.dart';
+import 'six_digit_pin_screen.dart';
+import 'pattern_setup_screen.dart';
+import 'knock_code_setup_screen.dart';
 
 class PatternScreen extends StatefulWidget {
   const PatternScreen({super.key});
@@ -40,6 +43,59 @@ class _PatternScreenState extends State<PatternScreen> {
   }
 
   Future<void> _updatePattern(String pattern) async {
+    // If selecting 4-digit or 6-digit, navigate to PIN change screen
+    if (pattern == '6-digit' || pattern == '4-digit') {
+      final targetLength = pattern == '6-digit' ? 6 : 4;
+      final result = await Navigator.push<bool>(
+        context,
+        MaterialPageRoute(
+          builder: (context) => SixDigitPinScreen(targetPinLength: targetLength),
+        ),
+      );
+
+      // If the user successfully set PINs, update the display
+      if (result == true && mounted) {
+        setState(() {
+          _selectedPattern = pattern;
+        });
+      }
+      return;
+    }
+
+    // If selecting pattern, navigate to pattern setup screen
+    if (pattern == 'pattern') {
+      final result = await Navigator.push<bool>(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const PatternSetupScreen(),
+        ),
+      );
+
+      if (result == true && mounted) {
+        setState(() {
+          _selectedPattern = 'pattern';
+        });
+      }
+      return;
+    }
+
+    // If selecting knock-code, navigate to knock code setup screen
+    if (pattern == 'knock-code') {
+      final result = await Navigator.push<bool>(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const KnockCodeSetupScreen(),
+        ),
+      );
+
+      if (result == true && mounted) {
+        setState(() {
+          _selectedPattern = 'knock-code';
+        });
+      }
+      return;
+    }
+
     setState(() => _isLoading = true);
 
     try {

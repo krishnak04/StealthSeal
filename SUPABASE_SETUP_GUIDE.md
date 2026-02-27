@@ -22,6 +22,15 @@ CREATE TABLE user_security (
 -- Add index for faster queries
 CREATE INDEX idx_user_security_id ON user_security(id);
 CREATE INDEX idx_user_security_created_at ON user_security(created_at DESC);
+
+-- IMPORTANT: Enable RLS and add permissive policy for anon access
+ALTER TABLE user_security ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Allow all operations for anon"
+  ON user_security
+  FOR ALL
+  USING (true)
+  WITH CHECK (true);
 ```
 
 ### Table Schema Explanation
@@ -58,6 +67,16 @@ CREATE TABLE IF NOT EXISTS user_security (
 -- 2. Create indexes for performance
 CREATE INDEX IF NOT EXISTS idx_user_security_id ON user_security(id);
 CREATE INDEX IF NOT EXISTS idx_user_security_created_at ON user_security(created_at DESC);
+
+-- 3. IMPORTANT: Enable RLS and add permissive policy
+-- Without this policy, the anon key CANNOT read/write any data!
+ALTER TABLE user_security ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Allow all operations for anon"
+  ON user_security
+  FOR ALL
+  USING (true)
+  WITH CHECK (true);
 ```
 
 ---

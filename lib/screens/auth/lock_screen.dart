@@ -5,6 +5,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/routes/app_routes.dart';
 import '../../core/security/intruder_service.dart';
 import '../../widgets/pin_keypad.dart';
+import '../../widgets/pattern_lock_widget.dart';
+import '../../widgets/knock_code_widget.dart';
 import '../../core/security/panic_service.dart';
 import '../../core/security/biometric_service.dart';
 import '../../core/security/time_lock_service.dart';
@@ -27,6 +29,8 @@ class _LockScreenState extends State<LockScreen> {
   int failedAttempts = 0;
   bool _biometricEnabled = false;
   bool _biometricSupported = false;
+  int _pinLength = 4;
+  String _unlockMode = '4-digit'; // '4-digit', '6-digit', or 'pattern'
 
   @override
   void initState() {
@@ -93,7 +97,13 @@ class _LockScreenState extends State<LockScreen> {
         }
       }
 
+      // Load PIN length preference
+      final pinPattern = Hive.box('securityBox').get('unlockPattern', defaultValue: '4-digit');
+      final pinLen = pinPattern == '6-digit' ? 6 : 4;
+
       setState(() {
+        _pinLength = pinLen;
+        _unlockMode = pinPattern as String;
         if (data != null) {
           realPin = data['real_pin'];
           decoyPin = data['decoy_pin'];
@@ -158,13 +168,19 @@ class _LockScreenState extends State<LockScreen> {
     }
   }
 
+  void _onPatternCompleted(String pattern) {
+    if (_isLoading || realPin == null) return;
+    setState(() => enteredPin = pattern);
+    _validatePin();
+  }
+
   void _onKeyPress(String value) {
     if (_isLoading || realPin == null) return;
-    if (enteredPin.length >= 4) return;
+    if (enteredPin.length >= _pinLength) return;
 
     setState(() => enteredPin += value);
 
-    if (enteredPin.length == 4) {
+    if (enteredPin.length == _pinLength) {
       _validatePin();
     }
   }
@@ -336,6 +352,8 @@ class _LockScreenState extends State<LockScreen> {
       child: Scaffold(
         resizeToAvoidBottomInset: false,
         body: Container(
+          width: double.infinity,
+          height: double.infinity,
           decoration: BoxDecoration(
             gradient: Theme.of(context).brightness == Brightness.light
                 ? LinearGradient(
@@ -362,59 +380,117 @@ class _LockScreenState extends State<LockScreen> {
                   child: CircularProgressIndicator(color: Colors.cyan),
                 )
               : SafeArea(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
+                  child: Center(
+                    child: SingleChildScrollView(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 24),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
 
-                        if (PanicService.isActive())
-                          _buildLockBanner(
-                              'PANIC LOCK ACTIVE', Colors.redAccent),
-                        if (TimeLockService.isNightLockActive())
-                          _buildLockBanner(
-                              'TIME LOCK ACTIVE', Colors.orangeAccent),
-                        FutureBuilder<bool>(
-                          future:
-                              LocationLockService.isOutsideTrustedLocation(),
-                          builder: (_, snap) => snap.data == true
-                              ? _buildLockBanner(
-                                  'LOCATION LOCK ACTIVE', Colors.greenAccent)
-                              : const SizedBox.shrink(),
+                            if (PanicService.isActive())
+                              _buildLockBanner(
+                                  'PANIC LOCK ACTIVE', Colors.redAccent),
+                            if (TimeLockService.isNightLockActive())
+                              _buildLockBanner(
+                                  'TIME LOCK ACTIVE', Colors.orangeAccent),
+                            FutureBuilder<bool>(
+                              future:
+                                  LocationLockService.isOutsideTrustedLocation(),
+                              builder: (_, snap) => snap.data == true
+                                  ? _buildLockBanner(
+                                      'LOCATION LOCK ACTIVE', Colors.greenAccent)
+                                  : const SizedBox.shrink(),
+                            ),
+
+                            _buildLogo(),
+
+                            Text(
+                              _unlockMode == 'pattern'
+                                  ? 'Draw Pattern'
+                                  : (_biometricSupported && _biometricEnabled
+                                      ? 'Enter the PIN'
+                                      : 'Enter the PIN'),
+                              style: TextStyle(
+                                fontSize: 28,
+                                fontWeight: FontWeight.bold,
+                                color: ThemeConfig.textPrimary(context),
+                                letterSpacing: 1.2,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              'Unlock to access StealthSeal',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: ThemeConfig.textSecondary(context),
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+
+                            if (_unlockMode == 'knock-code') ...[                              _buildBiometricButton(),
+                              const SizedBox(height: 16),
+                              SizedBox(
+                                height: 350,
+                                child: KnockCodeWidget(
+                                  onKnockCodeCompleted: (code) {
+                                    setState(() => enteredPin = code);
+                                    _validatePin();
+                                  },
+                                  onKnockCodeTooShort: () {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: const Text('Tap 4-6 zones'),
+                                        backgroundColor: ThemeConfig.accentColor(context).withValues(alpha: 0.8),
+                                        duration: const Duration(seconds: 1),
+                                      ),
+                                    );
+                                  },
+                                  dividerColor: Theme.of(context).brightness == Brightness.dark
+                                      ? const Color(0xFF555566)
+                                      : Colors.grey[400]!,
+                                  selectedColor: ThemeConfig.accentColor(context),
+                                ),
+                              ),
+                            ]
+                            else if (_unlockMode == 'pattern') ...[
+                              _buildBiometricButton(),
+                              const SizedBox(height: 16),
+                              Center(
+                                child: PatternLockWidget(
+                                  onPatternCompleted: _onPatternCompleted,
+                                  onPatternTooShort: () {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: const Text('Connect at least 4 dots'),
+                                        backgroundColor: ThemeConfig.accentColor(context).withValues(alpha: 0.8),
+                                        duration: const Duration(seconds: 1),
+                                      ),
+                                    );
+                                  },
+                                  dotColor: Theme.of(context).brightness == Brightness.dark
+                                      ? const Color(0xFF555566)
+                                      : Colors.grey[400]!,
+                                  selectedColor: ThemeConfig.accentColor(context),
+                                ),
+                              ),
+                            ]
+                            else ...[
+                              _buildPinDots(),
+                              const SizedBox(height: 16),
+
+                              _buildBiometricButton(),
+                              const SizedBox(height: 30),
+
+                              PinKeypad(
+                                onKeyPressed: _onKeyPress,
+                                onDelete: _onDelete,
+                              ),
+                            ],
+                          ],
                         ),
-
-                        _buildLogo(),
-
-                        Text(
-                          'Enter the PIN',
-                          style: TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.bold,
-                            color: ThemeConfig.textPrimary(context),
-                            letterSpacing: 1.2,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          'Unlock to access StealthSeal',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: ThemeConfig.textSecondary(context),
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-
-                        _buildPinDots(),
-                        const SizedBox(height: 16),
-
-                        _buildBiometricButton(),
-                        const SizedBox(height: 30),
-
-                        PinKeypad(
-                          onKeyPressed: _onKeyPress,
-                          onDelete: _onDelete,
-                        ),
-                      ],
+                      ),
                     ),
                   ),
                 ),
@@ -488,7 +564,7 @@ class _LockScreenState extends State<LockScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: List.generate(
-        4,
+        _pinLength,
         (i) => Container(
           margin: const EdgeInsets.symmetric(horizontal: 8),
           width: 20,

@@ -105,27 +105,53 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
 
       bool isUpdatingRealPin = _currentPasswordController.text == _currentRealPin;
 
+      // Save to Hive FIRST (guaranteed local storage)
+      final securityBox = Hive.box('securityBox');
       if (isUpdatingRealPin) {
-
-        await Supabase.instance.client
-            .from('user_security')
-            .update({'real_pin': newPassword}).eq('id', userId);
-
-        final securityBox = Hive.box('securityBox');
         await securityBox.put('realPin', newPassword);
         _currentRealPin = newPassword;
-
-        _showSuccessSnackBar('Real password changed successfully');
       } else {
+        await securityBox.put('decoyPin', newPassword);
+        _currentDecoyPin = newPassword;
+      }
+      debugPrint('Password updated in Hive');
+
+      // Sync to Supabase
+      try {
+        final updateData = isUpdatingRealPin
+            ? {'real_pin': newPassword}
+            : {'decoy_pin': newPassword};
 
         await Supabase.instance.client
             .from('user_security')
-            .update({'decoy_pin': newPassword}).eq('id', userId);
+            .upsert(
+              {
+                'id': userId,
+                'real_pin': isUpdatingRealPin ? newPassword : _currentRealPin,
+                'decoy_pin': isUpdatingRealPin ? _currentDecoyPin : newPassword,
+              },
+              onConflict: 'id',
+            );
+        debugPrint('Password synced to Supabase');
+      } catch (supabaseError) {
+        debugPrint('WARNING: Supabase sync failed: $supabaseError');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Warning: Password saved locally but cloud sync failed. '
+                'Check Supabase RLS policies.',
+              ),
+              backgroundColor: Colors.orange,
+              duration: Duration(seconds: 4),
+            ),
+          );
+        }
+      }
 
-        final securityBox = Hive.box('securityBox');
-        await securityBox.put('decoyPin', newPassword);
-        _currentDecoyPin = newPassword;
-
+      if (isUpdatingRealPin) {
+        _showSuccessSnackBar('Real password changed successfully');
+      } else {
         _showSuccessSnackBar('Decoy password changed successfully');
       }
 

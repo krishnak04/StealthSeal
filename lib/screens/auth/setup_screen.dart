@@ -148,15 +148,30 @@ class _SetupScreenState extends State<SetupScreen> {
       // Step 3: Sync to Supabase
       try {
         final supabase = Supabase.instance.client;
-        final response = await supabase.from('user_security').upsert({
-          'id': userId,
-          'real_pin': realPin,
-          'decoy_pin': decoyPin,
-          'biometric_enabled': false,
-        }).select().timeout(const Duration(seconds: 10));
+        final response = await supabase.from('user_security').upsert(
+          {
+            'id': userId,
+            'real_pin': realPin,
+            'decoy_pin': decoyPin,
+            'biometric_enabled': false,
+          },
+          onConflict: 'id',
+        ).select().timeout(const Duration(seconds: 10));
         debugPrint('PINs synced to Supabase successfully: $response');
       } catch (supabaseError) {
         debugPrint('WARNING: Supabase sync failed: $supabaseError');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Warning: PINs saved locally but cloud sync failed. '
+                'Check Supabase RLS policies.',
+              ),
+              backgroundColor: Colors.orange,
+              duration: Duration(seconds: 4),
+            ),
+          );
+        }
       }
 
       if (!mounted) return;

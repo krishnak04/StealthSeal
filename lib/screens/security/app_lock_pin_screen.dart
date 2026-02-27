@@ -30,11 +30,26 @@ class _AppLockPinScreenState extends State<AppLockPinScreen> {
   String? _decoyPin;
   int _failedAttempts = 0;
   bool _isLoading = true;
+  int _pinLength = 4;
 
   @override
   void initState() {
     super.initState();
+    _loadPinLength();
     _loadPins();
+  }
+
+  void _loadPinLength() {
+    try {
+      final securityBox = Hive.box('securityBox');
+      final pattern = securityBox.get('unlockPattern', defaultValue: '4-digit');
+      setState(() {
+        _pinLength = pattern == '6-digit' ? 6 : 4;
+      });
+      debugPrint('PIN length set to: $_pinLength (pattern: $pattern)');
+    } catch (e) {
+      debugPrint('Error loading pin length: $e');
+    }
   }
 
   Future<void> _loadPins() async {
@@ -70,11 +85,11 @@ class _AppLockPinScreenState extends State<AppLockPinScreen> {
 
   void _onKeyPress(String value) {
     if (_isLoading || _realPin == null) return;
-    if (_enteredPin.length >= 4) return;
+    if (_enteredPin.length >= _pinLength) return;
 
     setState(() => _enteredPin += value);
 
-    if (_enteredPin.length == 4) {
+    if (_enteredPin.length == _pinLength) {
       _validatePin();
     }
   }
@@ -320,7 +335,7 @@ class _AppLockPinScreenState extends State<AppLockPinScreen> {
   Widget _buildPinDots() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
-      children: List.generate(4, (index) {
+      children: List.generate(_pinLength, (index) {
         final isFilled = index < _enteredPin.length;
         return Container(
           margin: const EdgeInsets.symmetric(horizontal: 10),
