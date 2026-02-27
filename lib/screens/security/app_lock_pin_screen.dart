@@ -87,9 +87,9 @@ class _AppLockPinScreenState extends State<AppLockPinScreen> {
   }
 
   Future<void> _validatePin() async {
-    if (_realPin == null || _decoyPin == null) return;
+    if (_realPin == null) return;
 
-    if (_enteredPin == _realPin || _enteredPin == _decoyPin) {
+    if (_enteredPin == _realPin) {
 
       _failedAttempts = 0;
       debugPrint('App unlocked: ${widget.packageName}');

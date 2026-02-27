@@ -190,8 +190,8 @@ class AppLockActivity : Activity() {
     }
 
     private fun validatePin() {
-        if (enteredPin == realPin || enteredPin == decoyPin) {
-            // Correct PIN
+        if (enteredPin == realPin) {
+            // Correct PIN — only real PIN unlocks apps
             failedAttempts = 0
             pinCorrect = true
             Log.d(TAG, "Correct PIN entered for: $lockedPackage")
