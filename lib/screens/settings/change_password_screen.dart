@@ -96,6 +96,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       _showErrorSnackBar('Current password is incorrect');
       return;
     }
+    
 
     setState(() => _isLoading = true);
 
@@ -118,10 +119,6 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
 
       // Sync to Supabase
       try {
-        final updateData = isUpdatingRealPin
-            ? {'real_pin': newPassword}
-            : {'decoy_pin': newPassword};
-
         await Supabase.instance.client
             .from('user_security')
             .upsert(

@@ -457,7 +457,11 @@ class _LockScreenState extends State<LockScreen> {
                             else if (_unlockMode == 'pattern') ...[
                               _buildBiometricButton(),
                               const SizedBox(height: 16),
-                              Center(
+                              ConstrainedBox(
+                                constraints: const BoxConstraints(
+                                  maxWidth: 320,
+                                  maxHeight: 320,
+                                ),
                                 child: PatternLockWidget(
                                   onPatternCompleted: _onPatternCompleted,
                                   onPatternTooShort: () {

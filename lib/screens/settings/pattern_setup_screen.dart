@@ -30,6 +30,7 @@ class _PatternSetupScreenState extends State<PatternSetupScreen> {
 
   String? _currentRealPin;
   String? _currentDecoyPin;
+  String _currentUnlockPattern = '4-digit'; // Track current unlock mode
   bool _isSaving = false;
   bool _isLoading = true;
   String _statusMessage = '';
@@ -47,6 +48,9 @@ class _PatternSetupScreenState extends State<PatternSetupScreen> {
       _currentRealPin = securityBox.get('realPin', defaultValue: '') as String;
       _currentDecoyPin =
           securityBox.get('decoyPin', defaultValue: '') as String;
+      _currentUnlockPattern = securityBox.get('unlockPattern', defaultValue: '4-digit') as String;
+
+      debugPrint('Loaded from Hive - Pattern: $_currentUnlockPattern, Real PIN length: ${_currentRealPin?.length}, Decoy PIN length: ${_currentDecoyPin?.length}');
 
       if (_currentRealPin!.isEmpty || _currentDecoyPin!.isEmpty) {
         final userId = await UserIdentifierService.getUserId();
@@ -59,6 +63,20 @@ class _PatternSetupScreenState extends State<PatternSetupScreen> {
         if (response != null) {
           _currentRealPin = response['real_pin'] ?? '';
           _currentDecoyPin = response['decoy_pin'] ?? '';
+          debugPrint('Loaded from Supabase - Real PIN length: ${_currentRealPin?.length}, Decoy PIN length: ${_currentDecoyPin?.length}');
+        }
+      }
+
+      if (_currentRealPin == null || _currentRealPin!.isEmpty) {
+        debugPrint('ERROR: Current real PIN is empty!');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Error: Could not load your current password. Please try again.'),
+              backgroundColor: Colors.redAccent,
+              duration: Duration(seconds: 3),
+            ),
+          );
         }
       }
 
@@ -69,6 +87,13 @@ class _PatternSetupScreenState extends State<PatternSetupScreen> {
       debugPrint('Error loading current pins: $error');
       if (mounted) {
         setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error loading current password: $error'),
+            backgroundColor: Colors.redAccent,
+            duration: const Duration(seconds: 3),
+          ),
+        );
       }
     }
   }
@@ -133,7 +158,26 @@ class _PatternSetupScreenState extends State<PatternSetupScreen> {
 
     switch (_step) {
       case PatternSetupStep.currentPin:
-        // Should not happen; current PIN uses keypad
+        // User is verifying current pattern (if current mode is pattern)
+        if (_currentRealPin == null || _currentRealPin!.isEmpty) {
+          _showPatternError('Error: Current password not loaded. Please go back and try again.');
+          return;
+        }
+        
+        debugPrint('Pattern verification - Entered: "$pattern", Real: "$_currentRealPin", Decoy: "$_currentDecoyPin"');
+        
+        if (pattern == _currentRealPin || pattern == _currentDecoyPin) {
+          debugPrint(' Pattern verification SUCCESS');
+          setState(() {
+            _step = PatternSetupStep.newRealPattern;
+            _statusMessage = '';
+            _statusColor = Colors.white70;
+          });
+        } else {
+          debugPrint('✗ Pattern verification FAILED - Pattern does not match');
+          _showPatternError('Incorrect pattern. Try again.');
+          // Status message already set by _showPatternError
+        }
         break;
 
       case PatternSetupStep.newRealPattern:
@@ -345,7 +389,9 @@ class _PatternSetupScreenState extends State<PatternSetupScreen> {
   String get _title {
     switch (_step) {
       case PatternSetupStep.currentPin:
-        return 'Enter Current PIN';
+        return _currentUnlockPattern == 'pattern'
+            ? 'Draw Current Pattern'
+            : 'Enter Current PIN';
       case PatternSetupStep.newRealPattern:
         return 'Draw Real Pattern';
       case PatternSetupStep.confirmRealPattern:
@@ -360,7 +406,9 @@ class _PatternSetupScreenState extends State<PatternSetupScreen> {
   String get _subtitle {
     switch (_step) {
       case PatternSetupStep.currentPin:
-        return 'Verify your identity first';
+        return _currentUnlockPattern == 'pattern'
+            ? 'Draw your current pattern to verify'
+            : 'Verify your identity first';
       case PatternSetupStep.newRealPattern:
         return 'Draw your real unlock pattern\nConnect at least 4 dots';
       case PatternSetupStep.confirmRealPattern:
@@ -454,15 +502,35 @@ class _PatternSetupScreenState extends State<PatternSetupScreen> {
 
                           // Show either PIN keypad or Pattern grid
                           if (_step == PatternSetupStep.currentPin)
-                            _buildCurrentPinInput()
+                            // If current mode is pattern, show pattern grid to verify
+                            if (_currentUnlockPattern == 'pattern')
+                              ConstrainedBox(
+                                constraints: const BoxConstraints(
+                                  maxWidth: 320,
+                                  maxHeight: 320,
+                                ),
+                                child: PatternLockWidget(
+                                  onPatternCompleted: _onPatternCompleted,
+                                  dotColor: const Color(0xFF555566),
+                                  selectedColor: Colors.white,
+                                ),
+                              )
+                            else
+                              _buildCurrentPinInput()
                           else if (_isSaving)
                             const CircularProgressIndicator(
                                 color: Colors.white)
                           else
-                            PatternLockWidget(
-                              onPatternCompleted: _onPatternCompleted,
-                              dotColor: const Color(0xFF555566),
-                              selectedColor: Colors.white,
+                            ConstrainedBox(
+                              constraints: const BoxConstraints(
+                                maxWidth: 320,
+                                maxHeight: 320,
+                              ),
+                              child: PatternLockWidget(
+                                onPatternCompleted: _onPatternCompleted,
+                                dotColor: const Color(0xFF555566),
+                                selectedColor: Colors.white,
+                              ),
                             ),
 
                           const SizedBox(height: 40),

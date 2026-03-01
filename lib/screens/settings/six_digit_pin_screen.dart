@@ -4,6 +4,7 @@ import 'package:hive/hive.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/theme/theme_config.dart';
 import '../../core/services/user_identifier_service.dart';
+import '../../widgets/pattern_lock_widget.dart';
 
 enum SixDigitStep {
   currentPin,
@@ -33,6 +34,7 @@ class _SixDigitPinScreenState extends State<SixDigitPinScreen>
 
   String? _currentRealPin;
   String? _currentDecoyPin;
+  String _currentUnlockPattern = '4-digit'; // Track current unlock mode
   bool _isSaving = false;
   bool _isLoading = true;
   bool _showError = false;
@@ -69,6 +71,7 @@ class _SixDigitPinScreenState extends State<SixDigitPinScreen>
       final securityBox = Hive.box('securityBox');
       _currentRealPin = securityBox.get('realPin', defaultValue: '') as String;
       _currentDecoyPin = securityBox.get('decoyPin', defaultValue: '') as String;
+      _currentUnlockPattern = securityBox.get('unlockPattern', defaultValue: '4-digit') as String;
 
       if (_currentRealPin!.isEmpty || _currentDecoyPin!.isEmpty) {
         final userId = await UserIdentifierService.getUserId();
@@ -126,6 +129,20 @@ class _SixDigitPinScreenState extends State<SixDigitPinScreen>
       _enteredPin = _enteredPin.substring(0, _enteredPin.length - 1);
       _showError = false;
     });
+  }
+
+  void _onPatternCompleted(String pattern) {
+    // Only used for verifying current pattern when switching from pattern mode
+    if (_step != SixDigitStep.currentPin || _currentUnlockPattern != 'pattern') return;
+
+    if (pattern == _currentRealPin || pattern == _currentDecoyPin) {
+      setState(() {
+        _step = SixDigitStep.newRealPin;
+        _enteredPin = '';
+      });
+    } else {
+      _triggerError('Wrong pattern. Try again.');
+    }
   }
 
   void _processStep() {
@@ -347,25 +364,14 @@ class _SixDigitPinScreenState extends State<SixDigitPinScreen>
     );
   }
 
-  String get _title {
-    switch (_step) {
-      case SixDigitStep.currentPin:
-        return 'Enter Current PIN';
-      case SixDigitStep.newRealPin:
-        return 'Set New Real PIN';
-      case SixDigitStep.confirmRealPin:
-        return 'Confirm Real PIN';
-      case SixDigitStep.newDecoyPin:
-        return 'Set New Decoy PIN';
-      case SixDigitStep.confirmDecoyPin:
-        return 'Confirm Decoy PIN';
-    }
-  }
-
   String get _subtitle {
     switch (_step) {
       case SixDigitStep.currentPin:
-        return 'Enter your current PIN';
+        return _currentUnlockPattern == 'pattern'
+            ? 'Draw Current Pattern to Verify'
+            : _currentUnlockPattern == 'knock-code'
+                ? 'Tap Knock Code to Verify'
+                : 'Enter your current PIN';
       case SixDigitStep.newRealPin:
         return 'Enter a $_targetLen-digit real PIN';
       case SixDigitStep.confirmRealPin:
@@ -376,6 +382,7 @@ class _SixDigitPinScreenState extends State<SixDigitPinScreen>
         return 'Re-enter your decoy PIN';
     }
   }
+  
 
   int get _dotCount {
     return _step == SixDigitStep.currentPin ? _currentPinMaxLength : _targetLen;
@@ -433,32 +440,49 @@ class _SixDigitPinScreenState extends State<SixDigitPinScreen>
                           ),
                           const SizedBox(height: 24),
 
-                          // PIN dots
-                          AnimatedBuilder(
-                            animation: _shakeAnimation,
-                            builder: (context, child) {
-                              return Transform.translate(
-                                offset: Offset(
-                                  _shakeAnimation.value *
-                                      (_shakeController.isAnimating
-                                          ? ((_shakeController.value * 10).toInt() % 2 == 0
-                                              ? 1
-                                              : -1)
-                                          : 0),
-                                  0,
-                                ),
-                                child: child,
-                              );
-                            },
-                            child: _buildPinDots(),
-                          ),
+                          // Show PIN dots for numeric PIN or pattern grid for pattern verification
+                          if (_step == SixDigitStep.currentPin && _currentUnlockPattern == 'pattern') ...[
+                            ConstrainedBox(
+                              constraints: const BoxConstraints(
+                                maxWidth: 320,
+                                maxHeight: 320,
+                              ),
+                              child: PatternLockWidget(
+                                onPatternCompleted: _onPatternCompleted,
+                                dotColor: const Color(0xFF555566),
+                                selectedColor: Colors.white,
+                              ),
+                            ),
+                          ] else ...[
+                            // PIN dots animation
+                            AnimatedBuilder(
+                              animation: _shakeAnimation,
+                              builder: (context, child) {
+                                return Transform.translate(
+                                  offset: Offset(
+                                    _shakeAnimation.value *
+                                        (_shakeController.isAnimating
+                                            ? ((_shakeController.value * 10).toInt() % 2 == 0
+                                                ? 1
+                                                : -1)
+                                            : 0),
+                                    0,
+                                  ),
+                                  child: child,
+                                );
+                              },
+                              child: _buildPinDots(),
+                            ),
+                          ],
 
                           const Spacer(),
 
-                          // Numeric keypad
+                          // Numeric keypad or message
                           _isSaving
                               ? const CircularProgressIndicator(color: Colors.white)
-                              : _buildKeypad(),
+                              : _step == SixDigitStep.currentPin && _currentUnlockPattern == 'pattern'
+                                  ? const SizedBox.shrink() // No keypad for pattern verification
+                                  : _buildKeypad(),
 
                           const SizedBox(height: 40),
                         ],

@@ -24,7 +24,6 @@ class KnockCodeSetupScreen extends StatefulWidget {
 class _KnockCodeSetupScreenState extends State<KnockCodeSetupScreen> {
   KnockCodeSetupStep _step = KnockCodeSetupStep.currentPin;
 
-  String _enteredPin = '';
   String _newRealKnockCode = '';
   String _newDecoyKnockCode = '';
 

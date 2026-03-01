@@ -37,8 +37,6 @@ class KnockCodeWidget extends StatefulWidget {
 
 class _KnockCodeWidgetState extends State<KnockCodeWidget> {
   final List<int> _tappedZones = [];
-  late double _screenWidth;
-  late double _screenHeight;
 
   // 4 zones: 0=top-left, 1=top-right, 2=bottom-left, 3=bottom-right
   late Rect _zone0, _zone1, _zone2, _zone3;
@@ -49,9 +47,6 @@ class _KnockCodeWidgetState extends State<KnockCodeWidget> {
   }
 
   void _computeZones(double width, double height) {
-    _screenWidth = width;
-    _screenHeight = height;
-
     final centerX = width / 2;
     final centerY = height / 2;
 
@@ -94,14 +89,6 @@ class _KnockCodeWidgetState extends State<KnockCodeWidget> {
     setState(() {
       _tappedZones.clear();
     });
-  }
-
-  void _resetKnockCode() {
-    if (mounted) {
-      setState(() {
-        _tappedZones.clear();
-      });
-    }
   }
 
   @override
