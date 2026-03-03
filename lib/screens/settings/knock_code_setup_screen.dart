@@ -356,7 +356,7 @@ class _KnockCodeSetupScreenState extends State<KnockCodeSetupScreen> {
                   Stack(
                     alignment: Alignment.center,
                     children: [
-                      // Centered step indicator
+                      // Centered step indicator (show 2-5 for setup steps, hide during verification)
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
@@ -369,7 +369,7 @@ class _KnockCodeSetupScreenState extends State<KnockCodeSetupScreen> {
                             ),
                             alignment: Alignment.center,
                             child: Text(
-                              '${_step.index + 1}',
+                              '${_step.index + 2}',
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 16,
