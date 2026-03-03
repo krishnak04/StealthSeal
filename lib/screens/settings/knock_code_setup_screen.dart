@@ -446,7 +446,7 @@ class _KnockCodeSetupScreenState extends State<KnockCodeSetupScreen> {
                                           4,
                                           (dotIndex) => Container(
                                             decoration: BoxDecoration(
-                                              color: (index * 4 + dotIndex) < _getTappedCount()
+                                              color: (index * 1 + dotIndex) < _getTappedCount()
                                                   ? Colors.cyan
                                                   : const Color(0xFF444455),
                                               borderRadius: BorderRadius.circular(4),
