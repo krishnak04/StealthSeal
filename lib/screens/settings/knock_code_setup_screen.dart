@@ -26,9 +26,11 @@ class _KnockCodeSetupScreenState extends State<KnockCodeSetupScreen> {
 
   String _newRealKnockCode = '';
   String _newDecoyKnockCode = '';
+  String _currentInputTaps = ''; // Track current taps for visual feedback
 
   String? _currentRealPin;
   String? _currentDecoyPin;
+  String _currentUnlockPattern = '4-digit';
   bool _isSaving = false;
   bool _isLoading = true;
   String _statusMessage = '';
@@ -45,6 +47,9 @@ class _KnockCodeSetupScreenState extends State<KnockCodeSetupScreen> {
       final securityBox = Hive.box('securityBox');
       _currentRealPin = securityBox.get('realPin', defaultValue: '') as String;
       _currentDecoyPin = securityBox.get('decoyPin', defaultValue: '') as String;
+      _currentUnlockPattern = securityBox.get('unlockPattern', defaultValue: '4-digit') as String;
+
+      debugPrint('Knock code setup - Loaded pattern type: $_currentUnlockPattern');
 
       if (_currentRealPin!.isEmpty || _currentDecoyPin!.isEmpty) {
         final userId = await UserIdentifierService.getUserId();
@@ -74,57 +79,136 @@ class _KnockCodeSetupScreenState extends State<KnockCodeSetupScreen> {
   void _onKnockCodeCompleted(String code) {
     if (_isSaving) return;
 
+    // Update current input taps for visual feedback
+    setState(() {
+      _currentInputTaps = code;
+    });
+
     switch (_step) {
       case KnockCodeSetupStep.currentPin:
-        // Not used for knock code
+        // Only verify if currently in knock code mode (changing knock code)
+        if (_currentUnlockPattern == 'knock-code') {
+          debugPrint('Verifying current knock code: "$code" against real: "$_currentRealPin", decoy: "$_currentDecoyPin"');
+
+          if (code == _currentRealPin || code == _currentDecoyPin) {
+            debugPrint('✓ Current knock code verified successfully');
+            setState(() {
+              _step = KnockCodeSetupStep.newRealKnockCode;
+              _statusMessage = '';
+              _statusColor = Colors.white70;
+              _currentInputTaps = ''; // Reset for new step
+            });
+          } else {
+            debugPrint('✗ Current knock code verification failed');
+            _showError('Wrong knock code. Try again.');
+          }
+        } else {
+          // First-time setup: skip verification
+          debugPrint('✓ First-time knock code setup (auto-skip verification)');
+          setState(() {
+            _step = KnockCodeSetupStep.newRealKnockCode;
+            _statusMessage = '';
+            _statusColor = Colors.white70;
+            _currentInputTaps = ''; // Reset for new step
+          });
+        }
         break;
 
       case KnockCodeSetupStep.newRealKnockCode:
-        _newRealKnockCode = code;
+        debugPrint('✓ Real knock code set: "$code"');
         setState(() {
+          _newRealKnockCode = code;
           _step = KnockCodeSetupStep.confirmRealKnockCode;
-          _statusMessage = '';
+          _statusMessage = 'Now confirm your real knock code';
+          _statusColor = Colors.white70;
+          _currentInputTaps = ''; // Reset for new step
         });
         break;
 
       case KnockCodeSetupStep.confirmRealKnockCode:
-        if (code != _newRealKnockCode) {
-          _showError('Knock codes do not match. Try again.');
-          setState(() {
-            _step = KnockCodeSetupStep.newRealKnockCode;
-            _newRealKnockCode = '';
-          });
-        } else {
+        if (code == _newRealKnockCode) {
+          debugPrint('✓ Real knock code confirmed successfully');
           setState(() {
             _step = KnockCodeSetupStep.newDecoyKnockCode;
-            _statusMessage = '';
+            _statusMessage = 'Now set your decoy knock code';
+            _statusColor = Colors.white70;
+            _currentInputTaps = ''; // Reset for new step
+          });
+        } else {
+          debugPrint('✗ Real knock code confirmation failed');
+          setState(() {
+            _statusMessage = 'Knock codes do not match';
+            _statusColor = Colors.redAccent;
+            _currentInputTaps = ''; // Reset for retry
           });
         }
         break;
 
       case KnockCodeSetupStep.newDecoyKnockCode:
-        if (code == _newRealKnockCode) {
-          _showError('Decoy knock code must differ from real knock code.');
-          return;
-        }
-        _newDecoyKnockCode = code;
+        debugPrint('✓ Decoy knock code set: "$code"');
         setState(() {
+          _newDecoyKnockCode = code;
           _step = KnockCodeSetupStep.confirmDecoyKnockCode;
-          _statusMessage = '';
+          _statusMessage = 'Now confirm your decoy knock code';
+          _statusColor = Colors.white70;
+          _currentInputTaps = ''; // Reset for new step
         });
         break;
 
       case KnockCodeSetupStep.confirmDecoyKnockCode:
-        if (code != _newDecoyKnockCode) {
-          _showError('Knock codes do not match. Try again.');
-          setState(() {
-            _step = KnockCodeSetupStep.newDecoyKnockCode;
-            _newDecoyKnockCode = '';
-          });
-        } else {
+        if (code == _newDecoyKnockCode) {
+          debugPrint('✓ Decoy knock code confirmed successfully');
           _saveKnockCodes();
+        } else {
+          debugPrint('✗ Decoy knock code confirmation failed');
+          setState(() {
+            _statusMessage = 'Knock codes do not match';
+            _statusColor = Colors.redAccent;
+            _currentInputTaps = ''; // Reset for retry
+          });
         }
         break;
+    }
+  }
+
+  Future<void> _saveKnockCodes() async {
+    setState(() => _isSaving = true);
+
+    try {
+      final securityBox = Hive.box('securityBox');
+      await securityBox.put('realPin', _newRealKnockCode);
+      await securityBox.put('decoyPin', _newDecoyKnockCode);
+      await securityBox.put('unlockPattern', 'knock-code');
+
+      final userId = await UserIdentifierService.getUserId();
+      await Supabase.instance.client.from('user_security').upsert(
+        {
+          'id': userId,
+          'real_pin': _newRealKnockCode,
+          'decoy_pin': _newDecoyKnockCode,
+        },
+        onConflict: 'id',
+      );
+
+      debugPrint('✓ Knock codes saved successfully to Hive and Supabase');
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Knock code setup complete!'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
+        );
+        Navigator.pop(context, true);
+      }
+    } catch (error) {
+      debugPrint('✗ Error saving knock codes: $error');
+      _showError('Failed to save knock codes. Try again.');
+    } finally {
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
     }
   }
 
@@ -133,160 +217,22 @@ class _KnockCodeSetupScreenState extends State<KnockCodeSetupScreen> {
       _statusMessage = message;
       _statusColor = Colors.redAccent;
     });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.redAccent,
-        duration: const Duration(seconds: 2),
-      ),
-    );
   }
 
-  Future<void> _saveKnockCodes() async {
-    setState(() => _isSaving = true);
-
-    try {
-      final userId = await UserIdentifierService.getUserId();
-
-      // Save to Hive
-      final securityBox = Hive.box('securityBox');
-      await securityBox.put('realPin', _newRealKnockCode);
-      await securityBox.put('decoyPin', _newDecoyKnockCode);
-      await securityBox.put('unlockPattern', 'knock-code');
-      debugPrint('Knock codes saved to Hive');
-
-      // Cache to native SharedPreferences
-      try {
-        const platform = MethodChannel('com.stealthseal.app/applock');
-        await platform.invokeMethod('cachePins', {
-          'real_pin': _newRealKnockCode,
-          'decoy_pin': _newDecoyKnockCode,
-        });
-        debugPrint('Knock codes cached to native');
-      } catch (error) {
-        debugPrint('Warning: Failed to cache knock codes: $error');
-      }
-
-      // Sync to Supabase
-      try {
-        await Supabase.instance.client
-            .from('user_security')
-            .upsert(
-              {
-                'id': userId,
-                'real_pin': _newRealKnockCode,
-                'decoy_pin': _newDecoyKnockCode,
-              },
-              onConflict: 'id',
-            );
-        debugPrint('Knock codes synced to Supabase');
-      } catch (supabaseError) {
-        debugPrint('WARNING: Supabase sync failed: $supabaseError');
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                'Warning: Knock codes saved locally but cloud sync failed. '
-                'Check Supabase RLS policies.',
-              ),
-              backgroundColor: Colors.orange,
-              duration: Duration(seconds: 4),
-            ),
-          );
-        }
-      }
-
-      if (!mounted) return;
-      _showSuccessDialog();
-    } catch (error) {
-      debugPrint('Error saving knock codes: $error');
-      if (mounted) {
-        setState(() => _isSaving = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Failed to save knock codes. Please try again.'),
-            backgroundColor: ThemeConfig.errorColor(context),
-          ),
-        );
-      }
-    }
-  }
-
-  void _showSuccessDialog() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: ThemeConfig.cardColor(context),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.check_circle, color: Colors.green, size: 60),
-            const SizedBox(height: 16),
-            Text(
-              'Knock Code Set!',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: ThemeConfig.textPrimary(context),
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Your real knock code and decoy knock code have been saved.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: ThemeConfig.textSecondary(context),
-                fontSize: 14,
-              ),
-            ),
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(ctx);
-                  if (mounted) {
-                    Navigator.pop(context, true);
-                  }
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: ThemeConfig.accentColor(context),
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                child: Text(
-                  'Done',
-                  style: TextStyle(
-                    color: ThemeConfig.textPrimary(context),
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+  int _getTappedCount() {
+    return _currentInputTaps.length;
   }
 
   String get _title {
     switch (_step) {
       case KnockCodeSetupStep.currentPin:
-        return 'Verify Identity';
+        return 'Verify Current Knock Code';
       case KnockCodeSetupStep.newRealKnockCode:
-        return 'Set Real Knock Code';
+        return 'Set New Real Knock Code';
       case KnockCodeSetupStep.confirmRealKnockCode:
         return 'Confirm Real Knock Code';
       case KnockCodeSetupStep.newDecoyKnockCode:
-        return 'Set Decoy Knock Code';
+        return 'Set New Decoy Knock Code';
       case KnockCodeSetupStep.confirmDecoyKnockCode:
         return 'Confirm Decoy Knock Code';
     }
@@ -295,15 +241,15 @@ class _KnockCodeSetupScreenState extends State<KnockCodeSetupScreen> {
   String get _subtitle {
     switch (_step) {
       case KnockCodeSetupStep.currentPin:
-        return 'Verify your current PIN/pattern first';
+        return 'Enter your current knock code';
       case KnockCodeSetupStep.newRealKnockCode:
-        return 'Tap 4-6 zones in any pattern\nfor your real knock code';
+        return 'Tap 4-6 zones for real knock code';
       case KnockCodeSetupStep.confirmRealKnockCode:
-        return 'Repeat the same pattern';
+        return 'Confirm by tapping the same zones';
       case KnockCodeSetupStep.newDecoyKnockCode:
-        return 'Tap 4-6 zones for your decoy\nknock code (must be different)';
+        return 'Tap 4-6 zones for decoy knock code';
       case KnockCodeSetupStep.confirmDecoyKnockCode:
-        return 'Repeat the same pattern';
+        return 'Confirm by tapping the same zones';
     }
   }
 
@@ -323,84 +269,195 @@ class _KnockCodeSetupScreenState extends State<KnockCodeSetupScreen> {
           : SafeArea(
               child: Column(
                 children: [
-                  // Top bar
-                  Padding(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                    child: Row(
-                      children: [
-                        IconButton(
+                  // Top bar with centered step indicator
+                  Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      // Centered step indicator
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            width: 36,
+                            height: 36,
+                            decoration: BoxDecoration(
+                              color: Colors.blue,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            alignment: Alignment.center,
+                            child: Text(
+                              '${_step.index + 1}',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          const Text(
+                            '—',
+                            style: TextStyle(
+                              color: Colors.white60,
+                              fontSize: 18,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Container(
+                            width: 36,
+                            height: 36,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF555566),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            alignment: Alignment.center,
+                            child: const Text(
+                              '5',
+                              style: TextStyle(
+                                color: Colors.white60,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      // Back button on the left
+                      Positioned(
+                        left: 0,
+                        child: IconButton(
                           icon: const Icon(Icons.arrow_back,
                               color: Colors.white),
                           onPressed: () => Navigator.pop(context),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
+                  const SizedBox(height: 8),
 
                   Expanded(
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 24),
                       child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          // Title
-                          Text(
-                            _title,
-                            style: const TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-
-                          // Subtitle
-                          Text(
-                            _subtitle,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              fontSize: 14,
-                              color: Colors.white60,
-                            ),
-                          ),
-
-                          // Status message
-                          if (_statusMessage.isNotEmpty) ...[
-                            const SizedBox(height: 8),
-                            Text(
-                              _statusMessage,
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: _statusColor,
-                                fontWeight: FontWeight.w500,
+                          // Visual tap sequence indicator (at the top)
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(0, 24, 0, 32),
+                            child: Wrap(
+                              alignment: WrapAlignment.center,
+                              spacing: 8,
+                              runSpacing: 24,
+                              children: List.generate(
+                                6,
+                                (index) => Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    SizedBox(
+                                      width: 48,
+                                      height: 48,
+                                      child: GridView.count(
+                                        crossAxisCount: 2,
+                                        crossAxisSpacing: 4,
+                                        mainAxisSpacing: 4,
+                                        children: List.generate(
+                                          4,
+                                          (dotIndex) => Container(
+                                            decoration: BoxDecoration(
+                                              color: (index * 4 + dotIndex) < _getTappedCount()
+                                                  ? Colors.cyan
+                                                  : const Color(0xFF444455),
+                                              borderRadius: BorderRadius.circular(4),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      _getTappedCount() > index ? '${index + 1}' : '',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
-                          ],
+                          ),
 
-                          const SizedBox(height: 40),
+                          // Title and content (centered)
+                          Expanded(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                // Title
+                                Text(
+                                  _title,
+                                  style: const TextStyle(
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
 
-                          // Show knock code widget
-                          if (_isSaving)
-                            const CircularProgressIndicator(color: Colors.white)
-                          else
-                            SizedBox(
-                              height: 300,
-                              child: KnockCodeWidget(
-                                onKnockCodeCompleted: _onKnockCodeCompleted,
-                                onKnockCodeTooShort: () {
-                                  setState(() {
-                                    _statusMessage = 'Tap at least 4 zones';
-                                    _statusColor = Colors.orangeAccent;
-                                  });
-                                },
-                                dividerColor: const Color(0xFF555566),
-                                selectedColor: Colors.white,
-                              ),
+                                // Subtitle
+                                Text(
+                                  _subtitle,
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.white60,
+                                  ),
+                                ),
+
+                                // Status message
+                                if (_statusMessage.isNotEmpty) ...[
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    _statusMessage,
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: _statusColor,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+
+                                const SizedBox(height: 24),
+
+                                // Show knock code widget
+                                if (_isSaving)
+                                  const CircularProgressIndicator(color: Colors.white)
+                                else
+                                  SizedBox(
+                                    height: 250,
+                                    child: KnockCodeWidget(
+                                      onKnockCodeCompleted: _onKnockCodeCompleted,
+                                      onKnockCodeTooShort: () {
+                                        setState(() {
+                                          _statusMessage = 'Tap at least 4 zones';
+                                          _statusColor = Colors.orangeAccent;
+                                        });
+                                      },
+                                      onTapUpdate: (tapSequence) {
+                                        // Update visual indicator in real-time
+                                        setState(() {
+                                          _currentInputTaps = tapSequence;
+                                        });
+                                      },
+                                      dividerColor: const Color(0xFF555566),
+                                      selectedColor: Colors.white,
+                                      submitButtonLabel: 'Next',
+                                      clearButtonLabel: 'Reset',
+                                    ),
+                                  ),
+                              ],
                             ),
-
-                          const SizedBox(height: 40),
+                          ),
                         ],
                       ),
                     ),

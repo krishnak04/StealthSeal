@@ -429,7 +429,8 @@ class _LockScreenState extends State<LockScreen> {
                             ),
                             const SizedBox(height: 24),
 
-                            if (_unlockMode == 'knock-code') ...[                              _buildBiometricButton(),
+                            if (_unlockMode == 'knock-code') ...[
+                              _buildBiometricButton(),
                               const SizedBox(height: 16),
                               SizedBox(
                                 height: 350,
@@ -446,6 +447,10 @@ class _LockScreenState extends State<LockScreen> {
                                         duration: const Duration(seconds: 1),
                                       ),
                                     );
+                                  },
+                                  onTapUpdate: (tapSequence) {
+                                    // Real-time tap tracking for lock screen
+                                    setState(() => enteredPin = tapSequence);
                                   },
                                   dividerColor: Theme.of(context).brightness == Brightness.dark
                                       ? const Color(0xFF555566)

@@ -9,6 +9,9 @@ class KnockCodeWidget extends StatefulWidget {
   /// Called when user taps fewer than minimum required zones
   final VoidCallback? onKnockCodeTooShort;
 
+  /// Called on each tap with current tap sequence (for real-time UI updates)
+  final ValueChanged<String>? onTapUpdate;
+
   /// Color of zone dividers (cross lines)
   final Color dividerColor;
 
@@ -21,14 +24,23 @@ class KnockCodeWidget extends StatefulWidget {
   /// Maximum number of taps allowed (default 6)
   final int maxTaps;
 
+  /// Custom label for submit button (default "Submit")
+  final String submitButtonLabel;
+
+  /// Custom label for clear button (default "Clear")
+  final String clearButtonLabel;
+
   const KnockCodeWidget({
     super.key,
     required this.onKnockCodeCompleted,
     this.onKnockCodeTooShort,
+    this.onTapUpdate,
     this.dividerColor = const Color(0xFF666677),
     this.selectedColor = Colors.cyan,
     this.minTaps = 4,
     this.maxTaps = 6,
+    this.submitButtonLabel = 'Submit',
+    this.clearButtonLabel = 'Clear',
   });
 
   @override
@@ -72,6 +84,10 @@ class _KnockCodeWidgetState extends State<KnockCodeWidget> {
       setState(() {
         _tappedZones.add(zone);
       });
+      
+      // Notify parent widget about each tap in real-time
+      final currentCode = _tappedZones.join('');
+      widget.onTapUpdate?.call(currentCode);
     }
   }
 
@@ -89,6 +105,9 @@ class _KnockCodeWidgetState extends State<KnockCodeWidget> {
     setState(() {
       _tappedZones.clear();
     });
+    
+    // Notify about reset
+    widget.onTapUpdate?.call('');
   }
 
   @override
@@ -98,98 +117,73 @@ class _KnockCodeWidgetState extends State<KnockCodeWidget> {
         final width = constraints.maxWidth.isFinite
             ? constraints.maxWidth
             : MediaQuery.of(context).size.width;
-        final gridHeight = constraints.maxHeight.isFinite
-            ? constraints.maxHeight * 0.7
-            : 280.0;
+        final height = constraints.maxHeight.isFinite
+            ? constraints.maxHeight
+            : MediaQuery.of(context).size.height * 0.7;
 
-        _computeZones(width, gridHeight);
+        _computeZones(width, height);
 
         return Column(
           children: [
             Expanded(
-              flex: 7,
               child: GestureDetector(
                 onTapUp: _handleTap,
+                behavior: HitTestBehavior.opaque,
                 child: CustomPaint(
                   painter: _KnockCodePainter(
-                    zone0: _zone0,
-                    zone1: _zone1,
-                    zone2: _zone2,
-                    zone3: _zone3,
                     tappedZones: _tappedZones,
                     dividerColor: widget.dividerColor,
                     selectedColor: widget.selectedColor,
                   ),
-                  size: Size(width, gridHeight),
+                  size: Size(width, height),
                 ),
               ),
             ),
-            Expanded(
-              flex: 3,
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    // Tap count display
-                    Text(
-                      'Taps: ${_tappedZones.length} / ${widget.maxTaps}',
-                      style: TextStyle(
-                        color: widget.selectedColor,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  Text(
+                    'Taps: ${_tappedZones.length} / ${widget.maxTaps}',
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  ElevatedButton(
+                    onPressed: _tappedZones.length >= widget.minTaps
+                        ? _handleSubmit
+                        : null,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue,
+                      disabledBackgroundColor: Colors.grey[700],
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 10,
                       ),
                     ),
-                    const SizedBox(height: 12),
-                    // Buttons row
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        // Clear button
-                        ElevatedButton.icon(
-                          onPressed: _handleReset,
-                          icon: const Icon(Icons.refresh),
-                          label: const Text('Clear'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.grey[600],
-                            disabledBackgroundColor: Colors.grey[700],
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 8,
-                            ),
-                          ),
-                        ),
-                        // Submit button
-                        ElevatedButton.icon(
-                          onPressed: _tappedZones.length >= widget.minTaps
-                              ? _handleSubmit
-                              : null,
-                          icon: const Icon(Icons.check),
-                          label: const Text('Submit'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: widget.selectedColor,
-                            disabledBackgroundColor: Colors.grey[700],
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 8,
-                            ),
-                          ),
-                        ),
-                      ],
+                    child: Text(
+                      widget.submitButtonLabel,
+                      style: const TextStyle(color: Colors.white),
                     ),
-                    if (_tappedZones.length < widget.minTaps)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 8),
-                        child: Text(
-                          'Tap at least ${widget.minTaps} zones',
-                          style: TextStyle(
-                            color: Colors.orange[300],
-                            fontSize: 12,
-                          ),
-                        ),
+                  ),
+                  ElevatedButton(
+                    onPressed: _handleReset,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 10,
                       ),
-                  ],
-                ),
+                    ),
+                    child: Text(
+                      widget.clearButtonLabel,
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -200,16 +194,11 @@ class _KnockCodeWidgetState extends State<KnockCodeWidget> {
 }
 
 class _KnockCodePainter extends CustomPainter {
-  final Rect zone0, zone1, zone2, zone3;
   final List<int> tappedZones;
   final Color dividerColor;
   final Color selectedColor;
 
   _KnockCodePainter({
-    required this.zone0,
-    required this.zone1,
-    required this.zone2,
-    required this.zone3,
     required this.tappedZones,
     required this.dividerColor,
     required this.selectedColor,
@@ -220,68 +209,93 @@ class _KnockCodePainter extends CustomPainter {
     final centerX = size.width / 2;
     final centerY = size.height / 2;
 
-    // Draw vertical divider
+    // Draw dividers
+    final dividerPaint = Paint()
+      ..color = dividerColor
+      ..strokeWidth = 2.0;
+
+    // Vertical line
     canvas.drawLine(
       Offset(centerX, 0),
       Offset(centerX, size.height),
-      Paint()
-        ..color = dividerColor
-        ..strokeWidth = 3.5,
+      dividerPaint,
     );
 
-    // Draw horizontal divider
+    // Horizontal line
     canvas.drawLine(
       Offset(0, centerY),
       Offset(size.width, centerY),
-      Paint()
-        ..color = dividerColor
-        ..strokeWidth = 3.5,
+      dividerPaint,
     );
 
-    // Draw zone backgrounds - tapped zones highlighted
-    final zones = [zone0, zone1, zone2, zone3];
-    for (int i = 0; i < zones.length; i++) {
-      final zone = zones[i];
-      if (tappedZones.contains(i)) {
-        canvas.drawRect(
-          zone,
-          Paint()..color = selectedColor.withValues(alpha: 0.25),
-        );
-      }
-    }
+    // Draw zone indicators (corners)
+    final cornerRadius = 30.0;
+    final cornerPaint = Paint()
+      ..color = dividerColor
+      ..strokeWidth = 3.0
+      ..style = PaintingStyle.stroke;
 
-    // Draw tap order numbers in zones
+    // Top-left corner
+    canvas.drawArc(
+      Rect.fromCircle(center: Offset(cornerRadius,cornerRadius), radius: cornerRadius),
+      3.14159 ,
+      3.14159 / 2,
+      false,
+      cornerPaint,
+    );
+
+    // Top-right corner
+    canvas.drawArc(
+      Rect.fromCircle(center: Offset(size.width - cornerRadius, cornerRadius), radius: cornerRadius),
+      - 3.14159 / 2,
+      3.14159 / 2,
+      false,
+      cornerPaint,
+    );
+
+    // Bottom-left corner
+    canvas.drawArc(
+      Rect.fromCircle(center: Offset(cornerRadius, size.height - cornerRadius), radius: cornerRadius),
+      3.14159 / 2,
+      3.14159 / 2,
+      false,
+      cornerPaint,
+    );
+
+    // Bottom-right corner
+    canvas.drawArc(
+      Rect.fromCircle(center: Offset(size.width - cornerRadius, size.height - cornerRadius), radius: cornerRadius),
+      3.14159 / 2,
+      -3.14159 / 2,
+      false,
+      cornerPaint,
+    );
+
+    // Draw tapped zones
+    final zoneColors = [
+      Offset(centerX / 2, centerY / 2),       // zone 0: top-left
+      Offset(centerX + centerX / 2, centerY / 2), // zone 1: top-right
+      Offset(centerX / 2, centerY + centerY / 2), // zone 2: bottom-left
+      Offset(centerX + centerX / 2, centerY + centerY / 2), // zone 3: bottom-right
+    ];
+
     for (int i = 0; i < tappedZones.length; i++) {
-      final zoneIndex = tappedZones[i];
-      final zone = zones[zoneIndex];
-      final center = zone.center;
+      final zone = tappedZones[i];
+      final position = zoneColors[zone];
 
-      // Draw circular background for number
-      canvas.drawCircle(
-        center,
-        24,
-        Paint()
-          ..color = selectedColor.withValues(alpha: 0.4)
-          ..style = PaintingStyle.fill,
-      );
+      final highlightPaint = Paint()
+        ..color = selectedColor.withValues(alpha: 0.7)
+        ..style = PaintingStyle.fill;
 
-      // Draw border
-      canvas.drawCircle(
-        center,
-        24,
-        Paint()
-          ..color = selectedColor
-          ..strokeWidth = 2
-          ..style = PaintingStyle.stroke,
-      );
+      canvas.drawCircle(position, 20, highlightPaint);
 
-      // Draw number
+      // Draw tap order
       final textPainter = TextPainter(
         text: TextSpan(
           text: '${i + 1}',
-          style: TextStyle(
-            color: selectedColor,
-            fontSize: 18,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 12,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -290,13 +304,11 @@ class _KnockCodePainter extends CustomPainter {
       textPainter.layout();
       textPainter.paint(
         canvas,
-        center - Offset(textPainter.width / 2, textPainter.height / 2),
+        position - Offset(textPainter.width / 2, textPainter.height / 2),
       );
     }
   }
 
   @override
-  bool shouldRepaint(covariant _KnockCodePainter oldDelegate) {
-    return oldDelegate.tappedZones != tappedZones;
-  }
+  bool shouldRepaint(_KnockCodePainter oldDelegate) => true;
 }
