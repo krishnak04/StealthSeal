@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/theme/theme_config.dart';
 import '../../core/services/user_identifier_service.dart';
 import '../../widgets/knock_code_widget.dart';
+import '../../widgets/pattern_lock_widget.dart';
 
 enum KnockCodeSetupStep {
   currentPin,
@@ -27,6 +28,7 @@ class _KnockCodeSetupScreenState extends State<KnockCodeSetupScreen> {
   String _newRealKnockCode = '';
   String _newDecoyKnockCode = '';
   String _currentInputTaps = ''; // Track current taps for visual feedback
+  String _enteredPin = ''; // Track PIN entry during current PIN verification
 
   String? _currentRealPin;
   String? _currentDecoyPin;
@@ -223,10 +225,77 @@ class _KnockCodeSetupScreenState extends State<KnockCodeSetupScreen> {
     return _currentInputTaps.length;
   }
 
+  void _onKeyPress(String value) {
+    if (_isSaving || _isLoading) return;
+    final maxLen = _currentRealPin?.length ?? 4;
+    if (_enteredPin.length >= maxLen) return;
+
+    setState(() {
+      _enteredPin += value;
+    });
+
+    // Auto-validate when input reaches the required length
+    if (_enteredPin.length == maxLen) {
+      _verifyCurrentPin();
+    }
+  }
+
+  void _onDelete() {
+    if (_enteredPin.isEmpty) return;
+    setState(() {
+      _enteredPin = _enteredPin.substring(0, _enteredPin.length - 1);
+    });
+  }
+
+  void _onPatternCompleted(String pattern) {
+    // Only used for verifying current pattern when switching from pattern mode
+    if (_step != KnockCodeSetupStep.currentPin || _currentUnlockPattern != 'pattern') return;
+
+    if (pattern == _currentRealPin || pattern == _currentDecoyPin) {
+      setState(() {
+        _step = KnockCodeSetupStep.newRealKnockCode;
+        _statusMessage = '';
+        _statusColor = Colors.white70;
+        _currentInputTaps = '';
+      });
+    } else {
+      _showError('Wrong pattern. Try again.');
+    }
+  }
+
+  void _verifyCurrentPin() {
+    if (_enteredPin == _currentRealPin || _enteredPin == _currentDecoyPin) {
+      setState(() {
+        _step = KnockCodeSetupStep.newRealKnockCode;
+        _statusMessage = '';
+        _statusColor = Colors.white70;
+        _enteredPin = '';
+        _currentInputTaps = '';
+      });
+    } else {
+      _showError('Wrong PIN. Try again.');
+      setState(() {
+        _enteredPin = '';
+      });
+    }
+  }
+
   String get _title {
     switch (_step) {
       case KnockCodeSetupStep.currentPin:
-        return 'Verify Current Knock Code';
+        // Check if there are existing PINs to verify
+        final hasExistingCredentials = _currentRealPin != null && _currentRealPin!.isNotEmpty &&
+                                      _currentDecoyPin != null && _currentDecoyPin!.isNotEmpty;
+        
+        if (!hasExistingCredentials) {
+          return 'Verify Current Knock Code';
+        } else if (_currentUnlockPattern == 'pattern') {
+          return 'Verify Current Pattern';
+        } else if (_currentUnlockPattern == '6-digit') {
+          return 'Verify Current 6-digit PIN';
+        } else {
+          return 'Verify Current Pattern';
+        }
       case KnockCodeSetupStep.newRealKnockCode:
         return 'Set New Real Knock Code';
       case KnockCodeSetupStep.confirmRealKnockCode:
@@ -241,7 +310,21 @@ class _KnockCodeSetupScreenState extends State<KnockCodeSetupScreen> {
   String get _subtitle {
     switch (_step) {
       case KnockCodeSetupStep.currentPin:
-        return 'Enter your current knock code';
+        // Check if there are existing PINs to verify
+        final hasExistingCredentials = _currentRealPin != null && _currentRealPin!.isNotEmpty &&
+                                      _currentDecoyPin != null && _currentDecoyPin!.isNotEmpty;
+        
+        if (!hasExistingCredentials) {
+          return 'Proceed to set knock code';
+        } else if (_currentUnlockPattern == 'knock-code') {
+          return 'Tap 4-6 zones for current knock code';
+        } else if (_currentUnlockPattern == 'pattern') {
+          return 'Draw your current pattern';
+        } else if (_currentUnlockPattern == '6-digit') {
+          return 'Enter your current 6-digit PIN';
+        } else {
+          return 'Enter your current 4-digit PIN';
+        }
       case KnockCodeSetupStep.newRealKnockCode:
         return 'Tap 4-6 zones for real knock code';
       case KnockCodeSetupStep.confirmRealKnockCode:
@@ -340,7 +423,7 @@ class _KnockCodeSetupScreenState extends State<KnockCodeSetupScreen> {
                       padding: const EdgeInsets.symmetric(horizontal: 24),
                       child: Column(
                         children: [
-                          // Visual tap sequence indicator (at the top)
+                          // Visual tap sequence indicator (always show)
                           Padding(
                             padding: const EdgeInsets.fromLTRB(0, 24, 0, 32),
                             child: Wrap(
@@ -429,13 +512,59 @@ class _KnockCodeSetupScreenState extends State<KnockCodeSetupScreen> {
 
                                 const SizedBox(height: 24),
 
-                                // Show knock code widget
+                                // Show verification widget based on current unlock method
                                 if (_isSaving)
                                   const CircularProgressIndicator(color: Colors.white)
+                                else if (_step == KnockCodeSetupStep.currentPin && _currentUnlockPattern == 'pattern')
+                                  // Show pattern grid for pattern verification
+                                  ConstrainedBox(
+                                    constraints: const BoxConstraints(
+                                      maxWidth: 320,
+                                      maxHeight: 320,
+                                    ),
+                                    child: PatternLockWidget(
+                                      onPatternCompleted: _onPatternCompleted,
+                                      dotColor: const Color(0xFF555566),
+                                      selectedColor: Colors.white,
+                                    ),
+                                  )
+                                else if (_step == KnockCodeSetupStep.currentPin && 
+                                         (_currentUnlockPattern == '4-digit' || _currentUnlockPattern == '6-digit'))
+                                  // Show PIN input dots and keypad
+                                  Column(
+                                    children: [
+                                      // PIN dots
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: List.generate(
+                                          _currentRealPin?.length ?? 4,
+                                          (i) => Container(
+                                            margin: const EdgeInsets.symmetric(horizontal: 10),
+                                            width: 20,
+                                            height: 20,
+                                            decoration: BoxDecoration(
+                                              shape: BoxShape.circle,
+                                              color: i < _enteredPin.length
+                                                  ? Colors.white
+                                                  : Colors.transparent,
+                                              border: Border.all(
+                                                color: i < _enteredPin.length ? Colors.white : Colors.white54,
+                                                width: 2,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 32),
+                                      // Keypad
+                                      _buildKeypad(),
+                                    ],
+                                  )
                                 else
                                   SizedBox(
                                     height: 250,
                                     child: KnockCodeWidget(
+                                      key: ValueKey(_step), // Force widget recreation on step change
                                       onKnockCodeCompleted: _onKnockCodeCompleted,
                                       onKnockCodeTooShort: () {
                                         setState(() {
@@ -465,6 +594,67 @@ class _KnockCodeSetupScreenState extends State<KnockCodeSetupScreen> {
                 ],
               ),
             ),
+    );
+  }
+
+  Widget _buildKeypad() {
+    return Column(
+      children: [
+        for (var row in [
+          ['1', '2', '3'],
+          ['4', '5', '6'],
+          ['7', '8', '9'],
+        ])
+          Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: row
+                  .map((e) => _buildKey(e, onTap: () => _onKeyPress(e)))
+                  .toList(),
+            ),
+          ),
+        Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              // Empty space on the left
+              const SizedBox(width: 75, height: 75),
+              // 0 key
+              _buildKey('0', onTap: () => _onKeyPress('0')),
+              // Backspace key
+              _buildKey('⌫', onTap: _onDelete, isIcon: true),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildKey(String text, {VoidCallback? onTap, bool isIcon = false}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 75,
+        height: 75,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.white.withValues(alpha: 0.15),
+        ),
+        child: Center(
+          child: isIcon
+              ? const Icon(Icons.backspace_outlined, color: Colors.white, size: 24)
+              : Text(
+                  text,
+                  style: const TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.w400,
+                    color: Colors.white,
+                  ),
+                ),
+        ),
+      ),
     );
   }
 }

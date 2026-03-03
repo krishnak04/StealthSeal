@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/theme/theme_config.dart';
 import '../../core/services/user_identifier_service.dart';
 import '../../widgets/pattern_lock_widget.dart';
+import '../../widgets/knock_code_widget.dart';
 
 enum SixDigitStep {
   currentPin,
@@ -142,6 +143,20 @@ class _SixDigitPinScreenState extends State<SixDigitPinScreen>
       });
     } else {
       _triggerError('Wrong pattern. Try again.');
+    }
+  }
+
+  void _onKnockCodeCompleted(String code) {
+    // Only used for verifying current knock code when switching from knock code mode
+    if (_step != SixDigitStep.currentPin || _currentUnlockPattern != 'knock-code') return;
+
+    if (code == _currentRealPin || code == _currentDecoyPin) {
+      setState(() {
+        _step = SixDigitStep.newRealPin;
+        _enteredPin = '';
+      });
+    } else {
+      _triggerError('Wrong knock code. Try again.');
     }
   }
 
@@ -367,11 +382,21 @@ class _SixDigitPinScreenState extends State<SixDigitPinScreen>
   String get _subtitle {
     switch (_step) {
       case SixDigitStep.currentPin:
-        return _currentUnlockPattern == 'pattern'
-            ? 'Draw Current Pattern to Verify'
-            : _currentUnlockPattern == 'knock-code'
-                ? 'Tap Knock Code to Verify'
-                : 'Enter your current PIN';
+        // Check if there are existing credentials
+        final hasExistingCredentials = _currentRealPin != null && _currentRealPin!.isNotEmpty &&
+                                      _currentDecoyPin != null && _currentDecoyPin!.isNotEmpty;
+        
+        if (!hasExistingCredentials) {
+          return 'Proceed to set new $_targetLen-digit PIN';
+        } else if (_currentUnlockPattern == 'pattern') {
+          return 'Draw Current Pattern to Verify';
+        } else if (_currentUnlockPattern == 'knock-code') {
+          return 'Tap Knock Code to Verify';
+        } else {
+          // Show the current PIN length (4-digit or 6-digit)
+          final currentLen = _currentRealPin?.length ?? 4;
+          return 'Enter your current $currentLen-digit PIN';
+        }
       case SixDigitStep.newRealPin:
         return 'Enter a $_targetLen-digit real PIN';
       case SixDigitStep.confirmRealPin:
@@ -380,6 +405,34 @@ class _SixDigitPinScreenState extends State<SixDigitPinScreen>
         return 'Enter a $_targetLen-digit decoy PIN';
       case SixDigitStep.confirmDecoyPin:
         return 'Re-enter your decoy PIN';
+    }
+  }
+
+  String get _title {
+    switch (_step) {
+      case SixDigitStep.currentPin:
+        // Check if there are existing credentials
+        final hasExistingCredentials = _currentRealPin != null && _currentRealPin!.isNotEmpty &&
+                                      _currentDecoyPin != null && _currentDecoyPin!.isNotEmpty;
+        
+        if (!hasExistingCredentials) {
+          return 'Set Your $_targetLen-digit PIN';
+        } else if (_currentUnlockPattern == 'pattern') {
+          return 'Verify Current Pattern';
+        } else if (_currentUnlockPattern == 'knock-code') {
+          return 'Verify Current Knock Code';
+        } else {
+          final currentLen = _currentRealPin?.length ?? 4;
+          return 'Verify Current $currentLen-digit PIN';
+        }
+      case SixDigitStep.newRealPin:
+        return 'Set Your New Real PIN';
+      case SixDigitStep.confirmRealPin:
+        return 'Confirm Real PIN';
+      case SixDigitStep.newDecoyPin:
+        return 'Set Your New Decoy PIN';
+      case SixDigitStep.confirmDecoyPin:
+        return 'Confirm Decoy PIN';
     }
   }
   
@@ -430,7 +483,7 @@ class _SixDigitPinScreenState extends State<SixDigitPinScreen>
 
                           // Title
                           Text(
-                            _subtitle,
+                            _title,
                             style: const TextStyle(
                               fontSize: 22,
                               fontWeight: FontWeight.bold,
@@ -438,9 +491,20 @@ class _SixDigitPinScreenState extends State<SixDigitPinScreen>
                               letterSpacing: 0.5,
                             ),
                           ),
+                          const SizedBox(height: 8),
+
+                          // Subtitle
+                          Text(
+                            _subtitle,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              color: Colors.white60,
+                            ),
+                          ),
                           const SizedBox(height: 24),
 
-                          // Show PIN dots for numeric PIN or pattern grid for pattern verification
+                          // Show verification widget based on current unlock pattern
                           if (_step == SixDigitStep.currentPin && _currentUnlockPattern == 'pattern') ...[
                             ConstrainedBox(
                               constraints: const BoxConstraints(
@@ -451,6 +515,21 @@ class _SixDigitPinScreenState extends State<SixDigitPinScreen>
                                 onPatternCompleted: _onPatternCompleted,
                                 dotColor: const Color(0xFF555566),
                                 selectedColor: Colors.white,
+                              ),
+                            ),
+                          ] else if (_step == SixDigitStep.currentPin && _currentUnlockPattern == 'knock-code') ...[
+                            SizedBox(
+                              height: 280,
+                              child: KnockCodeWidget(
+                                key: ValueKey(_step),
+                                onKnockCodeCompleted: _onKnockCodeCompleted,
+                                onKnockCodeTooShort: () {
+                                  // Show error message
+                                },
+                                dividerColor: const Color(0xFF555566),
+                                selectedColor: Colors.white,
+                                submitButtonLabel: 'Verify',
+                                clearButtonLabel: 'Clear',
                               ),
                             ),
                           ] else ...[
@@ -480,8 +559,9 @@ class _SixDigitPinScreenState extends State<SixDigitPinScreen>
                           // Numeric keypad or message
                           _isSaving
                               ? const CircularProgressIndicator(color: Colors.white)
-                              : _step == SixDigitStep.currentPin && _currentUnlockPattern == 'pattern'
-                                  ? const SizedBox.shrink() // No keypad for pattern verification
+                              : (_step == SixDigitStep.currentPin && 
+                                 (_currentUnlockPattern == 'pattern' || _currentUnlockPattern == 'knock-code'))
+                                  ? const SizedBox.shrink() // No keypad for pattern or knock code verification
                                   : _buildKeypad(),
 
                           const SizedBox(height: 40),
