@@ -285,6 +285,7 @@ class _PatternSetupScreenState extends State<PatternSetupScreen> {
         await platform.invokeMethod('cachePins', {
           'real_pin': _newRealPattern,
           'decoy_pin': _newDecoyPattern,
+          'unlock_pattern': 'pattern',
         });
         debugPrint('Pattern PINs cached to native');
       } catch (error) {

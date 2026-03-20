@@ -262,6 +262,7 @@ class _SixDigitPinScreenState extends State<SixDigitPinScreen>
         await platform.invokeMethod('cachePins', {
           'real_pin': _newRealPin,
           'decoy_pin': _newDecoyPin,
+          'unlock_pattern': '$_targetLen-digit',
         });
         debugPrint('$_targetLen-digit PINs cached to native');
       } catch (error) {

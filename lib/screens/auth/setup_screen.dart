@@ -139,6 +139,7 @@ class _SetupScreenState extends State<SetupScreen> {
         await platform.invokeMethod('cachePins', {
           'real_pin': realPin,
           'decoy_pin': decoyPin,
+          'unlock_pattern': '4-digit',
         });
         debugPrint('PINs cached to native SharedPreferences');
       } catch (error) {

@@ -157,12 +157,16 @@ class _LockScreenState extends State<LockScreen> {
   Future<void> _cachePinsToNative(String? realPin, String? decoyPin) async {
     if (realPin == null || decoyPin == null) return;
     try {
+      final securityBox = Hive.box('securityBox');
+      final unlockPattern = securityBox.get('unlockPattern', defaultValue: '4-digit');
+      
       const platform = MethodChannel('com.stealthseal.app/applock');
       await platform.invokeMethod('cachePins', {
         'real_pin': realPin,
         'decoy_pin': decoyPin,
+        'unlock_pattern': unlockPattern,
       });
-      debugPrint('PINs cached to native SharedPreferences');
+      debugPrint('PINs and unlock pattern cached to native SharedPreferences');
     } catch (error) {
       debugPrint('Warning: Failed to cache PINs to native: $error');
     }

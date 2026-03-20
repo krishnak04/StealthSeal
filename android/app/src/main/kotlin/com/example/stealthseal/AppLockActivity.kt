@@ -62,12 +62,17 @@ class AppLockActivity : Activity() {
     private var appName: String = ""
     private var failedAttempts = 0
     private var pinCorrect = false  // Track whether user entered correct PIN
+    private var unlockPattern: String = "4-digit"
+    private var pinLength: Int = 4
 
     private lateinit var dot1: View
     private lateinit var dot2: View
     private lateinit var dot3: View
     private lateinit var dot4: View
+    private lateinit var dot5: View
+    private lateinit var dot6: View
     private lateinit var errorText: TextView
+    private val dots = mutableListOf<View>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -105,8 +110,12 @@ class AppLockActivity : Activity() {
         val prefs = getSharedPreferences("stealthseal_prefs", Context.MODE_PRIVATE)
         realPin = prefs.getString("cached_real_pin", null)
         decoyPin = prefs.getString("cached_decoy_pin", null)
+        unlockPattern = prefs.getString("unlock_pattern", "4-digit") ?: "4-digit"
+        
+        // Determine PIN length based on pattern
+        pinLength = if (unlockPattern.contains("6")) 6 else 4
 
-        Log.d(TAG, "PINs loaded: real=${realPin != null}, decoy=${decoyPin != null}")
+        Log.d(TAG, "PINs loaded: real=${realPin != null}, decoy=${decoyPin != null}, pattern=$unlockPattern, pinLength=$pinLength")
 
         if (realPin == null) {
             Log.e(TAG, "No PINs found in SharedPreferences! App lock cannot validate.")
@@ -118,7 +127,12 @@ class AppLockActivity : Activity() {
         dot2 = findViewById(R.id.dot2)
         dot3 = findViewById(R.id.dot3)
         dot4 = findViewById(R.id.dot4)
+        dot5 = findViewById(R.id.dot5)
+        dot6 = findViewById(R.id.dot6)
         errorText = findViewById(R.id.errorText)
+        
+        // Add dots to list in order
+        dots.addAll(listOf(dot1, dot2, dot3, dot4, dot5, dot6))
         
         // Modern lock icon is already styled in the layout
         val lockIcon = findViewById<ImageView>(R.id.lockIcon)
@@ -152,12 +166,12 @@ class AppLockActivity : Activity() {
 
     private fun onKeyPress(digit: String) {
         if (realPin == null) return
-        if (enteredPin.length >= 4) return
+        if (enteredPin.length >= pinLength) return
 
         enteredPin += digit
         updateDots()
 
-        if (enteredPin.length == 4) {
+        if (enteredPin.length == pinLength) {
             validatePin()
         }
     }
@@ -169,23 +183,31 @@ class AppLockActivity : Activity() {
     }
 
     private fun updateDots() {
-        val dots = listOf(dot1, dot2, dot3, dot4)
         val filledColor = Color.parseColor("#00BCD4") // Cyan
         val emptyStroke = Color.parseColor("#8000BCD4")
 
         for (i in dots.indices) {
+            val dot = dots[i]
             val bg = GradientDrawable()
             bg.shape = GradientDrawable.OVAL
 
-            if (i < enteredPin.length) {
-                bg.setColor(filledColor)
-                bg.setStroke(2, filledColor)
+            if (i < pinLength) {
+                // Show this dot
+                dot.visibility = View.VISIBLE
+                
+                if (i < enteredPin.length) {
+                    bg.setColor(filledColor)
+                    bg.setStroke(2, filledColor)
+                } else {
+                    bg.setColor(Color.TRANSPARENT)
+                    bg.setStroke(2, emptyStroke)
+                }
             } else {
-                bg.setColor(Color.TRANSPARENT)
-                bg.setStroke(2, emptyStroke)
+                // Hide dots beyond pinLength
+                dot.visibility = View.GONE
             }
 
-            dots[i].background = bg
+            dot.background = bg
         }
     }
 

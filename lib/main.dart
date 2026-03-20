@@ -31,7 +31,7 @@ void main() async {
   AppLockService().initialize();
 
   await Supabase.initialize(
-    url: 'https://stealthseal.jiobase.com',
+    url: 'https://kzrctgdgjgbvakdzcmrr.supabase.co',
     anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt6cmN0Z2RnamdidmFrZHpjbXJyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIxMDM0ODAsImV4cCI6MjA4NzY3OTQ4MH0.8vAQ6P9l3dJ2dJ3TxfMZ3EpG3IoPewZcfaG___D52Xc',
   );
 

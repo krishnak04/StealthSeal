@@ -55,12 +55,14 @@ class MainActivity : FlutterFragmentActivity() {
                     "cachePins" -> {
                         val realPin = call.argument<String>("real_pin") ?: ""
                         val decoyPin = call.argument<String>("decoy_pin") ?: ""
+                        val unlockPattern = call.argument<String>("unlock_pattern") ?: "4-digit"
                         val sharedPref = getSharedPreferences("stealthseal_prefs", Context.MODE_PRIVATE)
                         sharedPref.edit()
                             .putString("cached_real_pin", realPin)
                             .putString("cached_decoy_pin", decoyPin)
+                            .putString("unlock_pattern", unlockPattern)
                             .apply()
-                        Log.d("MainActivity", "PINs cached to SharedPreferences")
+                        Log.d("MainActivity", "PINs cached to SharedPreferences with pattern: $unlockPattern")
                         result.success(true)
                     }
                     "requestAccessibilityService" -> {

@@ -89,6 +89,22 @@
             android:layout_margin="8dp"
             android:background="@android:color/transparent"
             android:contentDescription="PIN dot 4" />
+
+        <View
+            android:id="@+id/dot5"
+            android:layout_width="12dp"
+            android:layout_height="12dp"
+            android:layout_margin="8dp"
+            android:background="@android:color/transparent"
+            android:contentDescription="PIN dot 5" />
+
+        <View
+            android:id="@+id/dot6"
+            android:layout_width="12dp"
+            android:layout_height="12dp"
+            android:layout_margin="8dp"
+            android:background="@android:color/transparent"
+            android:contentDescription="PIN dot 6" />
     </LinearLayout>
 
     <!-- Error Message -->
