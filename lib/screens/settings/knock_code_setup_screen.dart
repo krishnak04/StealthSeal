@@ -181,6 +181,20 @@ class _KnockCodeSetupScreenState extends State<KnockCodeSetupScreen> {
       await securityBox.put('realPin', _newRealKnockCode);
       await securityBox.put('decoyPin', _newDecoyKnockCode);
       await securityBox.put('unlockPattern', 'knock-code');
+      debugPrint('Knock code PINs saved to Hive');
+
+      // Cache to native SharedPreferences
+      try {
+        const platform = MethodChannel('com.stealthseal.app/applock');
+        await platform.invokeMethod('cachePins', {
+          'real_pin': _newRealKnockCode,
+          'decoy_pin': _newDecoyKnockCode,
+          'unlock_pattern': 'knock-code',
+        });
+        debugPrint('Knock code PINs cached to native');
+      } catch (error) {
+        debugPrint('Warning: Failed to cache PINs: $error');
+      }
 
       final userId = await UserIdentifierService.getUserId();
       await Supabase.instance.client.from('user_security').upsert(
@@ -192,7 +206,7 @@ class _KnockCodeSetupScreenState extends State<KnockCodeSetupScreen> {
         onConflict: 'id',
       );
 
-      debugPrint('✓ Knock codes saved successfully to Hive and Supabase');
+      debugPrint('✓ Knock codes saved successfully to Hive, native cache, and Supabase');
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

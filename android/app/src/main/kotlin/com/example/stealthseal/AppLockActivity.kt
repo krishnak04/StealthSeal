@@ -182,6 +182,30 @@ class AppLockActivity : Activity() {
             validateKnockCode(code)
         }
 
+        // Set up knock code buttons
+        val knockCodeSubmitBtn = findViewById<Button>(R.id.knockCodeSubmitBtn)
+        val knockCodeClearBtn = findViewById<Button>(R.id.knockCodeClearBtn)
+        
+        knockCodeSubmitBtn.setOnClickListener {
+            val code = knockCodeView.getCurrentCode()
+            Log.d(TAG, "Submit button clicked, validating knock code: '$code'")
+            if (code.length >= 4) {
+                validateKnockCode(code)
+            } else {
+                errorText.visibility = View.VISIBLE
+                errorText.text = "Tap at least 4 zones"
+                Handler(Looper.getMainLooper()).postDelayed({
+                    errorText.visibility = View.GONE
+                }, 2000)
+            }
+        }
+        
+        knockCodeClearBtn.setOnClickListener {
+            Log.d(TAG, "Clear button clicked, resetting knock code")
+            knockCodeView.reset()
+            errorText.visibility = View.GONE
+        }
+
         // Show appropriate unlock method UI
         showUnlockMethodUI()
     }
@@ -513,13 +537,42 @@ class AppLockActivity : Activity() {
                 errorText.visibility = View.GONE
                 patternView.reset()
                 knockCodeView.reset()
+                loadPins()  // Reload pins to get latest unlock_pattern
                 showUnlockMethodUI()
                 currentlyBlockedPackage = lockedPackage
                 Log.d(TAG, "Unlock screen switched to: $appName ($lockedPackage)")
             } else {
-                // Same app — just bring to front, don't reset entry
-                Log.d(TAG, "Unlock screen re-focused for same app: $lockedPackage")
+                // Same app — reload PINs in case settings changed, then check if UI needs refresh
+                val oldPattern = unlockPattern
+                loadPins()
+                if (oldPattern != unlockPattern) {
+                    Log.d(TAG, "Unlock pattern changed from '$oldPattern' to '$unlockPattern', refreshing UI")
+                    enteredPin = ""
+                    failedAttempts = 0
+                    errorText.visibility = View.GONE
+                    patternView.reset()
+                    knockCodeView.reset()
+                    showUnlockMethodUI()
+                } else {
+                    Log.d(TAG, "Unlock screen re-focused for same app: $lockedPackage")
+                }
             }
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // When PIN screen comes back to foreground, reload unlock pattern in case it changed
+        val oldPattern = unlockPattern
+        loadPins()
+        if (oldPattern != unlockPattern) {
+            Log.d(TAG, "Unlock pattern changed from '$oldPattern' to '$unlockPattern' on resume, refreshing UI")
+            enteredPin = ""
+            failedAttempts = 0
+            errorText.visibility = View.GONE
+            patternView.reset()
+            knockCodeView.reset()
+            showUnlockMethodUI()
         }
     }
 

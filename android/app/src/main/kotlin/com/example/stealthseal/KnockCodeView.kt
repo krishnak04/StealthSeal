@@ -35,6 +35,9 @@ class KnockCodeView @JvmOverloads constructor(
     var onKnockCodeCompleted: ((String) -> Unit)? = null
     var onTapUpdate: ((String) -> Unit)? = null
     var onTooShort: (() -> Unit)? = null
+    
+    fun getCurrentCode(): String = tapSequence.joinToString("")
+    fun getCodeLength(): Int = tapSequence.size
 
     inner class Zone(val row: Int, val col: Int) {
         val rect = Rect()
@@ -60,25 +63,58 @@ class KnockCodeView @JvmOverloads constructor(
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
 
+        // Draw corner markers (like in pattern UI)
+        val cornerSize = 20f
+        val strokeWidth = 3f
+        val cornerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.parseColor("#CCCCCC")
+            this.strokeWidth = strokeWidth
+            style = Paint.Style.STROKE
+        }
+
+        // Top-left corner
+        canvas.drawLine(0f, cornerSize, cornerSize, cornerSize, cornerPaint)
+        canvas.drawLine(cornerSize, 0f, cornerSize, cornerSize, cornerPaint)
+
+        // Top-right corner
+        canvas.drawLine(width.toFloat() - cornerSize, cornerSize, width.toFloat(), cornerSize, cornerPaint)
+        canvas.drawLine(width.toFloat() - cornerSize, 0f, width.toFloat() - cornerSize, cornerSize, cornerPaint)
+
+        // Bottom-left corner
+        canvas.drawLine(0f, height.toFloat() - cornerSize, cornerSize, height.toFloat() - cornerSize, cornerPaint)
+        canvas.drawLine(cornerSize, height.toFloat() - cornerSize, cornerSize, height.toFloat(), cornerPaint)
+
+        // Bottom-right corner
+        canvas.drawLine(width.toFloat() - cornerSize, height.toFloat() - cornerSize, width.toFloat(), height.toFloat() - cornerSize, cornerPaint)
+        canvas.drawLine(width.toFloat() - cornerSize, height.toFloat() - cornerSize, width.toFloat() - cornerSize, height.toFloat(), cornerPaint)
+
+        // Draw crosshairs (center lines)
+        val centerX = width / 2f
+        val centerY = height / 2f
+        val crossPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.parseColor("#AAAAAA")
+            this.strokeWidth = 2f
+            style = Paint.Style.STROKE
+        }
+
+        canvas.drawLine(centerX, 0f, centerX, height.toFloat(), crossPaint)
+        canvas.drawLine(0f, centerY, width.toFloat(), centerY, crossPaint)
+
+        // Draw zones as simple rectangles
         for (row in 0..1) {
             for (col in 0..1) {
                 val zone = zones[row][col]
-                val color = if (zone.isTapped) Color.parseColor("#00BCD4") else Color.parseColor("#444455")
+                val color = if (zone.isTapped) Color.parseColor("#4CAF50") else Color.parseColor("#555555")
                 zonePaint.color = color
+                zonePaint.style = Paint.Style.FILL
                 canvas.drawRect(zone.rect, zonePaint)
 
                 // Draw border
                 zonePaint.style = Paint.Style.STROKE
-                zonePaint.color = Color.WHITE
+                zonePaint.color = Color.parseColor("#FFFFFF")
                 zonePaint.strokeWidth = 2f
                 canvas.drawRect(zone.rect, zonePaint)
                 zonePaint.style = Paint.Style.FILL
-
-                // Draw zone number
-                val textX = (zone.rect.left + zone.rect.right) / 2f
-                val textY = (zone.rect.top + zone.rect.bottom) / 2f - 20f
-                textPaint.color = Color.WHITE
-                canvas.drawText("Zone ${row * 2 + col + 1}", textX, textY, textPaint)
             }
         }
     }
@@ -102,14 +138,6 @@ class KnockCodeView @JvmOverloads constructor(
                                 
                                 onTapUpdate?.invoke(tapSequence.joinToString(""))
                                 invalidate()
-
-                                if (tapSequence.size >= 4) {
-                                    val code = tapSequence.joinToString("")
-                                    Log.d(TAG, "Knock code completed! Sequence: ${tapSequence.map { it }.joinToString(",")}")
-                                    Log.d(TAG, "Generated code: '$code' (length=${code.length}, bytes=${code.toByteArray().joinToString(",")})")
-                                    onKnockCodeCompleted?.invoke(code)
-                                    reset()
-                                }
                             }
                             return true
                         }
