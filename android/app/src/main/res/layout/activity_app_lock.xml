@@ -118,6 +118,39 @@
         android:layout_gravity="center_horizontal"
         android:visibility="gone" />
 
+    <!-- Pattern Lock Container -->
+    <FrameLayout
+        android:id="@+id/patternLockContainer"
+        android:layout_width="280dp"
+        android:layout_height="280dp"
+        android:layout_marginTop="24dp"
+        android:layout_gravity="center_horizontal"
+        android:visibility="gone"
+        android:background="@android:color/transparent">
+
+        <com.example.stealthseal.PatternView
+            android:id="@+id/patternView"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@android:color/transparent" />
+    </FrameLayout>
+
+    <!-- Knock Code Container -->
+    <FrameLayout
+        android:id="@+id/knockCodeContainer"
+        android:layout_width="280dp"
+        android:layout_height="280dp"
+        android:layout_marginTop="24dp"
+        android:layout_gravity="center_horizontal"
+        android:visibility="gone">
+
+        <com.example.stealthseal.KnockCodeView
+            android:id="@+id/knockCodeView"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="#1A1A2E" />
+    </FrameLayout>
+
     <!-- Fingerprint Button -->
     <FrameLayout
         android:id="@+id/fingerprintButtonContainer"
