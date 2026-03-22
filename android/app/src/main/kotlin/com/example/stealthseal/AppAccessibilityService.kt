@@ -213,10 +213,16 @@ class AppAccessibilityService : AccessibilityService() {
         // ══════════════════════════════════════════════════════════
         // 2.5 RECENTS OVERVIEW — ignore while user is in recents switcher
         // Prevents lock UI from appearing while recents grid is shown.
+        // BUT: RE-LOCK the current app when entering recents, so it locks when re-opened
         // ══════════════════════════════════════════════════════════
         val cls = event.className?.toString() ?: ""
         if (cls.contains("Recents", true) || cls.contains("Overview", true) || cls.contains("TaskSwitcher", true)) {
-            Log.d(TAG, "In recents/overview (class=$cls), skipping lock launch")
+            Log.d(TAG, "📋 Recents switcher opened (class=$cls) - re-locking app: $currentUserApp")
+            // Re-lock the app being departed so it requires PIN when restored from recents
+            if (currentUserApp != null && isSessionUnlocked(currentUserApp!!) && !NEVER_LOCKABLE.contains(currentUserApp)) {
+                reLockApp(currentUserApp!!)
+                Log.d(TAG, "   ✅ Re-locked: $currentUserApp before entering recents")
+            }
             return
         }
 
@@ -225,18 +231,31 @@ class AppAccessibilityService : AccessibilityService() {
         // ══════════════════════════════════════════════════════════
         // 5. APP TRANSITION — user moved to a different app
         //    ALWAYS re-lock the previous app on any real transition.
+        //    ALSO LOCK when minimizing to home/launcher
         // ══════════════════════════════════════════════════════════
         if (packageName != currentUserApp) {
             val prev = currentUserApp
             
-            // Re-lock previous app when user leaves it (for security - requires PIN again)
-            if (prev != null && isSessionUnlocked(prev) && !NEVER_LOCKABLE.contains(prev)) {
+            // Check: Is user going to a launcher/home screen? 
+            // If YES → CLEAR ALL unlocked apps immediately
+            if (NEVER_LOCKABLE.contains(packageName)) {
+                Log.d(TAG, "🏠 HOME/LAUNCHER detected: $packageName - clearing ALL session unlocks")
+                clearAllSessionUnlocks()
+                
+                // Extra safety: also re-lock previous app if it was unlocked
+                if (prev != null && isSessionUnlocked(prev) && !NEVER_LOCKABLE.contains(prev)) {
+                    reLockApp(prev)
+                    Log.d(TAG, "   ✅ Also re-locked previous app: $prev")
+                }
+            }
+            // Normal app-to-app transition: re-lock the app being exited
+            else if (prev != null && isSessionUnlocked(prev) && !NEVER_LOCKABLE.contains(prev)) {
                 reLockApp(prev)
                 Log.d(TAG, "✅ RE-LOCKED when exiting: $prev → $packageName")
+                
+                // Also check and re-lock any other unlocked locked apps not in foreground
+                reLockUnlockedAppsNotInForeground(packageName)
             }
-            
-            // Also check and re-lock any other unlocked locked apps that are not current
-            reLockUnlockedAppsNotInForeground(packageName)
             
             currentUserApp = packageName
         }
@@ -252,23 +271,34 @@ class AppAccessibilityService : AccessibilityService() {
         if (!lockedApps.containsKey(packageName)) return
 
         // ══════════════════════════════════════════════════════════
-        // 8. SESSION UNLOCKED — user entered PIN, let them through
+        // 8. SESSION UNLOCKED CHECK — critical for minimize/reopen
         // ══════════════════════════════════════════════════════════
-        if (isSessionUnlocked(packageName)) {
-            // Mark this app as just unlocked to prevent PIN re-launch
+        val isUnlocked = isSessionUnlocked(packageName)
+        Log.d(TAG, "📱 $packageName - isSessionUnlocked? $isUnlocked")
+        
+        if (isUnlocked) {
+            // App is still marked as unlocked from before (normal flow, within session)
             justUnlockedAt[packageName] = System.currentTimeMillis()
+            Log.d(TAG, "   ✅ User already unlocked $packageName in this session, allowing")
             return
+        } else {
+            // App is NOT in sessionUnlockedApps (re-locked after minimize or first access)
+            Log.d(TAG, "   🔒 $packageName NOT in sessionUnlockedApps - will show PIN screen")
         }
-
-        // ══════════════════════════════════════════════════════════
-        // No grace period: always allow lock to show immediately on return
 
         // ══════════════════════════════════════════════════════════
         // 9. PIN ALREADY SHOWING — prevent duplicate
         // ══════════════════════════════════════════════════════════
         if (AppLockActivity.isShowing) {
-            Log.d(TAG, "PIN already showing for ${AppLockActivity.currentlyBlockedPackage}, skip $packageName")
-            return
+            if (AppLockActivity.currentlyBlockedPackage == packageName) {
+                // Same app already showing PIN, skip duplicate
+                Log.d(TAG, "⏭️  PIN already showing for $packageName, skip duplicate")
+                return  
+            } else {
+                // Different app, but PIN is showing from another app
+                // Allow this to proceed - will queue up PIN for this app
+                Log.d(TAG, "⏭️  Different app PIN can show: prev=${AppLockActivity.currentlyBlockedPackage}, new=$packageName")
+            }
         }
 
         // ══════════════════════════════════════════════════════════
@@ -288,9 +318,9 @@ class AppAccessibilityService : AccessibilityService() {
             intent.putExtra(AppLockActivity.EXTRA_LOCKED_PACKAGE, packageName)
             intent.putExtra(AppLockActivity.EXTRA_APP_NAME, appName)
             startActivity(intent)
-            Log.d(TAG, "PIN launched for: $appName ($packageName)")
+            Log.d(TAG, "🔐 LOCKED: Showing PIN screen for $appName ($packageName)")
         } catch (e: Exception) {
-            Log.e(TAG, "Error launching PIN: ${e.message}")
+            Log.e(TAG, "❌ Error launching PIN: ${e.message}")
         }
     }
 
