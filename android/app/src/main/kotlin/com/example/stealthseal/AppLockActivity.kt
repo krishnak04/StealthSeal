@@ -15,10 +15,16 @@ import android.view.WindowManager
 import android.view.accessibility.AccessibilityManager
 import android.view.animation.AnimationUtils
 import android.widget.Button
+import android.widget.FrameLayout
 import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.fragment.app.FragmentActivity
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import com.example.stealthseal.BiometricService
 
 /**
  * Standalone native PIN entry activity that appears on TOP of the locked app.
@@ -27,7 +33,7 @@ import android.widget.TextView
  * On correct PIN → finishes itself, locked app is visible underneath.
  * On back press → goes to home screen (cannot bypass).
  */
-class AppLockActivity : Activity() {
+class AppLockActivity : FragmentActivity() {
 
     companion object {
         private const val TAG = "AppLockActivity"
@@ -79,6 +85,8 @@ class AppLockActivity : Activity() {
     private lateinit var patternLockContainer: View
     private lateinit var patternView: PatternView
     private lateinit var keypadGrid: View
+    private lateinit var fingerprintButtonContainer: FrameLayout
+    private lateinit var fingerprintHelpText: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -167,6 +175,8 @@ class AppLockActivity : Activity() {
         patternLockContainer = findViewById(R.id.patternLockContainer)
         patternView = findViewById(R.id.patternView)
         keypadGrid = findViewById(R.id.keypadGrid)
+        fingerprintButtonContainer = findViewById(R.id.fingerprintButtonContainer)
+        fingerprintHelpText = findViewById(R.id.fingerprintHelpText)
 
         // Enable touch events for custom views
         patternView.isFocusable = true
@@ -182,8 +192,8 @@ class AppLockActivity : Activity() {
             validatePattern(pattern)
         }
 
-        // Show appropriate unlock method UI
-        showUnlockMethodUI()
+        // Set up fingerprint button
+        setupFingerprintButton()
     }
 
     private fun showUnlockMethodUI() {
@@ -202,6 +212,73 @@ class AppLockActivity : Activity() {
             }
             else -> {
                 updateDots()
+            }
+        }
+    }
+
+    /**
+     * Setup fingerprint button - always show regardless of device capability
+     * User will see error if device doesn't support biometric
+     */
+    private fun setupFingerprintButton() {
+        Log.d(TAG, "📱 Setting up fingerprint button (always visible)")
+        fingerprintButtonContainer.visibility = View.VISIBLE
+        fingerprintHelpText.visibility = View.VISIBLE
+        
+        // Set click listener
+        fingerprintButtonContainer.setOnClickListener {
+            showBiometricPrompt()
+        }
+    }
+
+    /**
+     * Show biometric authentication prompt (fingerprint/face)
+     */
+    private fun showBiometricPrompt() {
+        Log.d(TAG, "📋 Biometric button tapped - starting authentication...")
+        CoroutineScope(Dispatchers.Main).launch {
+            try {
+                Log.d(TAG, "Calling BiometricService.authenticate()...")
+                val isAuthenticated = BiometricService.authenticate(this@AppLockActivity)
+                
+                Log.d(TAG, "Biometric result: $isAuthenticated")
+                
+                if (isAuthenticated) {
+                    Log.d(TAG, "✅ Biometric authentication successful - unlocking app")
+                    
+                    // Enable biometric for future use
+                    BiometricService.enable(this@AppLockActivity)
+                    
+                    // Mark as session-unlocked (same as PIN unlock)
+                    failedAttempts = 0
+                    pinCorrect = true
+                    
+                    val prefs = getSharedPreferences("stealthseal_prefs", Context.MODE_PRIVATE)
+                    val currentUnlocked = prefs.getString("sessionUnlockedApps", "") ?: ""
+                    val unlockedSet = currentUnlocked.split(",").filter { it.isNotEmpty() }.toMutableSet()
+                    unlockedSet.add(lockedPackage)
+                    prefs.edit().putString("sessionUnlockedApps", unlockedSet.joinToString(",")).apply()
+                    
+                    Log.d(TAG, "✅ Session-unlocked via biometric: $lockedPackage")
+                    
+                    // Check if accessibility setup needed
+                    val accessibilityEnabled = isAccessibilityServiceEnabled()
+                    val hasShownAccessibilityPrompt = prefs.getBoolean("accessibility_prompt_shown", false)
+                    
+                    if (!accessibilityEnabled && !hasShownAccessibilityPrompt) {
+                        Log.d(TAG, "Accessibility is OFF and first login - showing setup prompt")
+                        prefs.edit().putBoolean("accessibility_prompt_shown", true).apply()
+                        showAccessibilitySetupDialog()
+                    } else {
+                        onAccessibilitySetupComplete()
+                    }
+                } else {
+                    Log.d(TAG, "❌ Biometric authentication failed - user can still try PIN")
+                    // User can still try PIN
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ Error during biometric authentication: ${e.message}")
+                e.printStackTrace()
             }
         }
     }
@@ -551,26 +628,25 @@ class AppLockActivity : Activity() {
         finish()
     }
 
-    override fun onNewIntent(intent: Intent?) {
+    override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         // Handle re-launch — only reset UI if it's a DIFFERENT locked app
-        if (intent != null) {
-            val newPackage = intent.getStringExtra(EXTRA_LOCKED_PACKAGE) ?: ""
-            val newAppName = intent.getStringExtra(EXTRA_APP_NAME) ?: newPackage.split(".").lastOrNull() ?: "App"
-            if (newPackage.isNotEmpty() && newPackage != lockedPackage) {
-                // Different app — reset everything
-                lockedPackage = newPackage
-                appName = newAppName
-                enteredPin = ""
-                failedAttempts = 0
-                pinCorrect = false
-                errorText.visibility = View.GONE
-                patternView.reset()
-                loadPins()  // Reload pins to get latest unlock_pattern
-                showUnlockMethodUI()
-                currentlyBlockedPackage = lockedPackage
-                Log.d(TAG, "Unlock screen switched to: $appName ($lockedPackage)")
-            } else {
+        val newPackage = intent.getStringExtra(EXTRA_LOCKED_PACKAGE) ?: ""
+        val newAppName = intent.getStringExtra(EXTRA_APP_NAME) ?: newPackage.split(".").lastOrNull() ?: "App"
+        if (newPackage.isNotEmpty() && newPackage != lockedPackage) {
+            // Different app — reset everything
+            lockedPackage = newPackage
+            appName = newAppName
+            enteredPin = ""
+            failedAttempts = 0
+            pinCorrect = false
+            errorText.visibility = View.GONE
+            patternView.reset()
+            loadPins()  // Reload pins to get latest unlock_pattern
+            showUnlockMethodUI()
+            currentlyBlockedPackage = lockedPackage
+            Log.d(TAG, "Unlock screen switched to: $appName ($lockedPackage)")
+        } else {
                 // Same app — reload PINs in case settings changed, then check if UI needs refresh
                 val oldPattern = unlockPattern
                 loadPins()
@@ -584,7 +660,6 @@ class AppLockActivity : Activity() {
                 } else {
                     Log.d(TAG, "Unlock screen re-focused for same app: $lockedPackage")
                 }
-            }
         }
     }
 
