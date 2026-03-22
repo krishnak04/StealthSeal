@@ -135,37 +135,6 @@
             android:background="@android:color/transparent" />
     </FrameLayout>
 
-    <!-- Fingerprint Button -->
-    <FrameLayout
-        android:id="@+id/fingerprintButtonContainer"
-        android:layout_width="80dp"
-        android:layout_height="80dp"
-        android:background="@drawable/blue_circle_background"
-        android:layout_marginTop="24dp"
-        android:layout_gravity="center_horizontal">
-
-        <ImageView
-            android:id="@+id/fingerprintIcon"
-            android:layout_width="50dp"
-            android:layout_height="50dp"
-            android:layout_gravity="center"
-            android:src="@android:drawable/ic_secure"
-            android:tint="#FFFFFF"
-            android:contentDescription="Fingerprint" />
-    </FrameLayout>
-
-    <!-- Fingerprint Help Text -->
-    <TextView
-        android:id="@+id/fingerprintHelpText"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Tap to unlock\nLong-press for help"
-        android:textColor="#2196F3"
-        android:textSize="11sp"
-        android:gravity="center"
-        android:layout_marginTop="8dp"
-        android:layout_gravity="center_horizontal" />
-
     <!-- Spacer -->
     <View
         android:layout_width="0dp"

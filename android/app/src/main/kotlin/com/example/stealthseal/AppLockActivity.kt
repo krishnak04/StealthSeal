@@ -621,13 +621,7 @@ class AppLockActivity : Activity() {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK
         }
         startActivity(homeIntent)
-        
-        // Clear static flags BEFORE finishing to avoid stacking multiple PIN screens
-        isShowing = false
-        currentlyBlockedPackage = null
-        dismissedAt = System.currentTimeMillis()
-        dismissedPackage = lockedPackage
-        finish()
+        // Do not finish; let accessibility relaunch lock instantly when app returns
     }
 
     override fun onPause() {
