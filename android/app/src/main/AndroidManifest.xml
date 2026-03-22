@@ -113,6 +113,13 @@
                 android:value="App lock monitoring - keeps app lock protection running to secure locked apps" />
         </service>
 
+        <!-- Accessibility monitor service to detect when accessibility is disabled -->
+        <service
+            android:name=".AccessibilityMonitorService"
+            android:exported="false"
+            android:stopWithTask="false">
+        </service>
+
         <meta-data
             android:name="flutterEmbedding"
             android:value="2"/>

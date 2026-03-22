@@ -6,7 +6,6 @@ import '../../core/routes/app_routes.dart';
 import '../../core/security/intruder_service.dart';
 import '../../widgets/pin_keypad.dart';
 import '../../widgets/pattern_lock_widget.dart';
-import '../../widgets/knock_code_widget.dart';
 import '../../core/security/panic_service.dart';
 import '../../core/security/biometric_service.dart';
 import '../../core/security/time_lock_service.dart';
@@ -433,37 +432,7 @@ class _LockScreenState extends State<LockScreen> {
                             ),
                             const SizedBox(height: 24),
 
-                            if (_unlockMode == 'knock-code') ...[
-                              _buildBiometricButton(),
-                              const SizedBox(height: 16),
-                              SizedBox(
-                                height: 350,
-                                child: KnockCodeWidget(
-                                  onKnockCodeCompleted: (code) {
-                                    setState(() => enteredPin = code);
-                                    _validatePin();
-                                  },
-                                  onKnockCodeTooShort: () {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: const Text('Tap 4-6 zones'),
-                                        backgroundColor: ThemeConfig.accentColor(context).withValues(alpha: 0.8),
-                                        duration: const Duration(seconds: 1),
-                                      ),
-                                    );
-                                  },
-                                  onTapUpdate: (tapSequence) {
-                                    // Real-time tap tracking for lock screen
-                                    setState(() => enteredPin = tapSequence);
-                                  },
-                                  dividerColor: Theme.of(context).brightness == Brightness.dark
-                                      ? const Color(0xFF555566)
-                                      : Colors.grey[400]!,
-                                  selectedColor: ThemeConfig.accentColor(context),
-                                ),
-                              ),
-                            ]
-                            else if (_unlockMode == 'pattern') ...[
+                            if (_unlockMode == 'pattern') ...[
                               _buildBiometricButton(),
                               const SizedBox(height: 16),
                               ConstrainedBox(

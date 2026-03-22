@@ -23,6 +23,12 @@ class AppAccessibilityService : AccessibilityService() {
         // app and launches PIN on exit.
         private val reLockedAt = ConcurrentHashMap<String, Long>()
 
+        // ── Timestamp when each app was just unlocked ──
+        // Used to prevent PIN from being re-launched immediately after successful unlock
+        // Provides a grace period for the APP to foreground and stabilize
+        private val justUnlockedAt = ConcurrentHashMap<String, Long>()
+        private const val UNLOCK_GRACE_PERIOD_MS = 0  // No grace period; relock immediately
+
         // Events from these packages are 100% invisible — no state change at all.
         // Overlays, keyboards, system helpers that should NOT affect lock state.
         private val INVISIBLE_PACKAGES = setOf(
@@ -85,7 +91,6 @@ class AppAccessibilityService : AccessibilityService() {
         super.onServiceConnected()
         Log.d(TAG, "Accessibility Service Connected!")
         loadLockedApps()
-        clearAllSessionUnlocks()
 
         val prefs = getSharedPreferences("stealthseal_prefs", Context.MODE_PRIVATE)
         prefsListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
@@ -146,13 +151,36 @@ class AppAccessibilityService : AccessibilityService() {
         if (set.remove(packageName)) {
             prefs.edit().putString("sessionUnlockedApps", set.joinToString(",")).apply()
             reLockedAt[packageName] = System.currentTimeMillis()
+            justUnlockedAt.remove(packageName)  // Clear grace period when re-locking
             Log.d(TAG, "Re-locked: $packageName")
+        }
+    }
+
+    /**
+     * Re-lock any unlocked apps that are not currently in the foreground.
+     * This ensures apps are locked as soon as they lose focus.
+     */
+    private fun reLockUnlockedAppsNotInForeground(currentForegroundApp: String) {
+        try {
+            val prefs = getSharedPreferences("stealthseal_prefs", Context.MODE_PRIVATE)
+            val unlockedAppsStr = prefs.getString("sessionUnlockedApps", "") ?: ""
+            val unlockedApps = unlockedAppsStr.split(",").filter { it.isNotEmpty() }
+            
+            for (unlockedApp in unlockedApps) {
+                if (unlockedApp != currentForegroundApp && !NEVER_LOCKABLE.contains(unlockedApp)) {
+                    reLockApp(unlockedApp)
+                    Log.d(TAG, "🔒 Auto re-locked background unlocked app: $unlockedApp")
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error re-locking background apps: ${e.message}")
         }
     }
 
     private fun clearAllSessionUnlocks() {
         val prefs = getSharedPreferences("stealthseal_prefs", Context.MODE_PRIVATE)
         prefs.edit().putString("sessionUnlockedApps", "").apply()
+        justUnlockedAt.clear()  // Clear all grace periods
         Log.d(TAG, "Cleared all session unlocks")
     }
 
@@ -183,31 +211,16 @@ class AppAccessibilityService : AccessibilityService() {
         if (packageName == "com.example.stealthseal") return
 
         // ══════════════════════════════════════════════════════════
-        // 3. GHOST EVENT: app was JUST re-locked (closing animation)
-        //    When user exits a session-unlocked app (e.g., Chrome)
-        //    by pressing Home, the launcher fires first → re-locks
-        //    Chrome → then Chrome fires a "ghost" closing event.
-        //    Without this check, that ghost would launch a PIN.
-        //    1000ms window catches all closing animations.
+        // 2.5 RECENTS OVERVIEW — ignore while user is in recents switcher
+        // Prevents lock UI from appearing while recents grid is shown.
         // ══════════════════════════════════════════════════════════
-        val timeSinceReLock = System.currentTimeMillis() - (reLockedAt[packageName] ?: 0)
-        if (timeSinceReLock < 2500) {
-            Log.d(TAG, "Ghost (re-locked ${timeSinceReLock}ms ago): $packageName")
+        val cls = event.className?.toString() ?: ""
+        if (cls.contains("Recents", true) || cls.contains("Overview", true) || cls.contains("TaskSwitcher", true)) {
+            Log.d(TAG, "In recents/overview (class=$cls), skipping lock launch")
             return
         }
 
-        // ══════════════════════════════════════════════════════════
-        // 4. GHOST EVENT: PIN was just dismissed without correct PIN
-        //    for THIS specific package. When user presses Home/Back
-        //    from PIN, the locked app underneath briefly foregrounds.
-        //    Only suppress for the SAME package (so opening a
-        //    different locked app right after is not blocked).
-        // ══════════════════════════════════════════════════════════
-        if (packageName == AppLockActivity.dismissedPackage &&
-            System.currentTimeMillis() - AppLockActivity.dismissedAt < 2500) {
-            Log.d(TAG, "Ghost (PIN dismissed ${System.currentTimeMillis() - AppLockActivity.dismissedAt}ms ago): $packageName")
-            return
-        }
+        // No ghost suppression: lock immediately on any foreground change or return
 
         // ══════════════════════════════════════════════════════════
         // 5. APP TRANSITION — user moved to a different app
@@ -215,9 +228,16 @@ class AppAccessibilityService : AccessibilityService() {
         // ══════════════════════════════════════════════════════════
         if (packageName != currentUserApp) {
             val prev = currentUserApp
-            if (prev != null && isSessionUnlocked(prev)) {
+            
+            // Re-lock previous app when user leaves it (for security - requires PIN again)
+            if (prev != null && isSessionUnlocked(prev) && !NEVER_LOCKABLE.contains(prev)) {
                 reLockApp(prev)
+                Log.d(TAG, "✅ RE-LOCKED when exiting: $prev → $packageName")
             }
+            
+            // Also check and re-lock any other unlocked locked apps that are not current
+            reLockUnlockedAppsNotInForeground(packageName)
+            
             currentUserApp = packageName
         }
 
@@ -234,7 +254,14 @@ class AppAccessibilityService : AccessibilityService() {
         // ══════════════════════════════════════════════════════════
         // 8. SESSION UNLOCKED — user entered PIN, let them through
         // ══════════════════════════════════════════════════════════
-        if (isSessionUnlocked(packageName)) return
+        if (isSessionUnlocked(packageName)) {
+            // Mark this app as just unlocked to prevent PIN re-launch
+            justUnlockedAt[packageName] = System.currentTimeMillis()
+            return
+        }
+
+        // ══════════════════════════════════════════════════════════
+        // No grace period: always allow lock to show immediately on return
 
         // ══════════════════════════════════════════════════════════
         // 9. PIN ALREADY SHOWING — prevent duplicate

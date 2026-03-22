@@ -12,6 +12,7 @@ import android.os.Vibrator
 import android.util.Log
 import android.view.View
 import android.view.WindowManager
+import android.view.accessibility.AccessibilityManager
 import android.view.animation.AnimationUtils
 import android.widget.Button
 import android.widget.ImageButton
@@ -76,20 +77,29 @@ class AppLockActivity : Activity() {
 
     private lateinit var titleText: TextView
     private lateinit var patternLockContainer: View
-    private lateinit var knockCodeContainer: View
     private lateinit var patternView: PatternView
-    private lateinit var knockCodeView: KnockCodeView
     private lateinit var keypadGrid: View
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Fullscreen, show over lock screen
+        // Fullscreen, show over lock screen AND prevent bypass via recents/home
         window.addFlags(
             WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
             WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD or
             WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON or
-            WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON
+            WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON or
+            WindowManager.LayoutParams.FLAG_FULLSCREEN or
+            WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
+        )
+        
+        // Prevent system overlays from appearing
+        window.setType(WindowManager.LayoutParams.TYPE_APPLICATION)
+        
+        // Disable screenshot to prevent bypass
+        window.setFlags(
+            WindowManager.LayoutParams.FLAG_SECURE,
+            WindowManager.LayoutParams.FLAG_SECURE
         )
 
         setContentView(R.layout.activity_app_lock)
@@ -155,16 +165,12 @@ class AppLockActivity : Activity() {
         
         // Initialize unlock method containers
         patternLockContainer = findViewById(R.id.patternLockContainer)
-        knockCodeContainer = findViewById(R.id.knockCodeContainer)
         patternView = findViewById(R.id.patternView)
-        knockCodeView = findViewById(R.id.knockCodeView)
         keypadGrid = findViewById(R.id.keypadGrid)
 
         // Enable touch events for custom views
         patternView.isFocusable = true
         patternView.isClickable = true
-        knockCodeView.isFocusable = true
-        knockCodeView.isClickable = true
 
         // Modern lock icon is already styled in the layout
         val lockIcon = findViewById<ImageView>(R.id.lockIcon)
@@ -176,36 +182,6 @@ class AppLockActivity : Activity() {
             validatePattern(pattern)
         }
 
-        // Set up knock code view callbacks
-        knockCodeView.onKnockCodeCompleted = { code ->
-            Log.d(TAG, "Knock code completed: $code, comparing with realPin: $realPin")
-            validateKnockCode(code)
-        }
-
-        // Set up knock code buttons
-        val knockCodeSubmitBtn = findViewById<Button>(R.id.knockCodeSubmitBtn)
-        val knockCodeClearBtn = findViewById<Button>(R.id.knockCodeClearBtn)
-        
-        knockCodeSubmitBtn.setOnClickListener {
-            val code = knockCodeView.getCurrentCode()
-            Log.d(TAG, "Submit button clicked, validating knock code: '$code'")
-            if (code.length >= 4) {
-                validateKnockCode(code)
-            } else {
-                errorText.visibility = View.VISIBLE
-                errorText.text = "Tap at least 4 zones"
-                Handler(Looper.getMainLooper()).postDelayed({
-                    errorText.visibility = View.GONE
-                }, 2000)
-            }
-        }
-        
-        knockCodeClearBtn.setOnClickListener {
-            Log.d(TAG, "Clear button clicked, resetting knock code")
-            knockCodeView.reset()
-            errorText.visibility = View.GONE
-        }
-
         // Show appropriate unlock method UI
         showUnlockMethodUI()
     }
@@ -213,24 +189,18 @@ class AppLockActivity : Activity() {
     private fun showUnlockMethodUI() {
         // Hide all
         patternLockContainer.visibility = View.GONE
-        knockCodeContainer.visibility = View.GONE
         keypadGrid.visibility = View.VISIBLE
 
+        // Use generic title to keep UI consistent across all apps
+        titleText.text = "Unlock Your App"
+        
         when {
             unlockPattern == "pattern" -> {
-                titleText.text = "Draw Your Pattern"
                 keypadGrid.visibility = View.GONE
                 patternLockContainer.visibility = View.VISIBLE
                 patternView.reset()
             }
-            unlockPattern == "knock-code" -> {
-                titleText.text = "Tap the Zones"
-                keypadGrid.visibility = View.GONE
-                knockCodeContainer.visibility = View.VISIBLE
-                knockCodeView.reset()
-            }
             else -> {
-                titleText.text = "Enter the PIN"
                 updateDots()
             }
         }
@@ -277,6 +247,80 @@ class AppLockActivity : Activity() {
         if (enteredPin.isEmpty()) return
         enteredPin = enteredPin.substring(0, enteredPin.length - 1)
         updateDots()
+    }
+
+    /**
+     * Check if the accessibility service is currently enabled.
+     */
+    private fun isAccessibilityServiceEnabled(): Boolean {
+        try {
+            val accessibilityManager = getSystemService(Context.ACCESSIBILITY_SERVICE) as AccessibilityManager
+            val enabledServices = android.provider.Settings.Secure.getString(
+                contentResolver,
+                android.provider.Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+            ) ?: ""
+            
+            val serviceName = AppAccessibilityService::class.simpleName ?: "AppAccessibilityService"
+            val expectedServiceName = "${packageName}/${AppAccessibilityService::class.java.name}"
+            return enabledServices.contains(serviceName) ||
+                   enabledServices.contains(expectedServiceName)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error checking accessibility status: ${e.message}")
+            return false
+        }
+    }
+
+    /**
+     * Show dialog to prompt user to enable accessibility service on first login.
+     */
+    private fun showAccessibilitySetupDialog() {
+        android.app.AlertDialog.Builder(this)
+            .setTitle("Enable App Lock Protection")
+            .setMessage(
+                "To protect your apps, StealthSeal needs Accessibility Service permissions.\n\n" +
+                "This allows the app to lock/unlock your selected apps automatically.\n\n" +
+                "You can enable this in Settings → Accessibility → StealthSeal"
+            )
+            .setPositiveButton("Open Settings") { _, _ ->
+                openAccessibilitySettings()
+                // Finish after opening settings
+                Handler(Looper.getMainLooper()).postDelayed({
+                    onAccessibilitySetupComplete()
+                }, 500)
+            }
+            .setNegativeButton("Skip for Now") { _, _ ->
+                onAccessibilitySetupComplete()
+            }
+            .setCancelable(false)
+            .show()
+    }
+
+    /**
+     * Open device accessibility settings.
+     */
+    private fun openAccessibilitySettings() {
+        try {
+            val intent = Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS)
+            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            startActivity(intent)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error opening accessibility settings: ${e.message}")
+        }
+    }
+
+    /**
+     * Called when accessibility setup is complete (either skipped or done).
+     */
+    private fun onAccessibilitySetupComplete() {
+        Log.d(TAG, "Accessibility setup complete")
+        
+        // Start foreground service to keep app running in background
+        AppLockForegroundService.start(this)
+        
+        // Clear static flags and finish to unlock the app
+        isShowing = false
+        currentlyBlockedPackage = null
+        finish()
     }
 
     private fun updateDots() {
@@ -326,7 +370,41 @@ class AppLockActivity : Activity() {
 
             Log.d(TAG, "Session-unlocked: $lockedPackage (total: ${unlockedSet.size})")
 
-            // Finish this activity — the locked app is still underneath
+            // Check if accessibility is currently disabled and first prompt hasn't been shown
+            val accessibilityEnabled = isAccessibilityServiceEnabled()
+            val hasShownAccessibilityPrompt = prefs.getBoolean("accessibility_prompt_shown", false)
+            
+            if (!accessibilityEnabled && !hasShownAccessibilityPrompt) {
+                Log.d(TAG, "Accessibility is OFF and first login - showing accessibility setup prompt")
+                prefs.edit().putBoolean("accessibility_prompt_shown", true).apply()
+                
+                // Show accessibility permission dialog
+                showAccessibilitySetupDialog()
+            } else {
+                // Accessibility already on or already shown prompt - just unlock
+                if (accessibilityEnabled) {
+                    Log.d(TAG, "Accessibility already enabled - skipping setup prompt")
+                }
+                onAccessibilitySetupComplete()
+            }
+        } else if (enteredPin == decoyPin) {
+            // Decoy PIN handling
+            failedAttempts = 0
+            pinCorrect = true
+            Log.d(TAG, "Decoy PIN entered for: $lockedPackage")
+            errorText.visibility = View.GONE
+
+            val prefs = getSharedPreferences("stealthseal_prefs", Context.MODE_PRIVATE)
+            val currentUnlocked = prefs.getString("sessionUnlockedApps", "") ?: ""
+            val unlockedSet = currentUnlocked.split(",").filter { it.isNotEmpty() }.toMutableSet()
+            unlockedSet.add(lockedPackage)
+            prefs.edit().putString("sessionUnlockedApps", unlockedSet.joinToString(",")).apply()
+
+            Log.d(TAG, "Decoy dashboard shown for: $lockedPackage")
+
+            // Clear flags and finish
+            isShowing = false
+            currentlyBlockedPackage = null
             finish()
         } else {
             // Wrong PIN
@@ -416,7 +494,22 @@ class AppLockActivity : Activity() {
 
             Log.d(TAG, "Session-unlocked: $lockedPackage")
 
-            finish()
+            // Check if accessibility is currently disabled and first prompt hasn't been shown
+            val accessibilityEnabled = isAccessibilityServiceEnabled()
+            val hasShownAccessibilityPrompt = prefs.getBoolean("accessibility_prompt_shown", false)
+            
+            if (!accessibilityEnabled && !hasShownAccessibilityPrompt && realMatch) {  // Only on real PIN first login
+                Log.d(TAG, "Accessibility is OFF and first login - showing accessibility setup prompt")
+                prefs.edit().putBoolean("accessibility_prompt_shown", true).apply()
+                
+                showAccessibilitySetupDialog()
+            } else {
+                // Not first login or decoy pattern or accessibility already on - just unlock
+                if (accessibilityEnabled) {
+                    Log.d(TAG, "Accessibility already enabled - skipping setup prompt")
+                }
+                onAccessibilitySetupComplete()
+            }
         } else {
             failedAttempts++
             Log.d(TAG, "")
@@ -438,86 +531,23 @@ class AppLockActivity : Activity() {
         }
     }
 
-    private fun validateKnockCode(code: String) {
-        val entered = code.trim()
-        
-        Log.d(TAG, "╔════════════════════════════════════════╗")
-        Log.d(TAG, "║      KNOCK CODE VALIDATION CHECK      ║")
-        Log.d(TAG, "╚════════════════════════════════════════╝")
-        Log.d(TAG, "Entered: '$entered'")
-        Log.d(TAG, "  Length: ${entered.length}")
-        Log.d(TAG, "  Bytes: ${entered.toByteArray().joinToString(",")}")
-        Log.d(TAG, "")
-        Log.d(TAG, "Real PIN: '$realPin'")
-        if (realPin != null) {
-            Log.d(TAG, "  Length: ${realPin!!.length}")
-            Log.d(TAG, "  Bytes: ${realPin!!.toByteArray().joinToString(",")}")
-        }
-        Log.d(TAG, "")
-        Log.d(TAG, "Decoy PIN: '$decoyPin'")
-        if (decoyPin != null) {
-            Log.d(TAG, "  Length: ${decoyPin!!.length}")
-            Log.d(TAG, "  Bytes: ${decoyPin!!.toByteArray().joinToString(",")}")
-        }
 
-        if (entered.isEmpty() || realPin == null) {
-            Log.e(TAG, "❌ VALIDATION FAILED: Empty entered or no realPin!")
-            errorText.visibility = View.VISIBLE
-            errorText.text = "Invalid knock code"
-            return
-        }
-
-        val realMatch = (entered == realPin)
-        val decoyMatch = (entered == decoyPin)
-        
-        Log.d(TAG, "")
-        Log.d(TAG, "Comparison:")
-        Log.d(TAG, "  entered == realPin? $realMatch")
-        Log.d(TAG, "  entered == decoyPin? $decoyMatch")
-
-        if (realMatch || decoyMatch) {
-            Log.d(TAG, "")
-            Log.d(TAG, "✅ CORRECT! Knock code matches!")
-            failedAttempts = 0
-            errorText.visibility = View.GONE
-
-            // Mark as session-unlocked in SharedPreferences
-            val prefs = getSharedPreferences("stealthseal_prefs", Context.MODE_PRIVATE)
-            val currentUnlocked = prefs.getString("sessionUnlockedApps", "") ?: ""
-            val unlockedSet = currentUnlocked.split(",").filter { it.isNotEmpty() }.toMutableSet()
-            unlockedSet.add(lockedPackage)
-            prefs.edit().putString("sessionUnlockedApps", unlockedSet.joinToString(",")).apply()
-
-            Log.d(TAG, "Session-unlocked: $lockedPackage")
-
-            finish()
-        } else {
-            failedAttempts++
-            Log.d(TAG, "")
-            Log.d(TAG, "❌ INCORRECT! Knock code does not match.")
-            Log.d(TAG, "Attempt #$failedAttempts")
-
-            try {
-                val vibrator = getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
-                vibrator?.vibrate(200)
-            } catch (e: Exception) { /* ignore */ }
-
-            errorText.visibility = View.VISIBLE
-            errorText.text = "Wrong knock code (${3 - failedAttempts} left)"
-
-            Handler(Looper.getMainLooper()).postDelayed({
-                knockCodeView.reset()
-                errorText.visibility = View.GONE
-            }, 1000)
-        }
-    }
 
     override fun onBackPressed() {
-        // Don't allow back to bypass — go to home screen instead
-        val homeIntent = Intent(Intent.ACTION_MAIN)
-        homeIntent.addCategory(Intent.CATEGORY_HOME)
-        homeIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        // Send user to home; mark as dismissed (no unlock) and finish
+        if (pinCorrect || isFinishing || isDestroyed) return
+        Log.d(TAG, "Back pressed on lock screen - going home and keeping locked")
+        val homeIntent = Intent(Intent.ACTION_MAIN).apply {
+            addCategory(Intent.CATEGORY_HOME)
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        }
         startActivity(homeIntent)
+
+        // Mark dismissal without unlock so accessibility can relaunch when returning
+        isShowing = false
+        currentlyBlockedPackage = null
+        dismissedAt = System.currentTimeMillis()
+        dismissedPackage = lockedPackage
         finish()
     }
 
@@ -536,7 +566,6 @@ class AppLockActivity : Activity() {
                 pinCorrect = false
                 errorText.visibility = View.GONE
                 patternView.reset()
-                knockCodeView.reset()
                 loadPins()  // Reload pins to get latest unlock_pattern
                 showUnlockMethodUI()
                 currentlyBlockedPackage = lockedPackage
@@ -551,7 +580,6 @@ class AppLockActivity : Activity() {
                     failedAttempts = 0
                     errorText.visibility = View.GONE
                     patternView.reset()
-                    knockCodeView.reset()
                     showUnlockMethodUI()
                 } else {
                     Log.d(TAG, "Unlock screen re-focused for same app: $lockedPackage")
@@ -562,7 +590,9 @@ class AppLockActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
-        // When PIN screen comes back to foreground, reload unlock pattern in case it changed
+        Log.d(TAG, "Lock screen resumed, ensuring it stays active")
+        
+        // Reload unlock pattern in case it changed
         val oldPattern = unlockPattern
         loadPins()
         if (oldPattern != unlockPattern) {
@@ -571,7 +601,6 @@ class AppLockActivity : Activity() {
             failedAttempts = 0
             errorText.visibility = View.GONE
             patternView.reset()
-            knockCodeView.reset()
             showUnlockMethodUI()
         }
     }
@@ -583,19 +612,24 @@ class AppLockActivity : Activity() {
      */
     override fun onUserLeaveHint() {
         super.onUserLeaveHint()
-        Log.d(TAG, "User pressed Home from PIN screen, finishing")
-        // Go Home explicitly BEFORE finish to minimize the window where
-        // the locked app is briefly foreground
-        val homeIntent = Intent(Intent.ACTION_MAIN)
-        homeIntent.addCategory(Intent.CATEGORY_HOME)
-        homeIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        // User hit home/recents while entering PIN. Do NOT unlock; simply go home.
+        if (pinCorrect || isFinishing || isDestroyed) return
+
+        Log.d(TAG, "User left lock screen (home/recents) - sending to home, keeping app locked")
+        val homeIntent = Intent(Intent.ACTION_MAIN).apply {
+            addCategory(Intent.CATEGORY_HOME)
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        }
         startActivity(homeIntent)
-        finish()
+        // Do not finish; let accessibility relaunch lock instantly when app returns
     }
 
     override fun onPause() {
         super.onPause()
-        Log.d(TAG, "PIN screen paused, keeping alive")
+        // If not unlocked, keep activity alive; accessibility will re-show if needed
+        if (!pinCorrect) {
+            Log.d(TAG, "Lock screen paused without unlock - staying alive (no auto-finish)")
+        }
     }
 
     override fun onDestroy() {

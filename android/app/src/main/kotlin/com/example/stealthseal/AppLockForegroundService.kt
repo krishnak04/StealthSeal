@@ -47,6 +47,9 @@ class AppLockForegroundService : Service() {
         Log.d(TAG, "Foreground service created")
         createNotificationChannel()
         startForeground(NOTIFICATION_ID, buildNotification())
+        
+        // Start accessibility monitor service
+        AccessibilityMonitorService.start(this)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -99,7 +102,7 @@ class AppLockForegroundService : Service() {
 
         return builder
             .setContentTitle("StealthSeal Active")
-            .setContentText("App lock protection is running")
+            .setContentText("By turning off the app you are turning off the app lock")
             .setSmallIcon(android.R.drawable.ic_lock_lock)
             .setContentIntent(pendingIntent)
             .setOngoing(true)  // Cannot be swiped away

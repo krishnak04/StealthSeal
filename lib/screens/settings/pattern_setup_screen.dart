@@ -5,7 +5,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/theme/theme_config.dart';
 import '../../core/services/user_identifier_service.dart';
 import '../../widgets/pattern_lock_widget.dart';
-import '../../widgets/knock_code_widget.dart';
 
 enum PatternSetupStep {
   currentPin,
@@ -154,19 +153,6 @@ class _PatternSetupScreenState extends State<PatternSetupScreen> {
     }
   }
 
-  void _onKnockCodeCompleted(String code) {
-    // Only used for verifying current knock code when switching from knock code mode
-    if (_step != PatternSetupStep.currentPin || _currentUnlockPattern != 'knock-code') return;
-
-    if (code == _currentRealPin || code == _currentDecoyPin) {
-      setState(() {
-        _step = PatternSetupStep.newRealPattern;
-        _enteredPin = '';
-      });
-    } else {
-      _showPatternError('Wrong knock code. Try again.');
-    }
-  }
 
   void _onPatternCompleted(String pattern) {
     if (_isSaving) return;
@@ -529,21 +515,6 @@ class _PatternSetupScreenState extends State<PatternSetupScreen> {
                                   onPatternCompleted: _onPatternCompleted,
                                   dotColor: const Color(0xFF555566),
                                   selectedColor: Colors.white,
-                                ),
-                              )
-                            else if (_currentUnlockPattern == 'knock-code')
-                              SizedBox(
-                                height: 280,
-                                child: KnockCodeWidget(
-                                  key: ValueKey(_step),
-                                  onKnockCodeCompleted: _onKnockCodeCompleted,
-                                  onKnockCodeTooShort: () {
-                                    // Show error message
-                                  },
-                                  dividerColor: const Color(0xFF555566),
-                                  selectedColor: Colors.white,
-                                  submitButtonLabel: 'Verify',
-                                  clearButtonLabel: 'Clear',
                                 ),
                               )
                             else

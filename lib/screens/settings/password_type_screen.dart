@@ -3,7 +3,6 @@ import 'package:hive_flutter/hive_flutter.dart';
 import '../../core/theme/theme_config.dart';
 import 'six_digit_pin_screen.dart';
 import 'pattern_setup_screen.dart';
-import 'knock_code_setup_screen.dart';
 
 class PatternScreen extends StatefulWidget {
   const PatternScreen({super.key});
@@ -74,23 +73,6 @@ class _PatternScreenState extends State<PatternScreen> {
       if (result == true && mounted) {
         setState(() {
           _selectedPattern = 'pattern';
-        });
-      }
-      return;
-    }
-
-    // If selecting knock-code, navigate to knock code setup screen
-    if (pattern == 'knock-code') {
-      final result = await Navigator.push<bool>(
-        context,
-        MaterialPageRoute(
-          builder: (context) => const KnockCodeSetupScreen(),
-        ),
-      );
-
-      if (result == true && mounted) {
-        setState(() {
-          _selectedPattern = 'knock-code';
         });
       }
       return;
@@ -199,14 +181,6 @@ class _PatternScreenState extends State<PatternScreen> {
                     pattern: 'pattern',
                     icon: Icons.lock,
                   ),
-                  const SizedBox(height: 12),
-                  _buildPatternOption(
-                    context: context,
-                    title: 'Knock code',
-                    description: 'Pattern-based unlock\nSequence of taps',
-                    pattern: 'knock-code',
-                    icon: Icons.gesture,
-                  ),
                   const SizedBox(height: 24),
                   Container(
                     padding: const EdgeInsets.all(16),
@@ -239,7 +213,7 @@ class _PatternScreenState extends State<PatternScreen> {
                         ),
                         const SizedBox(height: 12),
                         Text(
-                          'Knock code is more secure. Your chosen pattern will be used for future authentication.',
+                          'Your chosen pattern will be used for future authentication.',
                           style: TextStyle(
                             color: ThemeConfig.textPrimary(context),
                             fontSize: 12,
