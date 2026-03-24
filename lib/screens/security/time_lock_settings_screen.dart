@@ -18,7 +18,7 @@ class _TimeLockSettingsScreenState extends State<TimeLockSettingsScreen> {
   @override
   void initState() {
     super.initState();
-    _securityBox = Hive.box('securityBox');
+    _securityBox = Hive.box('security');
     _loadSettings();
   }
 
@@ -82,6 +82,39 @@ class _TimeLockSettingsScreenState extends State<TimeLockSettingsScreen> {
       _timeLockEnabled = value;
     });
     await _securityBox.put('nightLockEnabled', value);
+  }
+
+  Future<void> _setQuickLock(int minutes) async {
+    final now = DateTime.now();
+    final endTime = now.add(Duration(minutes: minutes));
+    
+    setState(() {
+      _startTime = TimeOfDay(hour: now.hour, minute: now.minute);
+      _endTime = TimeOfDay(hour: endTime.hour, minute: endTime.minute);
+      _timeLockEnabled = true;
+    });
+    
+    // Set BOTH start time (now) and end time (now + duration)
+    await _securityBox.put('nightStartHour', now.hour);
+    await _securityBox.put('nightStartMinute', now.minute);
+    await _securityBox.put('nightEndHour', endTime.hour);
+    await _securityBox.put('nightEndMinute', endTime.minute);
+    await _securityBox.put('nightLockEnabled', true);
+    
+    debugPrint('🔒 Quick lock set:');
+    debugPrint('   Start: ${now.hour}:${now.minute.toString().padLeft(2, '0')}');
+    debugPrint('   End: ${endTime.hour}:${endTime.minute.toString().padLeft(2, '0')}');
+    debugPrint('   Duration: $minutes minutes');
+    
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('🔒 App locked for $minutes minutes until ${_formatTime(_endTime)}'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
   }
 
   String _formatTime(TimeOfDay time) {
@@ -298,8 +331,76 @@ class _TimeLockSettingsScreenState extends State<TimeLockSettingsScreen> {
                   ],
                 ),
               ),
+              const SizedBox(height: 20),
+
+              // Quick Lock Section
+              Container(
+                decoration: BoxDecoration(
+                  color: ThemeConfig.surfaceColor(context),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: ThemeConfig.borderColor(context),
+                    width: 1,
+                  ),
+                ),
+                padding: const EdgeInsets.all(18),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Quick Lock',
+                      style: TextStyle(
+                        color: ThemeConfig.textPrimary(context),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Lock app for a specific duration',
+                      style: TextStyle(
+                        color: ThemeConfig.textSecondary(context),
+                        fontSize: 12,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
+                      children: [
+                        _buildQuickLockButton(context, '4 min', 4),
+                        _buildQuickLockButton(context, '5 min', 5),
+                        _buildQuickLockButton(context, '10 min', 10),
+                        _buildQuickLockButton(context, '30 min', 30),
+                        _buildQuickLockButton(context, '1 hour', 60),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuickLockButton(BuildContext context, String label, int minutes) {
+    return ElevatedButton(
+      onPressed: () => _setQuickLock(minutes),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: ThemeConfig.accentColor(context),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
         ),
       ),
     );

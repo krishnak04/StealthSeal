@@ -5,7 +5,7 @@ class AppRoutes {
   static const lock = '/lock';
   static const realDashboard = '/real-dashboard';
   static const fakeDashboard = '/fake-dashboard';
-  static const timeLockService = '/time-lock-service';
+static const timeLockService = '/time-lock-service';
   static const settings = '/settings';
   static const debug = '/debug';
 }

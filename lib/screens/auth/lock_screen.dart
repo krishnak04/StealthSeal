@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hive/hive.dart';
@@ -30,6 +31,10 @@ class _LockScreenState extends State<LockScreen> {
   bool _biometricSupported = false;
   int _pinLength = 4;
   String _unlockMode = '4-digit'; // '4-digit', '6-digit', or 'pattern'
+  
+  // Time lock countdown timer
+  Timer? _countdownTimer;
+  String _timeRemaining = '00:00:00';
 
   @override
   void initState() {
@@ -40,7 +45,9 @@ class _LockScreenState extends State<LockScreen> {
         debugPrint('Panic Lock Active');
       }
       if (TimeLockService.isNightLockActive()) {
-        debugPrint('Time Lock Active');
+        debugPrint('Time Lock Active - Starting countdown timer');
+        _updateTimeRemaining();
+        _startCountdownTimer();
       }
       if (await LocationLockService.isOutsideTrustedLocation()) {
         debugPrint('Location Lock Active');
@@ -50,8 +57,89 @@ class _LockScreenState extends State<LockScreen> {
     _loadPins();
   }
 
+  void _updateTimeRemaining() {
+    final securityBox = Hive.box('security');
+    
+    final startHourValue = securityBox.get('nightStartHour', defaultValue: 0);
+    final startMinuteValue = securityBox.get('nightStartMinute', defaultValue: 0);
+    final endHourValue = securityBox.get('nightEndHour', defaultValue: 6);
+    final endMinuteValue = securityBox.get('nightEndMinute', defaultValue: 0);
+    
+    final startHour = (startHourValue is int) ? startHourValue : (startHourValue as num).toInt();
+    final startMinute = (startMinuteValue is int) ? startMinuteValue : (startMinuteValue as num).toInt();
+    final endHour = (endHourValue is int) ? endHourValue : (endHourValue as num).toInt();
+    final endMinute = (endMinuteValue is int) ? endMinuteValue : (endMinuteValue as num).toInt();
+    
+    debugPrint('🕐 Timer Debug - Start: $startHour:${startMinute.toString().padLeft(2, '0')}, End: $endHour:${endMinute.toString().padLeft(2, '0')}');
+    
+    final now = DateTime.now();
+    final currentSeconds = now.hour * 3600 + now.minute * 60 + now.second;
+    final startSeconds = startHour * 3600 + startMinute * 60;
+    final endSeconds = endHour * 3600 + endMinute * 60;
+    
+    debugPrint('🕐 Current: ${now.hour}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')} (${currentSeconds}s)');
+    debugPrint('🕐 Start: ${(startSeconds~/3600)}:${((startSeconds%3600)~/60).toString().padLeft(2, '0')} ($startSeconds s)');
+    debugPrint('🕐 End: ${(endSeconds~/3600)}:${((endSeconds%3600)~/60).toString().padLeft(2, '0')} ($endSeconds s)');
+    
+    int secondsRemaining = 0;
+    
+    // Handle same-day quick lock (e.g., 14:05 to 14:10)
+    if (endSeconds > startSeconds && currentSeconds >= startSeconds && currentSeconds < endSeconds) {
+      debugPrint('✅ Same-day lock: Current is between start and end');
+      secondsRemaining = endSeconds - currentSeconds;
+    }
+    // Handle overnight lock (e.g., 22:00 to 06:00)
+    else if (endSeconds < startSeconds) {
+      debugPrint('🌙 Overnight lock detected');
+      if (currentSeconds >= startSeconds) {
+        debugPrint('✅ After start time (towards midnight)');
+        secondsRemaining = (24 * 3600) - currentSeconds + endSeconds;
+      } else if (currentSeconds < endSeconds) {
+        debugPrint('✅ After midnight, before end time');
+        secondsRemaining = endSeconds - currentSeconds;
+      }
+    }
+    else {
+      debugPrint('⚠️ No lock condition met - endSeconds: $endSeconds, startSeconds: $startSeconds, currentSeconds: $currentSeconds');
+    }
+    
+    debugPrint('🕐 Seconds remaining: $secondsRemaining');
+    
+    // Ensure non-negative value
+    if (secondsRemaining < 0) {
+      secondsRemaining = 0;
+    }
+    
+    final hoursRemaining = (secondsRemaining ~/ 3600).toInt();
+    final minsRemaining = ((secondsRemaining % 3600) ~/ 60).toInt();
+    final secsRemaining = (secondsRemaining % 60).toInt();
+    
+    debugPrint('✨ Display time: ${hoursRemaining.toString().padLeft(2, '0')}:${minsRemaining.toString().padLeft(2, '0')}:${secsRemaining.toString().padLeft(2, '0')}');
+    
+    if (mounted) {
+      setState(() {
+        _timeRemaining = '${hoursRemaining.toString().padLeft(2, '0')}:${minsRemaining.toString().padLeft(2, '0')}:${secsRemaining.toString().padLeft(2, '0')}';
+      });
+    }
+  }
+
+  void _startCountdownTimer() {
+    _countdownTimer?.cancel();
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted && TimeLockService.isNightLockActive()) {
+        _updateTimeRemaining();
+      } else {
+        _countdownTimer?.cancel();
+        if (mounted) {
+          setState(() {});
+        }
+      }
+    });
+  }
+
   @override
   void dispose() {
+    _countdownTimer?.cancel();
     super.dispose();
   }
 
@@ -198,15 +286,16 @@ class _LockScreenState extends State<LockScreen> {
   Future<void> _validatePin() async {
     if (realPin == null || decoyPin == null) return;
 
-    if (await LocationLockService.isOutsideTrustedLocation()) {
+    // Time Lock - COMPLETELY BLOCK ACCESS (no PIN can unlock)
+    if (TimeLockService.isNightLockActive()) {
       if (!mounted) return;
-      _handleRestrictedUnlock('Location Lock active. Enter real PIN.');
+      _handleTimeLockedBlock();
       return;
     }
 
-    if (TimeLockService.isNightLockActive()) {
+    if (await LocationLockService.isOutsideTrustedLocation()) {
       if (!mounted) return;
-      _handleRestrictedUnlock('Time Lock active. Enter real PIN.');
+      _handleRestrictedUnlock('Location Lock active. Enter real PIN.');
       return;
     }
 
@@ -263,6 +352,21 @@ class _LockScreenState extends State<LockScreen> {
     }
   }
 
+  Future<void> _handleTimeLockedBlock() async {
+    // Time Lock is ACTIVE - completely block all access
+    if (!TimeLockService.isNightLockActive()) {
+      return;
+    }
+    
+    _updateTimeRemaining();
+    _startCountdownTimer();
+
+    if (!mounted) return;
+    if (mounted) {
+      setState(() => enteredPin = '');
+    }
+  }
+
   Future<void> _handleWrongPin() async {
     failedAttempts++;
 
@@ -295,6 +399,24 @@ class _LockScreenState extends State<LockScreen> {
 
   Future<void> _authenticateWithBiometrics() async {
     try {
+      // Check Time Lock FIRST - complete block
+      if (TimeLockService.isNightLockActive()) {
+        if (!mounted) return;
+        
+        final securityBox = Hive.box('security');
+        final endHour = securityBox.get('nightEndHour', defaultValue: 6);
+        final endMinute = securityBox.get('nightEndMinute', defaultValue: 0);
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Time Lock Active 🔒\nApp locked until $endHour:${endMinute.toString().padLeft(2, '0')}'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+        return;
+      }
+
       final response = await BiometricService.authenticate();
 
       if (!mounted) return;
@@ -315,7 +437,6 @@ class _LockScreenState extends State<LockScreen> {
       }
 
       if (PanicService.isActive() ||
-          TimeLockService.isNightLockActive() ||
           await LocationLockService.isOutsideTrustedLocation()) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
@@ -459,6 +580,7 @@ class _LockScreenState extends State<LockScreen> {
                               ),
                             ]
                             else ...[
+                              _buildTimeRemainingWidget(),
                               _buildPinDots(),
                               const SizedBox(height: 16),
 
@@ -535,6 +657,56 @@ class _LockScreenState extends State<LockScreen> {
           fontSize: 13,
         ),
         textAlign: TextAlign.center,
+      ),
+    );
+  }
+
+  Widget _buildTimeRemainingWidget() {
+    if (!TimeLockService.isNightLockActive()) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 24),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      decoration: BoxDecoration(
+        color: const Color.fromARGB(255, 181, 66, 68).withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: const Color.fromARGB(255, 181, 66, 68).withValues(alpha: 0.4),
+          width: 2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color.fromARGB(255, 181, 66, 68).withValues(alpha: 0.2),
+            blurRadius: 10,
+            spreadRadius: 2,
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          const Text(
+            '⏱️ Unlock Time Remaining',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.8,
+              color: Color.fromARGB(255, 181, 66, 68),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            _timeRemaining,
+            style: const TextStyle(
+              fontSize: 32,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 2,
+              fontFamily: 'monospace',
+              color: Color.fromARGB(255, 181, 66, 68),
+            ),
+          ),
+        ],
       ),
     );
   }

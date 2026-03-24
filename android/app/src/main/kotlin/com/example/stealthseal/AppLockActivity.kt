@@ -182,9 +182,11 @@ class AppLockActivity : FragmentActivity() {
         patternView.isFocusable = true
         patternView.isClickable = true
 
-        // Modern lock icon is already styled in the layout
+        // Set up biometric icon
         val lockIcon = findViewById<ImageView>(R.id.lockIcon)
         lockIcon.setColorFilter(Color.WHITE)
+        // Change icon to biometric
+        lockIcon.setImageResource(android.R.drawable.ic_dialog_info)
 
         // Set up pattern view callbacks
         patternView.onPatternCompleted = { pattern ->
