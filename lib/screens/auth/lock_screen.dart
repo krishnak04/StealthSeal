@@ -286,16 +286,17 @@ class _LockScreenState extends State<LockScreen> {
   Future<void> _validatePin() async {
     if (realPin == null || decoyPin == null) return;
 
+    // Location Lock - COMPLETELY BLOCK ACCESS (highest priority - no PIN works outside trusted location)
+    if (await LocationLockService.isOutsideTrustedLocation()) {
+      if (!mounted) return;
+      _handleLocationLockedBlock();
+      return;
+    }
+
     // Time Lock - COMPLETELY BLOCK ACCESS (no PIN can unlock)
     if (TimeLockService.isNightLockActive()) {
       if (!mounted) return;
       _handleTimeLockedBlock();
-      return;
-    }
-
-    if (await LocationLockService.isOutsideTrustedLocation()) {
-      if (!mounted) return;
-      _handleRestrictedUnlock('Location Lock active. Enter real PIN.');
       return;
     }
 
@@ -352,6 +353,29 @@ class _LockScreenState extends State<LockScreen> {
     }
   }
 
+  Future<void> _handleLocationLockedBlock() async {
+    // Location Lock is ACTIVE - completely block all access outside trusted location
+    if (!await LocationLockService.isOutsideTrustedLocation()) {
+      return;
+    }
+    
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).clearSnackBars();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          '📍 Location Lock Active. You are outside the trusted location. App cannot be unlocked here.',
+          style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+        ),
+        backgroundColor: Color.fromARGB(255, 255, 152, 0),
+        duration: Duration(seconds: 3),
+      ),
+    );
+    if (mounted) {
+      setState(() => enteredPin = '');
+    }
+  }
+
   Future<void> _handleTimeLockedBlock() async {
     // Time Lock is ACTIVE - completely block all access
     if (!TimeLockService.isNightLockActive()) {
@@ -399,6 +423,19 @@ class _LockScreenState extends State<LockScreen> {
 
   Future<void> _authenticateWithBiometrics() async {
     try {
+      // Check Location Lock FIRST - complete block outside trusted location
+      if (await LocationLockService.isOutsideTrustedLocation()) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('📍 Location Lock Active. Biometric access blocked outside trusted location.'),
+            backgroundColor: Color.fromARGB(255, 255, 152, 0),
+            duration: Duration(seconds: 3),
+          ),
+        );
+        return;
+      }
+
       // Check Time Lock FIRST - complete block
       if (TimeLockService.isNightLockActive()) {
         if (!mounted) return;
@@ -436,12 +473,11 @@ class _LockScreenState extends State<LockScreen> {
         return;
       }
 
-      if (PanicService.isActive() ||
-          await LocationLockService.isOutsideTrustedLocation()) {
+      if (PanicService.isActive()) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('PIN required due to security lock'),
+            content: const Text('PIN required due to panic mode'),
             backgroundColor: ThemeConfig.accentColor(context).withValues(alpha: 0.8),
             duration: const Duration(seconds: 2),
           ),
@@ -524,7 +560,7 @@ class _LockScreenState extends State<LockScreen> {
                                   LocationLockService.isOutsideTrustedLocation(),
                               builder: (_, snap) => snap.data == true
                                   ? _buildLockBanner(
-                                      'LOCATION LOCK ACTIVE', Colors.greenAccent)
+                                      'LOCATION LOCK ACTIVE - OUTSIDE TRUSTED ZONE', Colors.redAccent)
                                   : const SizedBox.shrink(),
                             ),
 
