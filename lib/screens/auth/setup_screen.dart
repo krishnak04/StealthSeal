@@ -136,26 +136,12 @@ class _SetupScreenState extends State<SetupScreen> {
       // Step 2: Cache to native SharedPreferences (for app lock)
       try {
         const platform = MethodChannel('com.stealthseal.app/applock');
-        
-        // Load time lock settings (default values if not set)
-        final security = Hive.box('security');
-        final timeLockEnabled = security.get('nightLockEnabled', defaultValue: false) as bool;
-        final nightStartHour = security.get('nightStartHour', defaultValue: 22) as int;
-        final nightStartMinute = security.get('nightStartMinute', defaultValue: 0) as int;
-        final nightEndHour = security.get('nightEndHour', defaultValue: 6) as int;
-        final nightEndMinute = security.get('nightEndMinute', defaultValue: 0) as int;
-        
         await platform.invokeMethod('cachePins', {
           'real_pin': realPin,
           'decoy_pin': decoyPin,
           'unlock_pattern': '4-digit',
-          'time_lock_enabled': timeLockEnabled,
-          'night_start_hour': nightStartHour,
-          'night_start_minute': nightStartMinute,
-          'night_end_hour': nightEndHour,
-          'night_end_minute': nightEndMinute,
         });
-        debugPrint('PINs and time lock settings cached to native SharedPreferences');
+        debugPrint('PINs cached to native SharedPreferences');
       } catch (error) {
         debugPrint('Warning: Failed to cache PINs: $error');
       }

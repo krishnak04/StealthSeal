@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hive/hive.dart';
 import '../../core/theme/theme_config.dart';
+import '../../utils/hive_keys.dart';
 
 class TimeLockSettingsScreen extends StatefulWidget {
   const TimeLockSettingsScreen({super.key});
@@ -25,14 +26,14 @@ class _TimeLockSettingsScreenState extends State<TimeLockSettingsScreen> {
 
   void _loadSettings() {
     _timeLockEnabled =
-        _securityBox.get('nightLockEnabled', defaultValue: false);
+        _securityBox.get(HiveKeys.nightLockEnabled, defaultValue: false);
 
-    final startHour = _securityBox.get('nightStartHour', defaultValue: 22);
-    final startMinute = _securityBox.get('nightStartMinute', defaultValue: 0);
+    final startHour = _securityBox.get(HiveKeys.nightStartHour, defaultValue: 22);
+    final startMinute = _securityBox.get(HiveKeys.nightStartMinute, defaultValue: 0);
     _startTime = TimeOfDay(hour: startHour, minute: startMinute);
 
-    final endHour = _securityBox.get('nightEndHour', defaultValue: 6);
-    final endMinute = _securityBox.get('nightEndMinute', defaultValue: 0);
+    final endHour = _securityBox.get(HiveKeys.nightEndHour, defaultValue: 6);
+    final endMinute = _securityBox.get(HiveKeys.nightEndMinute, defaultValue: 0);
     _endTime = TimeOfDay(hour: endHour, minute: endMinute);
   }
 
@@ -52,8 +53,8 @@ class _TimeLockSettingsScreenState extends State<TimeLockSettingsScreen> {
       setState(() {
         _startTime = picked;
       });
-      await _securityBox.put('nightStartHour', picked.hour);
-      await _securityBox.put('nightStartMinute', picked.minute);
+      await _securityBox.put(HiveKeys.nightStartHour, picked.hour);
+      await _securityBox.put(HiveKeys.nightStartMinute, picked.minute);
       await _syncTimeLocksToNative();
     }
   }
@@ -74,8 +75,8 @@ class _TimeLockSettingsScreenState extends State<TimeLockSettingsScreen> {
       setState(() {
         _endTime = picked;
       });
-      await _securityBox.put('nightEndHour', picked.hour);
-      await _securityBox.put('nightEndMinute', picked.minute);
+      await _securityBox.put(HiveKeys.nightEndHour, picked.hour);
+      await _securityBox.put(HiveKeys.nightEndMinute, picked.minute);
       await _syncTimeLocksToNative();
     }
   }
@@ -84,7 +85,7 @@ class _TimeLockSettingsScreenState extends State<TimeLockSettingsScreen> {
     setState(() {
       _timeLockEnabled = value;
     });
-    await _securityBox.put('nightLockEnabled', value);
+    await _securityBox.put(HiveKeys.nightLockEnabled, value);
     await _syncTimeLocksToNative();
   }
 
@@ -99,19 +100,19 @@ class _TimeLockSettingsScreenState extends State<TimeLockSettingsScreen> {
     });
     
     // Set BOTH start time (now) and end time (now + duration)
-    await _securityBox.put('nightStartHour', now.hour);
-    await _securityBox.put('nightStartMinute', now.minute);
-    await _securityBox.put('nightEndHour', endTime.hour);
-    await _securityBox.put('nightEndMinute', endTime.minute);
-    await _securityBox.put('nightLockEnabled', true);
+    await _securityBox.put(HiveKeys.nightStartHour, now.hour);
+    await _securityBox.put(HiveKeys.nightStartMinute, now.minute);
+    await _securityBox.put(HiveKeys.nightEndHour, endTime.hour);
+    await _securityBox.put(HiveKeys.nightEndMinute, endTime.minute);
+    await _securityBox.put(HiveKeys.nightLockEnabled, true);
+    
+    // Sync time lock settings to native
+    await _syncTimeLocksToNative();
     
     debugPrint('🔒 Quick lock set:');
     debugPrint('   Start: ${now.hour}:${now.minute.toString().padLeft(2, '0')}');
     debugPrint('   End: ${endTime.hour}:${endTime.minute.toString().padLeft(2, '0')}');
     debugPrint('   Duration: $minutes minutes');
-    
-    // Sync time lock settings to native
-    await _syncTimeLocksToNative();
     
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -122,6 +123,10 @@ class _TimeLockSettingsScreenState extends State<TimeLockSettingsScreen> {
         ),
       );
     }
+  }
+
+  String _formatTime(TimeOfDay time) {
+    return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
   }
 
   Future<void> _syncTimeLocksToNative() async {
@@ -147,10 +152,6 @@ class _TimeLockSettingsScreenState extends State<TimeLockSettingsScreen> {
     } catch (error) {
       debugPrint('Warning: Failed to sync time lock settings to native: $error');
     }
-  }
-
-  String _formatTime(TimeOfDay time) {
-    return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
   }
 
   @override
