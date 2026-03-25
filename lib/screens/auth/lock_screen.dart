@@ -46,12 +46,12 @@ class _LockScreenState extends State<LockScreen> {
       }
       if (TimeLockService.isNightLockActive()) {
         debugPrint('Time Lock Active - Starting countdown timer');
-        _updateTimeRemaining();
-        _startCountdownTimer();
       }
       if (await LocationLockService.isOutsideTrustedLocation()) {
         debugPrint('Location Lock Active');
       }
+      // Always start the timer - it will check if lock is enabled internally
+      _startCountdownTimer();
     });
 
     _loadPins();
@@ -59,6 +59,19 @@ class _LockScreenState extends State<LockScreen> {
 
   void _updateTimeRemaining() {
     final securityBox = Hive.box('security');
+    
+    // Check if time lock is enabled
+    final isLockEnabled = securityBox.get('nightLockEnabled', defaultValue: false);
+    
+    if (!isLockEnabled) {
+      debugPrint('🕐 Time lock is DISABLED - skipping timer update');
+      if (mounted) {
+        setState(() {
+          _timeRemaining = '00:00:00';
+        });
+      }
+      return;
+    }
     
     final startHourValue = securityBox.get('nightStartHour', defaultValue: 0);
     final startMinuteValue = securityBox.get('nightStartMinute', defaultValue: 0);
@@ -125,14 +138,10 @@ class _LockScreenState extends State<LockScreen> {
 
   void _startCountdownTimer() {
     _countdownTimer?.cancel();
+    // Always run the timer - it will check if lock is enabled internally
     _countdownTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted && TimeLockService.isNightLockActive()) {
+      if (mounted) {
         _updateTimeRemaining();
-      } else {
-        _countdownTimer?.cancel();
-        if (mounted) {
-          setState(() {});
-        }
       }
     });
   }
@@ -247,13 +256,27 @@ class _LockScreenState extends State<LockScreen> {
       final securityBox = Hive.box('securityBox');
       final unlockPattern = securityBox.get('unlockPattern', defaultValue: '4-digit');
       
+      // Load time lock settings from 'security' box
+      final security = Hive.box('security');
+      final timeLockEnabled = security.get('nightLockEnabled', defaultValue: false) as bool;
+      final nightStartHour = security.get('nightStartHour', defaultValue: 22) as int;
+      final nightStartMinute = security.get('nightStartMinute', defaultValue: 0) as int;
+      final nightEndHour = security.get('nightEndHour', defaultValue: 6) as int;
+      final nightEndMinute = security.get('nightEndMinute', defaultValue: 0) as int;
+      
       const platform = MethodChannel('com.stealthseal.app/applock');
       await platform.invokeMethod('cachePins', {
         'real_pin': realPin,
         'decoy_pin': decoyPin,
         'unlock_pattern': unlockPattern,
+        'time_lock_enabled': timeLockEnabled,
+        'night_start_hour': nightStartHour,
+        'night_start_minute': nightStartMinute,
+        'night_end_hour': nightEndHour,
+        'night_end_minute': nightEndMinute,
       });
-      debugPrint('PINs and unlock pattern cached to native SharedPreferences');
+      debugPrint('PINs, unlock pattern, and time lock settings cached to native SharedPreferences');
+      debugPrint('  Time Lock: $timeLockEnabled ($nightStartHour:${nightStartMinute.toString().padLeft(2, '0')} - $nightEndHour:${nightEndMinute.toString().padLeft(2, '0')})');
     } catch (error) {
       debugPrint('Warning: Failed to cache PINs to native: $error');
     }
@@ -296,7 +319,18 @@ class _LockScreenState extends State<LockScreen> {
     // Time Lock - COMPLETELY BLOCK ACCESS (no PIN can unlock)
     if (TimeLockService.isNightLockActive()) {
       if (!mounted) return;
-      _handleTimeLockedBlock();
+      _updateTimeRemaining();
+      _startCountdownTimer();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('⏱️ App is time-locked. Try again later.'),
+          backgroundColor: ThemeConfig.errorColor(context),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+      if (mounted) {
+        setState(() => enteredPin = '');
+      }
       return;
     }
 
@@ -371,21 +405,6 @@ class _LockScreenState extends State<LockScreen> {
         duration: Duration(seconds: 3),
       ),
     );
-    if (mounted) {
-      setState(() => enteredPin = '');
-    }
-  }
-
-  Future<void> _handleTimeLockedBlock() async {
-    // Time Lock is ACTIVE - completely block all access
-    if (!TimeLockService.isNightLockActive()) {
-      return;
-    }
-    
-    _updateTimeRemaining();
-    _startCountdownTimer();
-
-    if (!mounted) return;
     if (mounted) {
       setState(() => enteredPin = '');
     }

@@ -71,6 +71,13 @@ class AppLockActivity : FragmentActivity() {
     private var pinCorrect = false  // Track whether user entered correct PIN
     private var unlockPattern: String = "4-digit"
     private var pinLength: Int = 4
+    
+    // Time-based lock properties
+    private var timeLockEnabled = false
+    private var nightStartHour = 22
+    private var nightStartMinute = 0
+    private var nightEndHour = 6
+    private var nightEndMinute = 0
 
     private lateinit var dot1: View
     private lateinit var dot2: View
@@ -136,6 +143,13 @@ class AppLockActivity : FragmentActivity() {
         decoyPin = prefs.getString("cached_decoy_pin", null)
         unlockPattern = prefs.getString("unlock_pattern", "4-digit") ?: "4-digit"
         
+        // Load time-based lock settings
+        timeLockEnabled = prefs.getBoolean("nightLockEnabled", false)
+        nightStartHour = prefs.getInt("nightStartHour", 22)
+        nightStartMinute = prefs.getInt("nightStartMinute", 0)
+        nightEndHour = prefs.getInt("nightEndHour", 6)
+        nightEndMinute = prefs.getInt("nightEndMinute", 0)
+        
         // Determine PIN length based on pattern
         pinLength = if (unlockPattern.contains("6")) 6 else 4
 
@@ -152,10 +166,45 @@ class AppLockActivity : FragmentActivity() {
         if (decoyPin != null) {
             Log.d(TAG, "  └─ Length: ${decoyPin!!.length}, Bytes: ${decoyPin!!.toByteArray().joinToString(",")}")
         }
+        
+        Log.d(TAG, "Time Lock Enabled: $timeLockEnabled")
+        Log.d(TAG, "Lock Window: $nightStartHour:${nightStartMinute.toString().padStart(2, '0')} - $nightEndHour:${nightEndMinute.toString().padStart(2, '0')}")
 
         if (realPin == null) {
             Log.e(TAG, "❌ No PINs found in SharedPreferences! App lock cannot validate.")
         }
+    }
+    
+    /**
+     * Check if the current time falls within the time lock window.
+     * Returns true if the app is locked due to time-based lock.
+     */
+    private fun isTimeLockActive(): Boolean {
+        if (!timeLockEnabled) return false
+        
+        val now = java.util.Calendar.getInstance()
+        val currentHour = now.get(java.util.Calendar.HOUR_OF_DAY)
+        val currentMinute = now.get(java.util.Calendar.MINUTE)
+        
+        val currentSeconds = currentHour * 3600 + currentMinute * 60
+        val startSeconds = nightStartHour * 3600 + nightStartMinute * 60
+        val endSeconds = nightEndHour * 3600 + nightEndMinute * 60
+        
+        Log.d(TAG, "🕐 Time Lock Check:")
+        Log.d(TAG, "   Current: $currentHour:${currentMinute.toString().padStart(2, '0')} (${currentSeconds}s)")
+        Log.d(TAG, "   Start: $nightStartHour:${nightStartMinute.toString().padStart(2, '0')} (${startSeconds}s)")
+        Log.d(TAG, "   End: $nightEndHour:${nightEndMinute.toString().padStart(2, '0')} (${endSeconds}s)")
+        
+        val isLocked = if (endSeconds > startSeconds) {
+            // Same-day lock (e.g., 14:05 to 14:10)
+            currentSeconds >= startSeconds && currentSeconds < endSeconds
+        } else {
+            // Overnight lock (e.g., 22:00 to 06:00)
+            currentSeconds >= startSeconds || currentSeconds < endSeconds
+        }
+        
+        Log.d(TAG, "   Result: ${if (isLocked) "🔒 LOCKED" else "🔓 UNLOCKED"}")
+        return isLocked
     }
 
     private fun initViews() {
@@ -432,11 +481,34 @@ class AppLockActivity : FragmentActivity() {
     }
 
     private fun validatePin() {
+        // Reload time lock settings fresh before validation
+        val prefs = getSharedPreferences("stealthseal_prefs", Context.MODE_PRIVATE)
+        timeLockEnabled = prefs.getBoolean("nightLockEnabled", false)
+        nightStartHour = prefs.getInt("nightStartHour", 22)
+        nightStartMinute = prefs.getInt("nightStartMinute", 0)
+        nightEndHour = prefs.getInt("nightEndHour", 6)
+        nightEndMinute = prefs.getInt("nightEndMinute", 0)
+        
+        Log.d(TAG, "🔄 Reloaded time lock settings - Enabled: $timeLockEnabled, Window: $nightStartHour:${nightStartMinute.toString().padStart(2, '0')} - $nightEndHour:${nightEndMinute.toString().padStart(2, '0')}")
+        
+        val timeLockActive = isTimeLockActive()
+        
+        // TIME LOCK: Block ALL PINs during time lock window
+        if (timeLockActive) {
+            Log.d(TAG, "❌ Time lock is ACTIVE - all PINs blocked!")
+            errorText.visibility = View.VISIBLE
+            errorText.text = "⏱️ App is time-locked. Try again later."
+            enteredPin = ""
+            updateDots()
+            failedAttempts = 0
+            return
+        }
+        
         if (enteredPin == realPin) {
-            // Correct PIN — only real PIN unlocks apps
+            // Real PIN unlocks (outside time lock)
             failedAttempts = 0
             pinCorrect = true
-            Log.d(TAG, "Correct PIN entered for: $lockedPackage")
+            Log.d(TAG, "✅ Correct real PIN entered for: $lockedPackage")
 
             errorText.visibility = View.GONE
 
@@ -467,10 +539,10 @@ class AppLockActivity : FragmentActivity() {
                 onAccessibilitySetupComplete()
             }
         } else if (enteredPin == decoyPin) {
-            // Decoy PIN handling
+            // Decoy PIN unlocks (outside time lock)
             failedAttempts = 0
             pinCorrect = true
-            Log.d(TAG, "Decoy PIN entered for: $lockedPackage")
+            Log.d(TAG, "🎭 Decoy PIN entered for: $lockedPackage")
             errorText.visibility = View.GONE
 
             val prefs = getSharedPreferences("stealthseal_prefs", Context.MODE_PRIVATE)
@@ -486,9 +558,17 @@ class AppLockActivity : FragmentActivity() {
             currentlyBlockedPackage = null
             finish()
         } else {
-            // Wrong PIN
+            // Wrong PIN (outside time lock)
             failedAttempts++
             Log.d(TAG, "Wrong PIN attempt #$failedAttempts for: $lockedPackage")
+                failedAttempts = 0
+                enteredPin = ""
+                updateDots()
+                
+                // Vibrate to show rejection
+                try {
+                    val vibrator = getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
+                    vibrator?.vibrate(200)
 
             // Vibrate
             try {
@@ -522,6 +602,28 @@ class AppLockActivity : FragmentActivity() {
     }
 
     private fun validatePattern(pattern: String) {
+        // Reload time lock settings fresh before validation
+        val prefs = getSharedPreferences("stealthseal_prefs", Context.MODE_PRIVATE)
+        timeLockEnabled = prefs.getBoolean("nightLockEnabled", false)
+        nightStartHour = prefs.getInt("nightStartHour", 22)
+        nightStartMinute = prefs.getInt("nightStartMinute", 0)
+        nightEndHour = prefs.getInt("nightEndHour", 6)
+        nightEndMinute = prefs.getInt("nightEndMinute", 0)
+        
+        Log.d(TAG, "🔄 Reloaded time lock settings - Enabled: $timeLockEnabled, Window: $nightStartHour:${nightStartMinute.toString().padStart(2, '0')} - $nightEndHour:${nightEndMinute.toString().padStart(2, '0')}")
+        
+        val timeLockActive = isTimeLockActive()
+        
+        // TIME LOCK: Block ALL patterns during time lock window
+        if (timeLockActive) {
+            Log.d(TAG, "❌ Time lock is ACTIVE - all patterns blocked!")
+            errorText.visibility = View.VISIBLE
+            errorText.text = "⏱️ App is time-locked. Try again later."
+            patternView.reset()
+            failedAttempts = 0
+            return
+        }
+        
         val entered = pattern.trim()
         
         Log.d(TAG, "╔════════════════════════════════════════╗")
@@ -542,6 +644,7 @@ class AppLockActivity : FragmentActivity() {
             Log.d(TAG, "  Length: ${decoyPin!!.length}")
             Log.d(TAG, "  Bytes: ${decoyPin!!.toByteArray().joinToString(",")}")
         }
+        Log.d(TAG, "⏱️ Time Lock Active: $timeLockActive")
         
         if (entered.isEmpty() || realPin == null) {
             Log.e(TAG, "❌ VALIDATION FAILED: Empty entered or no realPin!")
@@ -558,9 +661,13 @@ class AppLockActivity : FragmentActivity() {
         Log.d(TAG, "  entered == realPin? $realMatch")
         Log.d(TAG, "  entered == decoyPin? $decoyMatch")
 
-        if (realMatch || decoyMatch) {
+        if (realMatch) {
+            // Real PIN pattern always works (even during time lock)
             Log.d(TAG, "")
-            Log.d(TAG, "✅ CORRECT! Pattern matches!")
+            Log.d(TAG, "✅ CORRECT! Real PIN pattern matches!")
+            if (timeLockActive) {
+                Log.d(TAG, "   ⏱️ Time lock is active, but real PIN bypasses it")
+            }
             failedAttempts = 0
             errorText.visibility = View.GONE
 
@@ -577,19 +684,39 @@ class AppLockActivity : FragmentActivity() {
             val accessibilityEnabled = isAccessibilityServiceEnabled()
             val hasShownAccessibilityPrompt = prefs.getBoolean("accessibility_prompt_shown", false)
             
-            if (!accessibilityEnabled && !hasShownAccessibilityPrompt && realMatch) {  // Only on real PIN first login
+            if (!accessibilityEnabled && !hasShownAccessibilityPrompt) {
                 Log.d(TAG, "Accessibility is OFF and first login - showing accessibility setup prompt")
                 prefs.edit().putBoolean("accessibility_prompt_shown", true).apply()
                 
                 showAccessibilitySetupDialog()
             } else {
-                // Not first login or decoy pattern or accessibility already on - just unlock
                 if (accessibilityEnabled) {
                     Log.d(TAG, "Accessibility already enabled - skipping setup prompt")
                 }
                 onAccessibilitySetupComplete()
             }
+        } else if (decoyMatch) {
+            // Decoy PIN pattern unlocks (outside time lock)
+            Log.d(TAG, "")
+            Log.d(TAG, "✅ CORRECT! 🎭 Decoy pattern matches!")
+            failedAttempts = 0
+            errorText.visibility = View.GONE
+
+            // Mark as session-unlocked in SharedPreferences
+            val prefs = getSharedPreferences("stealthseal_prefs", Context.MODE_PRIVATE)
+            val currentUnlocked = prefs.getString("sessionUnlockedApps", "") ?: ""
+            val unlockedSet = currentUnlocked.split(",").filter { it.isNotEmpty() }.toMutableSet()
+            unlockedSet.add(lockedPackage)
+            prefs.edit().putString("sessionUnlockedApps", unlockedSet.joinToString(",")).apply()
+
+            Log.d(TAG, "Decoy dashboard shown for: $lockedPackage")
+
+            // Clear flags and finish
+            isShowing = false
+            currentlyBlockedPackage = null
+            finish()
         } else {
+            // Neither real nor decoy pattern matched (outside time lock)
             failedAttempts++
             Log.d(TAG, "")
             Log.d(TAG, "❌ INCORRECT! Pattern does not match.")

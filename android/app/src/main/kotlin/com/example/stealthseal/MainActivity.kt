@@ -56,13 +56,25 @@ class MainActivity : FlutterFragmentActivity() {
                         val realPin = call.argument<String>("real_pin") ?: ""
                         val decoyPin = call.argument<String>("decoy_pin") ?: ""
                         val unlockPattern = call.argument<String>("unlock_pattern") ?: "4-digit"
+                        val timeLockEnabled = call.argument<Boolean>("time_lock_enabled") ?: false
+                        val nightStartHour = call.argument<Int>("night_start_hour") ?: 22
+                        val nightStartMinute = call.argument<Int>("night_start_minute") ?: 0
+                        val nightEndHour = call.argument<Int>("night_end_hour") ?: 6
+                        val nightEndMinute = call.argument<Int>("night_end_minute") ?: 0
+                        
                         val sharedPref = getSharedPreferences("stealthseal_prefs", Context.MODE_PRIVATE)
                         sharedPref.edit()
                             .putString("cached_real_pin", realPin)
                             .putString("cached_decoy_pin", decoyPin)
                             .putString("unlock_pattern", unlockPattern)
+                            .putBoolean("nightLockEnabled", timeLockEnabled)
+                            .putInt("nightStartHour", nightStartHour)
+                            .putInt("nightStartMinute", nightStartMinute)
+                            .putInt("nightEndHour", nightEndHour)
+                            .putInt("nightEndMinute", nightEndMinute)
                             .apply()
                         Log.d("MainActivity", "PINs cached to SharedPreferences with pattern: $unlockPattern")
+                        Log.d("MainActivity", "Time lock cached: enabled=$timeLockEnabled, window=$nightStartHour:${nightStartMinute.toString().padStart(2,'0')}-$nightEndHour:${nightEndMinute.toString().padStart(2,'0')}")
                         result.success(true)
                     }
                     "requestAccessibilityService" -> {

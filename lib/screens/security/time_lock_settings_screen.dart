@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:hive/hive.dart';
 import '../../core/theme/theme_config.dart';
 
@@ -53,6 +54,7 @@ class _TimeLockSettingsScreenState extends State<TimeLockSettingsScreen> {
       });
       await _securityBox.put('nightStartHour', picked.hour);
       await _securityBox.put('nightStartMinute', picked.minute);
+      await _syncTimeLocksToNative();
     }
   }
 
@@ -74,6 +76,7 @@ class _TimeLockSettingsScreenState extends State<TimeLockSettingsScreen> {
       });
       await _securityBox.put('nightEndHour', picked.hour);
       await _securityBox.put('nightEndMinute', picked.minute);
+      await _syncTimeLocksToNative();
     }
   }
 
@@ -82,6 +85,7 @@ class _TimeLockSettingsScreenState extends State<TimeLockSettingsScreen> {
       _timeLockEnabled = value;
     });
     await _securityBox.put('nightLockEnabled', value);
+    await _syncTimeLocksToNative();
   }
 
   Future<void> _setQuickLock(int minutes) async {
@@ -106,6 +110,9 @@ class _TimeLockSettingsScreenState extends State<TimeLockSettingsScreen> {
     debugPrint('   End: ${endTime.hour}:${endTime.minute.toString().padLeft(2, '0')}');
     debugPrint('   Duration: $minutes minutes');
     
+    // Sync time lock settings to native
+    await _syncTimeLocksToNative();
+    
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -114,6 +121,31 @@ class _TimeLockSettingsScreenState extends State<TimeLockSettingsScreen> {
           duration: const Duration(seconds: 2),
         ),
       );
+    }
+  }
+
+  Future<void> _syncTimeLocksToNative() async {
+    try {
+      // Get PINs from securityBox
+      final securityBox = Hive.box('securityBox');
+      final realPin = securityBox.get('realPin', defaultValue: '') as String;
+      final decoyPin = securityBox.get('decoyPin', defaultValue: '') as String;
+      final unlockPattern = securityBox.get('unlockPattern', defaultValue: '4-digit') as String;
+      
+      const platform = MethodChannel('com.stealthseal.app/applock');
+      await platform.invokeMethod('cachePins', {
+        'real_pin': realPin,
+        'decoy_pin': decoyPin,
+        'unlock_pattern': unlockPattern,
+        'time_lock_enabled': _timeLockEnabled,
+        'night_start_hour': _startTime.hour,
+        'night_start_minute': _startTime.minute,
+        'night_end_hour': _endTime.hour,
+        'night_end_minute': _endTime.minute,
+      });
+      debugPrint('✅ Time lock settings synced to native');
+    } catch (error) {
+      debugPrint('Warning: Failed to sync time lock settings to native: $error');
     }
   }
 
