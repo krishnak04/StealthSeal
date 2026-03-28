@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:hive/hive.dart';
 import '../../core/theme/theme_config.dart';
 
@@ -11,6 +12,28 @@ class IntruderLogsScreen extends StatefulWidget {
 }
 
 class _IntruderLogsScreenState extends State<IntruderLogsScreen> {
+  static const platform = MethodChannel('com.stealthseal.app/applock');
+  
+  @override
+  void initState() {
+    super.initState();
+    _syncIntruderLogsFromNative();
+  }
+
+  Future<void> _syncIntruderLogsFromNative() async {
+    try {
+      final result = await platform.invokeMethod('getIntruderLogs');
+      if (result is List) {
+        final securityBox = Hive.box('securityBox');
+        final List newLogs = result.map((log) => Map<String, dynamic>.from(log as Map)).toList();
+        await securityBox.put('intruderLogs', newLogs);
+        debugPrint('🚨 Synced ${newLogs.length} intruder logs from native');
+        setState(() {});
+      }
+    } catch (e) {
+      debugPrint('Warning: Failed to sync intruder logs from native: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

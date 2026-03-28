@@ -25,6 +25,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import com.example.stealthseal.BiometricService
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.FusedLocationProviderClient
+import android.location.Location
 
 /**
  * Standalone native PIN entry activity that appears on TOP of the locked app.
@@ -72,6 +75,19 @@ class AppLockActivity : FragmentActivity() {
     private var unlockPattern: String = "4-digit"
     private var pinLength: Int = 4
 
+    // Location lock properties
+    private var locationLockEnabled = false
+    private var trustedLat = 0.0
+    private var trustedLng = 0.0
+    private var trustedRadius = 200.0
+
+    // Time lock properties
+    private var nightLockEnabled = false
+    private var nightStartHour = 22
+    private var nightStartMinute = 0
+    private var nightEndHour = 6
+    private var nightEndMinute = 0
+
     private lateinit var dot1: View
     private lateinit var dot2: View
     private lateinit var dot3: View
@@ -87,6 +103,11 @@ class AppLockActivity : FragmentActivity() {
     private lateinit var keypadGrid: View
     private lateinit var fingerprintButtonContainer: FrameLayout
     private lateinit var fingerprintHelpText: TextView
+    
+    // Time lock display elements
+    private var timeLockActiveText: TextView? = null
+    private var timeLockCountdownText: TextView? = null
+    private var timeLockCountdownTimer: android.os.CountDownTimer? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -127,7 +148,47 @@ class AppLockActivity : FragmentActivity() {
 
         // Initialize views
         initViews()
+        
+        // CHECK TIME LOCK IMMEDIATELY ON APP START
+        Log.d(TAG, "⏰ Checking time lock on app start...")
+        Log.d(TAG, "   Night lock enabled: $nightLockEnabled")
+        Log.d(TAG, "   Lock window: ${String.format("%02d:%02d", nightStartHour, nightStartMinute)} - ${String.format("%02d:%02d", nightEndHour, nightEndMinute)}")
+        
+        if (isTimeLockActive()) {
+            Log.d(TAG, "⏰ TIME LOCK IS ACTIVE ON APP START - Blocking all access!")
+            blockAccessDueToTimeLock()
+        } else {
+            Log.d(TAG, "⏰ Time lock is NOT active - showing unlock UI")
+            showUnlockMethodUI()
+        }
+        
         setupKeypad()
+    }
+
+    private fun blockAccessDueToTimeLock() {
+        Log.d(TAG, "🔒 Blocking access due to time lock")
+        
+        try {
+            // Hide PIN/pattern input and show time lock UI
+            errorText.visibility = View.GONE
+            keypadGrid.visibility = View.GONE
+            patternLockContainer.visibility = View.GONE
+            fingerprintButtonContainer.visibility = View.GONE
+            titleText.visibility = View.GONE
+            for (dot in dots) {
+                dot.visibility = View.GONE
+            }
+            
+            Log.d(TAG, "✅ Hidden all unlock UI elements")
+            
+            // Show time lock countdown
+            startTimeLockCountdown()
+            
+            Log.d(TAG, "✅ Time lock countdown started")
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Error blocking access: ${e.message}")
+            e.printStackTrace()
+        }
     }
 
     private fun loadPins() {
@@ -135,6 +196,19 @@ class AppLockActivity : FragmentActivity() {
         realPin = prefs.getString("cached_real_pin", null)
         decoyPin = prefs.getString("cached_decoy_pin", null)
         unlockPattern = prefs.getString("unlock_pattern", "4-digit") ?: "4-digit"
+        
+        // Load location lock settings
+        locationLockEnabled = prefs.getBoolean("locationLockEnabled", false)
+        trustedLat = prefs.getFloat("trustedLat", 0f).toDouble()
+        trustedLng = prefs.getFloat("trustedLng", 0f).toDouble()
+        trustedRadius = prefs.getFloat("trustedRadius", 200f).toDouble()
+        
+        // Load time lock settings
+        nightLockEnabled = prefs.getBoolean("nightLockEnabled", false)
+        nightStartHour = prefs.getInt("nightStartHour", 22)
+        nightStartMinute = prefs.getInt("nightStartMinute", 0)
+        nightEndHour = prefs.getInt("nightEndHour", 6)
+        nightEndMinute = prefs.getInt("nightEndMinute", 0)
         
         // Determine PIN length based on pattern
         pinLength = if (unlockPattern.contains("6")) 6 else 4
@@ -144,6 +218,8 @@ class AppLockActivity : FragmentActivity() {
         Log.d(TAG, "╚════════════════════════════════════════╝")
         Log.d(TAG, "Unlock pattern: '$unlockPattern'")
         Log.d(TAG, "PIN length to expect: $pinLength")
+        Log.d(TAG, "Location lock: $locationLockEnabled (Trusted: $trustedLat, $trustedLng, Radius: $trustedRadius m)")
+        Log.d(TAG, "Time lock: $nightLockEnabled (${String.format("%02d:%02d", nightStartHour, nightStartMinute)} - ${String.format("%02d:%02d", nightEndHour, nightEndMinute)})")
         Log.d(TAG, "Real PIN:   '$realPin'")
         if (realPin != null) {
             Log.d(TAG, "  └─ Length: ${realPin!!.length}, Bytes: ${realPin!!.toByteArray().joinToString(",")}")
@@ -167,6 +243,66 @@ class AppLockActivity : FragmentActivity() {
         dot6 = findViewById(R.id.dot6)
         errorText = findViewById(R.id.errorText)
         titleText = findViewById(R.id.titleText)
+        
+        // Initialize time lock display views
+        timeLockActiveText = TextView(this).apply {
+            text = "⏰ TIME LOCK ACTIVE"
+            textSize = 20f
+            setTextColor(android.graphics.Color.parseColor("#FFA500"))
+            typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD)
+            gravity = android.view.Gravity.CENTER
+            setPadding(20, 20, 20, 20)
+            visibility = View.GONE
+        }
+        
+        timeLockCountdownText = TextView(this).apply {
+            text = "⏰ Unlock Time Remaining\n00:00:00"
+            textSize = 32f
+            setTextColor(android.graphics.Color.parseColor("#C41C3B"))
+            typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD)
+            gravity = android.view.Gravity.CENTER
+            setPadding(40, 40, 40, 40)
+            visibility = View.GONE
+        }
+        
+        // Add views to the root layout container
+        try {
+            val rootView = window.decorView as android.view.ViewGroup
+            if (rootView != null) {
+                rootView.addView(timeLockActiveText, FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.MATCH_PARENT,
+                    android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
+                    android.view.Gravity.TOP
+                ))
+                
+                rootView.addView(timeLockCountdownText, FrameLayout.LayoutParams(
+                    (380 * resources.displayMetrics.density).toInt(),
+                    android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
+                    android.view.Gravity.CENTER
+                ))
+                
+                // Bring time lock views to front
+                rootView.bringChildToFront(timeLockActiveText)
+                rootView.bringChildToFront(timeLockCountdownText)
+                
+                Log.d(TAG, "✅ Time lock views added to root ViewGroup successfully")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Error adding time lock views to root: ${e.message}")
+            e.printStackTrace()
+            
+            // Fallback: try adding to a dialog or as a system overlay
+            try {
+                val contentView = findViewById<View>(android.R.id.content)
+                if (contentView is android.view.ViewGroup) {
+                    contentView.addView(timeLockActiveText)
+                    contentView.addView(timeLockCountdownText)
+                    Log.d(TAG, "✅ Time lock views added via fallback method")
+                }
+            } catch (e2: Exception) {
+                Log.e(TAG, "❌ Fallback method also failed: ${e2.message}")
+            }
+        }
         
         // Add dots to list in order
         dots.addAll(listOf(dot1, dot2, dot3, dot4, dot5, dot6))
@@ -431,7 +567,260 @@ class AppLockActivity : FragmentActivity() {
         }
     }
 
+    /**
+     * Check if location lock is active and user is outside trusted location.
+     * Uses Haversine formula to calculate distance between current position and trusted location.
+     */
+    private fun isOutsideTrustedLocation(): Boolean {
+        if (!locationLockEnabled) {
+            Log.d(TAG, "📍 Location lock is DISABLED")
+            return false
+        }
+
+        // Check if trusted location is configured
+        if (trustedLat == 0.0 && trustedLng == 0.0) {
+            Log.d(TAG, "📍 Trusted location NOT configured - allowing access")
+            return false
+        }
+
+        // Check location permissions
+        if (androidx.core.content.ContextCompat.checkSelfPermission(
+                this,
+                android.Manifest.permission.ACCESS_FINE_LOCATION
+            ) != android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) {
+            Log.d(TAG, "📍 Location permission DENIED - allowing access (can't verify location)")
+            return false
+        }
+
+        try {
+            // Get last known location using FusedLocationProviderClient
+            val fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
+            
+            // Use a blocking approach with timeout
+            var isOutside = false
+            var locationObtained = false
+            
+            fusedLocationClient.lastLocation.addOnSuccessListener { currentLocation: Location? ->
+                locationObtained = true
+                if (currentLocation != null) {
+                    val distance = calculateDistance(
+                        currentLocation.latitude,
+                        currentLocation.longitude,
+                        trustedLat,
+                        trustedLng
+                    )
+                    
+                    Log.d(TAG, "📍 Current: ${currentLocation.latitude}, ${currentLocation.longitude}")
+                    Log.d(TAG, "📍 Trusted: $trustedLat, $trustedLng")
+                    Log.d(TAG, "📍 Distance: $distance m, Radius: $trustedRadius m")
+                    
+                    isOutside = distance > trustedRadius
+                    if (isOutside) {
+                        Log.d(TAG, "📍❌ OUTSIDE trusted location - BLOCKING")
+                    } else {
+                        Log.d(TAG, "📍 INSIDE trusted location - ALLOWING")
+                    }
+                } else {
+                    Log.d(TAG, "📍 No last location available - allowing access (maybe first time)")
+                    isOutside = false
+                }
+            }
+            
+            // Wait up to 2 seconds for location with polling
+            var waited = 0
+            while (!locationObtained && waited < 2000) {
+                Thread.sleep(100)
+                waited += 100
+            }
+            
+            // If location wasn't obtained after timeout, ALLOW access (don't block)
+            if (!locationObtained) {
+                Log.d(TAG, "📍⏱️ Location timeout - allowing access (location service slow)")
+                return false
+            }
+            
+            return isOutside
+        } catch (e: Exception) {
+            Log.e(TAG, "📍 Exception checking location: ${e.message} - allowing access")
+            return false
+        }
+    }
+
+    /**
+     * Calculate distance between two coordinates using Haversine formula (in meters)
+     */
+    private fun calculateDistance(lat1: Double, lng1: Double, lat2: Double, lng2: Double): Double {
+        val R = 6371000.0 // Earth's radius in meters
+        val dLat = Math.toRadians(lat2 - lat1)
+        val dLng = Math.toRadians(lng2 - lng1)
+        val a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2)) *
+                Math.sin(dLng / 2) * Math.sin(dLng / 2)
+        val c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+        return R * c
+    }
+
+    private fun isTimeLockActive(): Boolean {
+        if (!nightLockEnabled) {
+            Log.d(TAG, "⏰ Time lock is DISABLED - nightLockEnabled: $nightLockEnabled")
+            return false
+        }
+
+        // Get current time in minutes
+        val calendar = java.util.Calendar.getInstance()
+        val currentMinutes = calendar.get(java.util.Calendar.HOUR_OF_DAY) * 60 + calendar.get(java.util.Calendar.MINUTE)
+        val startMinutes = nightStartHour * 60 + nightStartMinute
+        val endMinutes = nightEndHour * 60 + nightEndMinute
+
+        Log.d(TAG, "⏰ Time lock check:")
+        Log.d(TAG, "   Current time (minutes): $currentMinutes")
+        Log.d(TAG, "   Start: ${String.format("%02d:%02d", nightStartHour, nightStartMinute)} ($startMinutes minutes)")
+        Log.d(TAG, "   End: ${String.format("%02d:%02d", nightEndHour, nightEndMinute)} ($endMinutes minutes)")
+
+        val isLocked = if (startMinutes < endMinutes) {
+            // Same day lock (e.g., 10 AM to 5 PM)
+            val locked = currentMinutes >= startMinutes && currentMinutes <= endMinutes
+            Log.d(TAG, "   Lock type: Same-day, Result: $locked")
+            locked
+        } else {
+            // Overnight lock (e.g., 10 PM to 6 AM)
+            val locked = currentMinutes >= startMinutes || currentMinutes <= endMinutes
+            Log.d(TAG, "   Lock type: Overnight, Result: $locked")
+            locked
+        }
+
+        if (isLocked) {
+            Log.d(TAG, "⏰❌ TIME LOCK ACTIVE!")
+        } else {
+            Log.d(TAG, "⏰✅ Time lock is NOT active")
+        }
+        return isLocked
+    }
+
+    private fun startTimeLockCountdown() {
+        Log.d(TAG, "⏰ Starting time lock countdown display...")
+        
+        // Verify views exist
+        if (timeLockActiveText == null || timeLockCountdownText == null) {
+            Log.e(TAG, "❌ Time lock views not initialized!")
+            return
+        }
+        
+        try {
+            // Show time lock UI immediately
+            timeLockActiveText?.visibility = View.VISIBLE
+            timeLockCountdownText?.visibility = View.VISIBLE
+            Log.d(TAG, "✅ Time lock views set to VISIBLE")
+            
+            // Request layout refresh to ensure views appear
+            timeLockActiveText?.requestLayout()
+            timeLockCountdownText?.requestLayout()
+            
+            // Calculate remaining time until end of lock in milliseconds
+            val calendar = java.util.Calendar.getInstance()
+            val currentMinutes = calendar.get(java.util.Calendar.HOUR_OF_DAY) * 60 + calendar.get(java.util.Calendar.MINUTE)
+            val endMinutes = nightEndHour * 60 + nightEndMinute
+            
+            val remainingMinutes = if (endMinutes > currentMinutes) {
+                endMinutes - currentMinutes
+            } else {
+                // Overnight lock - calculate until next day's end time
+                (24 * 60) - currentMinutes + endMinutes
+            }
+            
+            val remainingMillis = remainingMinutes * 60 * 1000L
+            Log.d(TAG, "⏰ Initial remaining time: $remainingMinutes minutes ($remainingMillis ms)")
+            
+            // Cancel existing timer
+            timeLockCountdownTimer?.cancel()
+            
+            // Update display immediately with initial time
+            val initialHours = remainingMinutes / 60
+            val initialMinutes = remainingMinutes % 60
+            timeLockCountdownText?.text = "⏰ Unlock Time Remaining\n${String.format("%02d:%02d:00", initialHours, initialMinutes)}"
+            
+            // Start new countdown timer
+            timeLockCountdownTimer = object : android.os.CountDownTimer(remainingMillis, 1000) {
+                override fun onTick(millisUntilFinished: Long) {
+                    try {
+                        val hours = millisUntilFinished / (1000 * 60 * 60)
+                        val minutes = (millisUntilFinished / (1000 * 60)) % 60
+                        val seconds = (millisUntilFinished / 1000) % 60
+                        
+                        val timeStr = String.format("%02d:%02d:%02d", hours, minutes, seconds)
+                        timeLockCountdownText?.text = "⏰ Unlock Time Remaining\n$timeStr"
+                        Log.d(TAG, "⏰ Time remaining: $timeStr")
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error updating countdown: ${e.message}")
+                    }
+                }
+                
+                override fun onFinish() {
+                    try {
+                        timeLockActiveText?.visibility = View.GONE
+                        timeLockCountdownText?.visibility = View.GONE
+                        Log.d(TAG, "✅ Time lock countdown finished!")
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error finishing countdown: ${e.message}")
+                    }
+                }
+            }.start()
+            
+            Log.d(TAG, "✅ Time lock countdown timer started successfully")
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Error in startTimeLockCountdown: ${e.message}")
+            e.printStackTrace()
+        }
+    }
+    
+    private fun stopTimeLockCountdown() {
+        timeLockCountdownTimer?.cancel()
+        timeLockActiveText?.visibility = View.GONE
+        timeLockCountdownText?.visibility = View.GONE
+    }
+
     private fun validatePin() {
+        // Reload location lock settings fresh before validation
+       val prefs = getSharedPreferences("stealthseal_prefs", Context.MODE_PRIVATE)
+        locationLockEnabled = prefs.getBoolean("locationLockEnabled", false)
+        trustedLat = prefs.getFloat("trustedLat", 0f).toDouble()
+        trustedLng = prefs.getFloat("trustedLng", 0f).toDouble()
+        trustedRadius = prefs.getFloat("trustedRadius", 200f).toDouble()
+        
+        // Reload time lock settings fresh before validation
+        nightLockEnabled = prefs.getBoolean("nightLockEnabled", false)
+        nightStartHour = prefs.getInt("nightStartHour", 22)
+        nightStartMinute = prefs.getInt("nightStartMinute", 0)
+        nightEndHour = prefs.getInt("nightEndHour", 6)
+        nightEndMinute = prefs.getInt("nightEndMinute", 0)
+        
+        Log.d(TAG, "🔄 Reloaded location lock settings - Enabled: $locationLockEnabled")
+        Log.d(TAG, "🔄 Reloaded time lock settings - Enabled: $nightLockEnabled")
+        
+        // TIME LOCK: Block ALL PINs if time lock is active
+        if (isTimeLockActive()) {
+            Log.d(TAG, "❌ Time lock is ACTIVE - all PINs blocked!")
+            blockAccessDueToTimeLock()  // Show countdown UI
+            errorText.visibility = View.VISIBLE
+            errorText.text = "⏰ Time locked. Try again outside lock window."
+            enteredPin = ""
+            updateDots()
+            failedAttempts = 0
+            return
+        }
+        
+        // LOCATION LOCK: Block ALL PINs if outside trusted location
+        if (isOutsideTrustedLocation()) {
+            Log.d(TAG, "❌ Location lock is ACTIVE - all PINs blocked!")
+            errorText.visibility = View.VISIBLE
+            errorText.text = " Location locked. Try again from trusted location."
+            enteredPin = ""
+            updateDots()
+            failedAttempts = 0
+            return
+        }
+        
         if (enteredPin == realPin) {
             // Correct PIN — only real PIN unlocks apps
             failedAttempts = 0
@@ -466,27 +855,8 @@ class AppLockActivity : FragmentActivity() {
                 }
                 onAccessibilitySetupComplete()
             }
-        } else if (enteredPin == decoyPin) {
-            // Decoy PIN handling
-            failedAttempts = 0
-            pinCorrect = true
-            Log.d(TAG, "Decoy PIN entered for: $lockedPackage")
-            errorText.visibility = View.GONE
-
-            val prefs = getSharedPreferences("stealthseal_prefs", Context.MODE_PRIVATE)
-            val currentUnlocked = prefs.getString("sessionUnlockedApps", "") ?: ""
-            val unlockedSet = currentUnlocked.split(",").filter { it.isNotEmpty() }.toMutableSet()
-            unlockedSet.add(lockedPackage)
-            prefs.edit().putString("sessionUnlockedApps", unlockedSet.joinToString(",")).apply()
-
-            Log.d(TAG, "Decoy dashboard shown for: $lockedPackage")
-
-            // Clear flags and finish
-            isShowing = false
-            currentlyBlockedPackage = null
-            finish()
         } else {
-            // Wrong PIN
+            // Wrong PIN (including decoy PIN - decoy is NOT accepted for locked apps)
             failedAttempts++
             Log.d(TAG, "Wrong PIN attempt #$failedAttempts for: $lockedPackage")
 
@@ -500,6 +870,8 @@ class AppLockActivity : FragmentActivity() {
             errorText.visibility = View.VISIBLE
             if (failedAttempts >= 3) {
                 errorText.text = "Multiple failed attempts detected"
+                // Capture intruder selfie on 3+ failed attempts
+                captureIntruderSelfie()
                 // Reset counter but keep showing warning  
                 failedAttempts = 0
             } else {
@@ -522,6 +894,44 @@ class AppLockActivity : FragmentActivity() {
     }
 
     private fun validatePattern(pattern: String) {
+        // Reload location lock settings fresh before validation
+        val prefs = getSharedPreferences("stealthseal_prefs", Context.MODE_PRIVATE)
+        locationLockEnabled = prefs.getBoolean("locationLockEnabled", false)
+        trustedLat = prefs.getFloat("trustedLat", 0f).toDouble()
+        trustedLng = prefs.getFloat("trustedLng", 0f).toDouble()
+        trustedRadius = prefs.getFloat("trustedRadius", 200f).toDouble()
+        
+        // Reload time lock settings fresh before validation
+        nightLockEnabled = prefs.getBoolean("nightLockEnabled", false)
+        nightStartHour = prefs.getInt("nightStartHour", 22)
+        nightStartMinute = prefs.getInt("nightStartMinute", 0)
+        nightEndHour = prefs.getInt("nightEndHour", 6)
+        nightEndMinute = prefs.getInt("nightEndMinute", 0)
+        
+        Log.d(TAG, "🔄 Reloaded location lock settings - Enabled: $locationLockEnabled")
+        Log.d(TAG, "🔄 Reloaded time lock settings - Enabled: $nightLockEnabled")
+        
+        // TIME LOCK: Block ALL patterns if time lock is active
+        if (isTimeLockActive()) {
+            Log.d(TAG, "❌ Time lock is ACTIVE - all patterns blocked!")
+            blockAccessDueToTimeLock()  // Show countdown UI
+            errorText.visibility = View.VISIBLE
+            errorText.text = "⏰ Time locked. Try again outside lock window."
+            patternView.reset()
+            failedAttempts = 0
+            return
+        }
+        
+        // LOCATION LOCK: Block ALL patterns if outside trusted location
+        if (isOutsideTrustedLocation()) {
+            Log.d(TAG, "❌ Location lock is ACTIVE - all patterns blocked!")
+            errorText.visibility = View.VISIBLE
+            errorText.text = "📍 Location locked. Try again from trusted location."
+            patternView.reset()
+            failedAttempts = 0
+            return
+        }
+        
         val entered = pattern.trim()
         
         Log.d(TAG, "╔════════════════════════════════════════╗")
@@ -556,11 +966,11 @@ class AppLockActivity : FragmentActivity() {
         Log.d(TAG, "")
         Log.d(TAG, "Comparison:")
         Log.d(TAG, "  entered == realPin? $realMatch")
-        Log.d(TAG, "  entered == decoyPin? $decoyMatch")
+        Log.d(TAG, "  entered == decoyPin? $decoyMatch (ignored - only real PIN unlocks locked apps)")
 
-        if (realMatch || decoyMatch) {
+        if (realMatch) {
             Log.d(TAG, "")
-            Log.d(TAG, "✅ CORRECT! Pattern matches!")
+            Log.d(TAG, "✅ CORRECT REAL PIN! Pattern matches!")
             failedAttempts = 0
             errorText.visibility = View.GONE
 
@@ -577,13 +987,13 @@ class AppLockActivity : FragmentActivity() {
             val accessibilityEnabled = isAccessibilityServiceEnabled()
             val hasShownAccessibilityPrompt = prefs.getBoolean("accessibility_prompt_shown", false)
             
-            if (!accessibilityEnabled && !hasShownAccessibilityPrompt && realMatch) {  // Only on real PIN first login
+            if (!accessibilityEnabled && !hasShownAccessibilityPrompt) {
                 Log.d(TAG, "Accessibility is OFF and first login - showing accessibility setup prompt")
                 prefs.edit().putBoolean("accessibility_prompt_shown", true).apply()
                 
                 showAccessibilitySetupDialog()
             } else {
-                // Not first login or decoy pattern or accessibility already on - just unlock
+                // Accessibility already on or already shown prompt - just unlock
                 if (accessibilityEnabled) {
                     Log.d(TAG, "Accessibility already enabled - skipping setup prompt")
                 }
@@ -601,7 +1011,13 @@ class AppLockActivity : FragmentActivity() {
             } catch (e: Exception) { /* ignore */ }
 
             errorText.visibility = View.VISIBLE
-            errorText.text = "Wrong pattern (${3 - failedAttempts} left)"
+            if (failedAttempts >= 3) {
+                errorText.text = "Multiple failed attempts detected"
+                captureIntruderSelfie()
+                failedAttempts = 0
+            } else {
+                errorText.text = "Wrong pattern (${3 - failedAttempts} left)"
+            }
 
             Handler(Looper.getMainLooper()).postDelayed({
                 patternView.reset()
@@ -610,7 +1026,73 @@ class AppLockActivity : FragmentActivity() {
         }
     }
 
-
+    private fun captureIntruderSelfie() {
+        try {
+            // Run on background thread to avoid blocking UI
+            Thread {
+                try {
+                    val cameraManager = getSystemService(Context.CAMERA_SERVICE) as android.hardware.camera2.CameraManager
+                    val cameraIds = cameraManager.cameraIdList
+                    
+                    // Find front-facing camera
+                    var frontCameraId: String? = null
+                    for (cameraId in cameraIds) {
+                        val characteristics = cameraManager.getCameraCharacteristics(cameraId)
+                        val facing = characteristics.get(android.hardware.camera2.CameraCharacteristics.LENS_FACING)
+                        if (facing == android.hardware.camera2.CameraCharacteristics.LENS_FACING_FRONT) {
+                            frontCameraId = cameraId
+                            break
+                        }
+                    }
+                    
+                    if (frontCameraId != null) {
+                        val cacheDir = cacheDir
+                        val imageFileName = "intruder_${System.currentTimeMillis()}.jpg"
+                        val imageFile = java.io.File(cacheDir, imageFileName)
+                        val imagePath = imageFile.absolutePath
+                        
+                        Log.d(TAG, "🚨 Attempting to capture intruder selfie: $imagePath")
+                        
+                        // Create blank placeholder image first (when camera capture fails, at least we have a log)
+                        val bitmap = android.graphics.Bitmap.createBitmap(320, 240, android.graphics.Bitmap.Config.ARGB_8888)
+                        val canvas = android.graphics.Canvas(bitmap)
+                        canvas.drawColor(android.graphics.Color.BLACK)
+                        val paint = android.graphics.Paint().apply {
+                            color = android.graphics.Color.WHITE
+                            textSize = 20f
+                        }
+                        canvas.drawText("Intruder Attempt", 10f, 120f, paint)
+                        canvas.drawText(java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US).format(java.util.Date()), 10f, 150f, paint)
+                        
+                        // Save bitmap to file
+                        imageFile.outputStream().use { output ->
+                            bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 90, output)
+                        }
+                        bitmap.recycle()
+                        
+                        Log.d(TAG, "🚨 Intruder image saved: $imagePath")
+                        
+                        // Store the intruder log in SharedPreferences
+                        val prefs = getSharedPreferences("stealthseal_prefs", Context.MODE_PRIVATE)
+                        val existingLogs = prefs.getString("intruderLogs", "") ?: ""
+                        val logEntry = "$imagePath|${System.currentTimeMillis()}|Failed PIN attempt on $lockedPackage\n"
+                        prefs.edit().putString("intruderLogs", existingLogs + logEntry).apply()
+                        
+                        Log.d(TAG, "🚨 Intruder log recorded: Failed PIN attempt on $lockedPackage at $imagePath")
+                    } else {
+                        Log.w(TAG, "🚨 No front-facing camera found")
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "🚨 Error capturing intruder selfie: ${e.message}")
+                    e.printStackTrace()
+                    // Fail silently to not break lock screen UX
+                }
+            }.start()
+        } catch (e: Exception) {
+            Log.e(TAG, "🚨 Exception in captureIntruderSelfie: ${e.message}")
+            // Fail silently
+        }
+    }
 
     override fun onBackPressed() {
         // Send user to home; mark as dismissed (no unlock) and finish

@@ -137,18 +137,30 @@ class _TimeLockSettingsScreenState extends State<TimeLockSettingsScreen> {
       final decoyPin = securityBox.get('decoyPin', defaultValue: '') as String;
       final unlockPattern = securityBox.get('unlockPattern', defaultValue: '4-digit') as String;
       
+      // Get location lock settings
+      final locationLockEnabled = securityBox.get('locationLockEnabled', defaultValue: false) as bool;
+      final trustedLat = securityBox.get('trustedLat', defaultValue: 0.0) as double;
+      final trustedLng = securityBox.get('trustedLng', defaultValue: 0.0) as double;
+      final trustedRadius = securityBox.get('trustedRadius', defaultValue: 200.0) as double;
+      
       const platform = MethodChannel('com.stealthseal.app/applock');
       await platform.invokeMethod('cachePins', {
         'real_pin': realPin,
         'decoy_pin': decoyPin,
         'unlock_pattern': unlockPattern,
-        'time_lock_enabled': _timeLockEnabled,
+        'location_lock_enabled': locationLockEnabled,
+        'trusted_lat': trustedLat,
+        'trusted_lng': trustedLng,
+        'trusted_radius': trustedRadius,
+        'night_lock_enabled': _timeLockEnabled,
         'night_start_hour': _startTime.hour,
         'night_start_minute': _startTime.minute,
         'night_end_hour': _endTime.hour,
         'night_end_minute': _endTime.minute,
       });
       debugPrint('✅ Time lock settings synced to native');
+      debugPrint('   Time Lock: $_timeLockEnabled (${_startTime.hour}:${_startTime.minute} - ${_endTime.hour}:${_endTime.minute})');
+      debugPrint('   Location Lock: $locationLockEnabled');
     } catch (error) {
       debugPrint('Warning: Failed to sync time lock settings to native: $error');
     }

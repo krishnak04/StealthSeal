@@ -140,8 +140,17 @@ class _SetupScreenState extends State<SetupScreen> {
           'real_pin': realPin,
           'decoy_pin': decoyPin,
           'unlock_pattern': '4-digit',
+          'location_lock_enabled': false,  // Default to disabled on first setup
+          'trusted_lat': 0.0,
+          'trusted_lng': 0.0,
+          'trusted_radius': 200.0,
+          'night_lock_enabled': false,  // Default to disabled on first setup
+          'night_start_hour': 22,
+          'night_start_minute': 0,
+          'night_end_hour': 6,
+          'night_end_minute': 0,
         });
-        debugPrint('PINs cached to native SharedPreferences');
+        debugPrint('PINs and default security settings cached to native SharedPreferences');
       } catch (error) {
         debugPrint('Warning: Failed to cache PINs: $error');
       }

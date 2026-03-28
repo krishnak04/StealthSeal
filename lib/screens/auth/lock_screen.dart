@@ -246,15 +246,40 @@ class _LockScreenState extends State<LockScreen> {
     if (realPin == null || decoyPin == null) return;
     try {
       final securityBox = Hive.box('securityBox');
+      final securityTimeBox = Hive.box('security');
       final unlockPattern = securityBox.get('unlockPattern', defaultValue: '4-digit');
+      
+      // Load location lock settings
+      final locationLockEnabled = securityBox.get('locationLockEnabled', defaultValue: false) as bool;
+      final trustedLat = securityBox.get('trustedLat', defaultValue: 0.0) as double;
+      final trustedLng = securityBox.get('trustedLng', defaultValue: 0.0) as double;
+      final trustedRadius = securityBox.get('trustedRadius', defaultValue: 200.0) as double;
+      
+      // Load time lock settings using correct HiveKeys
+      final nightLockEnabled = securityTimeBox.get(HiveKeys.nightLockEnabled, defaultValue: false) as bool;
+      final nightStartHour = securityTimeBox.get(HiveKeys.nightStartHour, defaultValue: 22) as int;
+      final nightStartMinute = securityTimeBox.get(HiveKeys.nightStartMinute, defaultValue: 0) as int;
+      final nightEndHour = securityTimeBox.get(HiveKeys.nightEndHour, defaultValue: 6) as int;
+      final nightEndMinute = securityTimeBox.get(HiveKeys.nightEndMinute, defaultValue: 0) as int;
       
       const platform = MethodChannel('com.stealthseal.app/applock');
       await platform.invokeMethod('cachePins', {
         'real_pin': realPin,
         'decoy_pin': decoyPin,
         'unlock_pattern': unlockPattern,
+        'location_lock_enabled': locationLockEnabled,
+        'trusted_lat': trustedLat,
+        'trusted_lng': trustedLng,
+        'trusted_radius': trustedRadius,
+        'night_lock_enabled': nightLockEnabled,
+        'night_start_hour': nightStartHour,
+        'night_start_minute': nightStartMinute,
+        'night_end_hour': nightEndHour,
+        'night_end_minute': nightEndMinute,
       });
-      debugPrint('PINs and unlock pattern cached to native SharedPreferences');
+      debugPrint('PINs, unlock pattern, location lock, and time lock settings cached to native SharedPreferences');
+      debugPrint('  Location Lock: $locationLockEnabled (Trusted: $trustedLat, $trustedLng, Radius: $trustedRadius m)');
+      debugPrint('  Time Lock: $nightLockEnabled ($nightStartHour:$nightStartMinute - $nightEndHour:$nightEndMinute)');
     } catch (error) {
       debugPrint('Warning: Failed to cache PINs to native: $error');
     }

@@ -56,13 +56,38 @@ class MainActivity : FlutterFragmentActivity() {
                         val realPin = call.argument<String>("real_pin") ?: ""
                         val decoyPin = call.argument<String>("decoy_pin") ?: ""
                         val unlockPattern = call.argument<String>("unlock_pattern") ?: "4-digit"
+                        
+                        // Get location lock settings if available
+                        val locationLockEnabled = call.argument<Boolean>("location_lock_enabled") ?: false
+                        val trustedLat = call.argument<Double>("trusted_lat") ?: 0.0
+                        val trustedLng = call.argument<Double>("trusted_lng") ?: 0.0
+                        val trustedRadius = call.argument<Double>("trusted_radius") ?: 200.0
+                        
+                        // Get time lock settings if available
+                        val nightLockEnabled = call.argument<Boolean>("night_lock_enabled") ?: false
+                        val nightStartHour = call.argument<Int>("night_start_hour") ?: 22
+                        val nightStartMinute = call.argument<Int>("night_start_minute") ?: 0
+                        val nightEndHour = call.argument<Int>("night_end_hour") ?: 6
+                        val nightEndMinute = call.argument<Int>("night_end_minute") ?: 0
+                        
                         val sharedPref = getSharedPreferences("stealthseal_prefs", Context.MODE_PRIVATE)
                         sharedPref.edit()
                             .putString("cached_real_pin", realPin)
                             .putString("cached_decoy_pin", decoyPin)
                             .putString("unlock_pattern", unlockPattern)
+                            .putBoolean("locationLockEnabled", locationLockEnabled)
+                            .putFloat("trustedLat", trustedLat.toFloat())
+                            .putFloat("trustedLng", trustedLng.toFloat())
+                            .putFloat("trustedRadius", trustedRadius.toFloat())
+                            .putBoolean("nightLockEnabled", nightLockEnabled)
+                            .putInt("nightStartHour", nightStartHour)
+                            .putInt("nightStartMinute", nightStartMinute)
+                            .putInt("nightEndHour", nightEndHour)
+                            .putInt("nightEndMinute", nightEndMinute)
                             .apply()
                         Log.d("MainActivity", "PINs cached to SharedPreferences with pattern: $unlockPattern")
+                        Log.d("MainActivity", "Location lock cached: enabled=$locationLockEnabled, trusted=($trustedLat, $trustedLng), radius=$trustedRadius")
+                        Log.d("MainActivity", "Time lock cached: enabled=$nightLockEnabled, ${String.format("%02d:%02d", nightStartHour, nightStartMinute)} - ${String.format("%02d:%02d", nightEndHour, nightEndMinute)}")
                         result.success(true)
                     }
                     "requestAccessibilityService" -> {
@@ -76,6 +101,9 @@ class MainActivity : FlutterFragmentActivity() {
                     "launchApp" -> {
                         val packageName = call.argument<String>("packageName") ?: ""
                         handleLaunchApp(packageName, result)
+                    }
+                    "getIntruderLogs" -> {
+                        handleGetIntruderLogs(result)
                     }
                     else -> result.notImplemented()
                 }
@@ -241,6 +269,48 @@ class MainActivity : FlutterFragmentActivity() {
             }
         } catch (e: Exception) {
             null
+        }
+    }
+
+    private fun handleGetIntruderLogs(result: MethodChannel.Result) {
+        try {
+            val prefs = getSharedPreferences("stealthseal_prefs", Context.MODE_PRIVATE)
+            val logsString = prefs.getString("intruderLogs", "") ?: ""
+            
+            val logs = mutableListOf<Map<String, Any>>()
+            
+            if (logsString.isNotEmpty()) {
+                // Parse the logs from SharedPreferences format: "imagePath|timestamp|reason\n"
+                val logEntries = logsString.trim().split("\n").filter { it.isNotEmpty() }
+                
+                for (entry in logEntries) {
+                    val parts = entry.split("|")
+                    if (parts.size >= 3) {
+                        val imagePath = parts[0]
+                        val timestamp = parts.getOrNull(1)?.toLongOrNull() ?: System.currentTimeMillis()
+                        val reason = parts.getOrNull(2) ?: "Failed Attempt"
+                        
+                        // Convert timestamp to ISO format
+                        val iso8601 = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", java.util.Locale.US).apply {
+                            timeZone = java.util.TimeZone.getTimeZone("UTC")
+                        }.format(java.util.Date(timestamp))
+                        
+                        val logMap = mapOf<String, Any>(
+                            "imagePath" to imagePath,
+                            "timestamp" to iso8601,
+                            "reason" to reason,
+                            "enteredPin" to "***"
+                        )
+                        logs.add(logMap)
+                    }
+                }
+            }
+            
+            Log.d("MainActivity", "Returning ${logs.size} intruder logs")
+            result.success(logs)
+        } catch (e: Exception) {
+            Log.e("MainActivity", "Error getting intruder logs: ${e.message}")
+            result.error("ERROR", e.message, null)
         }
     }
 

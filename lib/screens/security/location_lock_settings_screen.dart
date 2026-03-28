@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:hive/hive.dart';
 import '../../core/security/location_lock_service.dart';
@@ -38,8 +39,12 @@ class _LocationLockSettingsScreenState
         TextEditingController(text: _trustedRadius.toStringAsFixed(0));
   }
 
-  void _toggleLocationLock(bool value) {
+  Future<void> _toggleLocationLock(bool value) async {
     setState(() => _locationLockEnabled = value);
+    
+    // Save to Hive first
+    _securityBox.put('locationLockEnabled', value);
+    
     if (value) {
       LocationLockService.setTrustedLocation(
         latitude: _trustedLat,
@@ -49,6 +54,11 @@ class _LocationLockSettingsScreenState
     } else {
       LocationLockService.disable();
     }
+    
+    // Sync to native and wait for completion
+    await _syncLocationLockToNative();
+    
+    debugPrint('Location lock toggled: $value');
   }
 
   Future<void> _setCurrentLocation() async {
@@ -82,6 +92,9 @@ class _LocationLockSettingsScreenState
           ),
         );
       }
+      
+      // Sync updated location to native
+      await _syncLocationLockToNative();
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -107,12 +120,52 @@ class _LocationLockSettingsScreenState
         radius: _trustedRadius,
       );
     }
+    _syncLocationLockToNative();
   }
 
   @override
   void dispose() {
     _radiusController.dispose();
     super.dispose();
+  }
+
+  Future<void> _syncLocationLockToNative() async {
+    try {
+      // Get PINs from securityBox
+      final securityBox = Hive.box('securityBox');
+      final realPin = securityBox.get('realPin', defaultValue: '') as String;
+      final decoyPin = securityBox.get('decoyPin', defaultValue: '') as String;
+      final unlockPattern = securityBox.get('unlockPattern', defaultValue: '4-digit') as String;
+      
+      // Get time lock settings from 'security' box
+      final securityTimeBox = Hive.box('security');
+      final nightLockEnabled = securityTimeBox.get('nightLockEnabled', defaultValue: false) as bool;
+      final nightStartHour = securityTimeBox.get('nightStartHour', defaultValue: 22) as int;
+      final nightStartMinute = securityTimeBox.get('nightStartMinute', defaultValue: 0) as int;
+      final nightEndHour = securityTimeBox.get('nightEndHour', defaultValue: 6) as int;
+      final nightEndMinute = securityTimeBox.get('nightEndMinute', defaultValue: 0) as int;
+      
+      const platform = MethodChannel('com.stealthseal.app/applock');
+      await platform.invokeMethod('cachePins', {
+        'real_pin': realPin,
+        'decoy_pin': decoyPin,
+        'unlock_pattern': unlockPattern,
+        'location_lock_enabled': _locationLockEnabled,
+        'trusted_lat': _trustedLat,
+        'trusted_lng': _trustedLng,
+        'trusted_radius': _trustedRadius,
+        'night_lock_enabled': nightLockEnabled,
+        'night_start_hour': nightStartHour,
+        'night_start_minute': nightStartMinute,
+        'night_end_hour': nightEndHour,
+        'night_end_minute': nightEndMinute,
+      });
+      debugPrint(' Location lock settings synced to native');
+      debugPrint('   Location Lock: $_locationLockEnabled');
+      debugPrint('   Time Lock: $nightLockEnabled');
+    } catch (error) {
+      debugPrint('Warning: Failed to sync location lock settings to native: $error');
+    }
   }
 
   @override

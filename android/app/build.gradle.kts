@@ -15,9 +15,9 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_17.toString()
-    }
+   kotlinOptions {
+    jvmTarget = "17"
+}
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
@@ -40,8 +40,7 @@ android {
 }
 
 dependencies {
-    // Material Design Components
-    implementation("com.google.android.material:material:1.9.0")
+    implementation("com.google.android.gms:play-services-location:21.0.1")
     
     // AndroidX Libraries
     implementation("androidx.appcompat:appcompat:1.6.1")
