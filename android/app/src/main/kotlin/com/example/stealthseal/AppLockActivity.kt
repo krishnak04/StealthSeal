@@ -108,6 +108,10 @@ class AppLockActivity : FragmentActivity() {
     private var timeLockActiveText: TextView? = null
     private var timeLockCountdownText: TextView? = null
     private var timeLockCountdownTimer: android.os.CountDownTimer? = null
+    
+    // Flag to prevent multiple timers from running simultaneously
+    private var isCountdownRunning = false
+    private var isStartingCountdown = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -149,16 +153,16 @@ class AppLockActivity : FragmentActivity() {
         // Initialize views
         initViews()
         
-        // CHECK TIME LOCK IMMEDIATELY ON APP START
-        Log.d(TAG, "⏰ Checking time lock on app start...")
-        Log.d(TAG, "   Night lock enabled: $nightLockEnabled")
-        Log.d(TAG, "   Lock window: ${String.format("%02d:%02d", nightStartHour, nightStartMinute)} - ${String.format("%02d:%02d", nightEndHour, nightEndMinute)}")
+        // Refresh time lock settings immediately on app start
+        refreshTimeLockSettings()
         
+        // Verify and log time lock configuration
+        verifyTimeLockConfiguration()
+        
+        // CHECK TIME LOCK IMMEDIATELY ON APP START
         if (isTimeLockActive()) {
-            Log.d(TAG, "⏰ TIME LOCK IS ACTIVE ON APP START - Blocking all access!")
             blockAccessDueToTimeLock()
         } else {
-            Log.d(TAG, "⏰ Time lock is NOT active - showing unlock UI")
             showUnlockMethodUI()
         }
         
@@ -166,25 +170,29 @@ class AppLockActivity : FragmentActivity() {
     }
 
     private fun blockAccessDueToTimeLock() {
-        Log.d(TAG, "🔒 Blocking access due to time lock")
+        Log.d(TAG, "🔒 Blocking access due to time lock - showing keypad only")
         
         try {
-            // Hide PIN/pattern input and show time lock UI
-            errorText.visibility = View.GONE
-            keypadGrid.visibility = View.GONE
-            patternLockContainer.visibility = View.GONE
-            fingerprintButtonContainer.visibility = View.GONE
-            titleText.visibility = View.GONE
-            for (dot in dots) {
-                dot.visibility = View.GONE
+            // Show title and keypad with PIN dots
+            titleText.visibility = View.VISIBLE
+            keypadGrid.visibility = View.VISIBLE
+            for (dot in dots.take(pinLength)) {  // Show only the dots needed for PIN length
+                dot.visibility = View.VISIBLE
             }
             
-            Log.d(TAG, "✅ Hidden all unlock UI elements")
+            // Hide pattern lock and fingerprint button
+            patternLockContainer.visibility = View.GONE
+            fingerprintButtonContainer.visibility = View.GONE
             
-            // Show time lock countdown
+            // Show error message
+            errorText.visibility = View.VISIBLE
+            errorText.text = "⏰ Time locked. Try again outside lock window."
+            errorText.textSize = 13f
+            
+            Log.d(TAG, "✅ Keypad UI displayed during time lock")
+            
+            // Show time lock countdown overlay
             startTimeLockCountdown()
-            
-            Log.d(TAG, "✅ Time lock countdown started")
         } catch (e: Exception) {
             Log.e(TAG, "❌ Error blocking access: ${e.message}")
             e.printStackTrace()
@@ -232,6 +240,63 @@ class AppLockActivity : FragmentActivity() {
         if (realPin == null) {
             Log.e(TAG, "❌ No PINs found in SharedPreferences! App lock cannot validate.")
         }
+    }
+
+    /**
+     * Refresh time lock settings from SharedPreferences (similar to Flutter's _loadSettings).
+     * This ensures we always have the latest time lock configuration.
+     */
+    private fun refreshTimeLockSettings() {
+        val prefs = getSharedPreferences("stealthseal_prefs", Context.MODE_PRIVATE)
+        nightLockEnabled = prefs.getBoolean("nightLockEnabled", false)
+        nightStartHour = prefs.getInt("nightStartHour", 22)
+        nightStartMinute = prefs.getInt("nightStartMinute", 0)
+        nightEndHour = prefs.getInt("nightEndHour", 6)
+        nightEndMinute = prefs.getInt("nightEndMinute", 0)
+        
+        Log.d(TAG, "🔄 Time lock settings refreshed:")
+        Log.d(TAG, "   Enabled: $nightLockEnabled")
+        Log.d(TAG, "   Window: ${String.format("%02d:%02d", nightStartHour, nightStartMinute)} - ${String.format("%02d:%02d", nightEndHour, nightEndMinute)}")
+    }
+
+    /**
+     * Verify time lock configuration is properly loaded and logged.
+     * Similar to verifying settings in Flutter's TimeLockSettingsScreen.
+     */
+    private fun verifyTimeLockConfiguration() {
+        Log.d(TAG, "╔════════════════════════════════════════╗")
+        Log.d(TAG, "║     TIME LOCK CONFIGURATION SUMMARY    ║")
+        Log.d(TAG, "╚════════════════════════════════════════╝")
+        Log.d(TAG, "Status: ${if (nightLockEnabled) "🔒 ENABLED" else "✅ DISABLED"}")
+        Log.d(TAG, "Lock Window: ${String.format("%02d:%02d", nightStartHour, nightStartMinute)} - ${String.format("%02d:%02d", nightEndHour, nightEndMinute)}")
+        
+        // Determine lock type
+        val startMinutes = nightStartHour * 60 + nightStartMinute
+        val endMinutes = nightEndHour * 60 + nightEndMinute
+        val lockType = if (startMinutes < endMinutes) "Same-Day Lock" else "Overnight Lock"
+        Log.d(TAG, "Lock Type: $lockType")
+        
+        // Get current time
+        val calendar = java.util.Calendar.getInstance()
+        val currentHour = calendar.get(java.util.Calendar.HOUR_OF_DAY)
+        val currentMinute = calendar.get(java.util.Calendar.MINUTE)
+        val currentMinutes = currentHour * 60 + currentMinute
+        
+        Log.d(TAG, "Current Time: ${String.format("%02d:%02d", currentHour, currentMinute)}")
+        
+        // Determine if currently locked
+        val isCurrentlyLocked = if (nightLockEnabled) {
+            if (startMinutes < endMinutes) {
+                currentMinutes >= startMinutes && currentMinutes <= endMinutes
+            } else {
+                currentMinutes >= startMinutes || currentMinutes <= endMinutes
+            }
+        } else {
+            false
+        }
+        
+        Log.d(TAG, "Currently Locked: ${if (isCurrentlyLocked) "🔒 YES" else "✅ NO"}")
+        Log.d(TAG, "╚════════════════════════════════════════╝")
     }
 
     private fun initViews() {
@@ -339,8 +404,8 @@ class AppLockActivity : FragmentActivity() {
         patternLockContainer.visibility = View.GONE
         keypadGrid.visibility = View.VISIBLE
 
-        // Use generic title to keep UI consistent across all apps
-        titleText.text = "Unlock Your App"
+        // Title from layout is "Enter the PIN" - no override needed
+        // titleText keeps the XML default text
         
         when {
             unlockPattern == "pattern" -> {
@@ -356,6 +421,7 @@ class AppLockActivity : FragmentActivity() {
 
     /**
      * Setup fingerprint button - always show regardless of device capability
+     * UI matches the provided design: "Tap to unlock" and "Long-press for help" text
      * User will see error if device doesn't support biometric
      */
     private fun setupFingerprintButton() {
@@ -661,87 +727,149 @@ class AppLockActivity : FragmentActivity() {
         return R * c
     }
 
+    /**
+     * Check if time lock is currently active using current time and configured lock window.
+     * Properly handles both same-day (e.g., 10 AM - 5 PM) and overnight (e.g., 10 PM - 6 AM) locks.
+     */
     private fun isTimeLockActive(): Boolean {
+        // Always refresh settings before checking (matches Flutter's pattern)
+        refreshTimeLockSettings()
+        
         if (!nightLockEnabled) {
-            Log.d(TAG, "⏰ Time lock is DISABLED - nightLockEnabled: $nightLockEnabled")
             return false
         }
 
-        // Get current time in minutes
+        // Get current time in minutes since midnight
         val calendar = java.util.Calendar.getInstance()
-        val currentMinutes = calendar.get(java.util.Calendar.HOUR_OF_DAY) * 60 + calendar.get(java.util.Calendar.MINUTE)
+        val currentHour = calendar.get(java.util.Calendar.HOUR_OF_DAY)
+        val currentMinute = calendar.get(java.util.Calendar.MINUTE)
+        val currentMinutes = currentHour * 60 + currentMinute
+        
         val startMinutes = nightStartHour * 60 + nightStartMinute
         val endMinutes = nightEndHour * 60 + nightEndMinute
 
-        Log.d(TAG, "⏰ Time lock check:")
-        Log.d(TAG, "   Current time (minutes): $currentMinutes")
-        Log.d(TAG, "   Start: ${String.format("%02d:%02d", nightStartHour, nightStartMinute)} ($startMinutes minutes)")
-        Log.d(TAG, "   End: ${String.format("%02d:%02d", nightEndHour, nightEndMinute)} ($endMinutes minutes)")
-
         val isLocked = if (startMinutes < endMinutes) {
-            // Same day lock (e.g., 10 AM to 5 PM)
-            val locked = currentMinutes >= startMinutes && currentMinutes <= endMinutes
-            Log.d(TAG, "   Lock type: Same-day, Result: $locked")
-            locked
+            // Same-day lock window (e.g., 10 AM to 5 PM)
+            currentMinutes >= startMinutes && currentMinutes <= endMinutes
         } else {
-            // Overnight lock (e.g., 10 PM to 6 AM)
-            val locked = currentMinutes >= startMinutes || currentMinutes <= endMinutes
-            Log.d(TAG, "   Lock type: Overnight, Result: $locked")
-            locked
+            // Overnight lock window (e.g., 10 PM to 6 AM next day)
+            currentMinutes >= startMinutes || currentMinutes <= endMinutes
         }
 
-        if (isLocked) {
-            Log.d(TAG, "⏰❌ TIME LOCK ACTIVE!")
-        } else {
-            Log.d(TAG, "⏰✅ Time lock is NOT active")
-        }
         return isLocked
     }
 
     private fun startTimeLockCountdown() {
-        Log.d(TAG, "⏰ Starting time lock countdown display...")
+        // Prevent multiple timers from starting simultaneously
+        if (isStartingCountdown) {
+            return
+        }
+        
+        if (isCountdownRunning) {
+            return
+        }
+        
+        isStartingCountdown = true
         
         // Verify views exist
         if (timeLockActiveText == null || timeLockCountdownText == null) {
             Log.e(TAG, "❌ Time lock views not initialized!")
+            isStartingCountdown = false
             return
         }
         
         try {
+            // Cancel any existing timer first
+            timeLockCountdownTimer?.cancel()
+            isCountdownRunning = false
+            
             // Show time lock UI immediately
             timeLockActiveText?.visibility = View.VISIBLE
             timeLockCountdownText?.visibility = View.VISIBLE
-            Log.d(TAG, "✅ Time lock views set to VISIBLE")
             
             // Request layout refresh to ensure views appear
             timeLockActiveText?.requestLayout()
             timeLockCountdownText?.requestLayout()
             
-            // Calculate remaining time until end of lock in milliseconds
+            // Get current time with seconds precision
             val calendar = java.util.Calendar.getInstance()
-            val currentMinutes = calendar.get(java.util.Calendar.HOUR_OF_DAY) * 60 + calendar.get(java.util.Calendar.MINUTE)
+            val currentHour = calendar.get(java.util.Calendar.HOUR_OF_DAY)
+            val currentMinute = calendar.get(java.util.Calendar.MINUTE)
+            val currentSecond = calendar.get(java.util.Calendar.SECOND)
+            val currentMinutes = currentHour * 60 + currentMinute
+            
+            val startMinutes = nightStartHour * 60 + nightStartMinute
             val endMinutes = nightEndHour * 60 + nightEndMinute
             
-            val remainingMinutes = if (endMinutes > currentMinutes) {
-                endMinutes - currentMinutes
-            } else {
-                // Overnight lock - calculate until next day's end time
-                (24 * 60) - currentMinutes + endMinutes
+
+            
+            // Calculate remaining time - handle both same-day and overnight locks
+            val remainingMinutes: Int
+            val remainingSeconds: Int
+            
+            when {
+                startMinutes < endMinutes -> {
+                    // Same-day lock (e.g., 10 AM - 5 PM)
+                    if (currentMinutes < startMinutes) {
+                        // Before lock starts
+                        remainingMinutes = startMinutes - currentMinutes - 1
+                        remainingSeconds = 60 - currentSecond
+                    } else if (currentMinutes < endMinutes) {
+                        // During lock
+                        remainingMinutes = endMinutes - currentMinutes - 1
+                        remainingSeconds = 60 - currentSecond
+                    } else {
+                        // Lock is over for today
+                        timeLockActiveText?.visibility = View.GONE
+                        timeLockCountdownText?.visibility = View.GONE
+                        isCountdownRunning = false
+                        isStartingCountdown = false
+                        showUnlockMethodUI()
+                        return
+                    }
+                }
+                else -> {
+                    // Overnight lock (e.g., 10 PM - 6 AM next day)
+                    if (currentMinutes >= startMinutes) {
+                        // After start of overnight window (e.g., after 10 PM)
+                        val minutesUntilMidnight = (24 * 60) - currentMinutes
+                        remainingMinutes = minutesUntilMidnight + endMinutes - 1
+                        remainingSeconds = 60 - currentSecond
+                    } else if (currentMinutes <= endMinutes) {
+                        // After midnight, before end (e.g., 2 AM, within 6 AM window)
+                        remainingMinutes = endMinutes - currentMinutes - 1
+                        remainingSeconds = 60 - currentSecond
+                    } else {
+                        // Between end and start (e.g., between 6 AM and 10 PM)
+                        timeLockActiveText?.visibility = View.GONE
+                        timeLockCountdownText?.visibility = View.GONE
+                        isCountdownRunning = false
+                        isStartingCountdown = false
+                        showUnlockMethodUI()
+                        return
+                    }
+                }
             }
             
-            val remainingMillis = remainingMinutes * 60 * 1000L
-            Log.d(TAG, "⏰ Initial remaining time: $remainingMinutes minutes ($remainingMillis ms)")
+            // Ensure time is positive
+            if (remainingMinutes < 0) {
+                timeLockActiveText?.visibility = View.GONE
+                timeLockCountdownText?.visibility = View.GONE
+                isCountdownRunning = false
+                isStartingCountdown = false
+                showUnlockMethodUI()
+                return
+            }
             
-            // Cancel existing timer
-            timeLockCountdownTimer?.cancel()
+            val totalRemainingMillis = (remainingMinutes * 60 + remainingSeconds) * 1000L
             
             // Update display immediately with initial time
-            val initialHours = remainingMinutes / 60
-            val initialMinutes = remainingMinutes % 60
-            timeLockCountdownText?.text = "⏰ Unlock Time Remaining\n${String.format("%02d:%02d:00", initialHours, initialMinutes)}"
+            timeLockCountdownText?.text = "⏰ Unlock Time Remaining\n${String.format("%02d:%02d:%02d", 
+                remainingMinutes / 60, remainingMinutes % 60, remainingSeconds)}"
             
-            // Start new countdown timer
-            timeLockCountdownTimer = object : android.os.CountDownTimer(remainingMillis, 1000) {
+            // Start countdown timer (now only one can run at a time)
+            isCountdownRunning = true
+            timeLockCountdownTimer = object : android.os.CountDownTimer(totalRemainingMillis, 1000) {
                 override fun onTick(millisUntilFinished: Long) {
                     try {
                         val hours = millisUntilFinished / (1000 * 60 * 60)
@@ -750,7 +878,6 @@ class AppLockActivity : FragmentActivity() {
                         
                         val timeStr = String.format("%02d:%02d:%02d", hours, minutes, seconds)
                         timeLockCountdownText?.text = "⏰ Unlock Time Remaining\n$timeStr"
-                        Log.d(TAG, "⏰ Time remaining: $timeStr")
                     } catch (e: Exception) {
                         Log.e(TAG, "Error updating countdown: ${e.message}")
                     }
@@ -758,63 +885,78 @@ class AppLockActivity : FragmentActivity() {
                 
                 override fun onFinish() {
                     try {
+                        isCountdownRunning = false
                         timeLockActiveText?.visibility = View.GONE
                         timeLockCountdownText?.visibility = View.GONE
-                        Log.d(TAG, "✅ Time lock countdown finished!")
+                        
+                        // Verify lock is actually over before unlocking
+                        if (!isTimeLockActive()) {
+                            showUnlockMethodUI()
+                        } else {
+                            // Do NOT restart here - let onResume handle it
+                            isCountdownRunning = false
+                        }
                     } catch (e: Exception) {
                         Log.e(TAG, "Error finishing countdown: ${e.message}")
+                        isCountdownRunning = false
                     }
                 }
             }.start()
+            isStartingCountdown = false
             
-            Log.d(TAG, "✅ Time lock countdown timer started successfully")
         } catch (e: Exception) {
             Log.e(TAG, "❌ Error in startTimeLockCountdown: ${e.message}")
             e.printStackTrace()
+            isCountdownRunning = false
+            isStartingCountdown = false
         }
     }
     
     private fun stopTimeLockCountdown() {
         timeLockCountdownTimer?.cancel()
+        timeLockCountdownTimer = null
+        isCountdownRunning = false
+        isStartingCountdown = false
         timeLockActiveText?.visibility = View.GONE
         timeLockCountdownText?.visibility = View.GONE
     }
 
     private fun validatePin() {
-        // Reload location lock settings fresh before validation
-       val prefs = getSharedPreferences("stealthseal_prefs", Context.MODE_PRIVATE)
+        Log.d(TAG, "🔐 PIN Validation Starting...")
+        
+        // Refresh all security settings before validation
+        val prefs = getSharedPreferences("stealthseal_prefs", Context.MODE_PRIVATE)
+        
+        // Reload location lock settings
         locationLockEnabled = prefs.getBoolean("locationLockEnabled", false)
         trustedLat = prefs.getFloat("trustedLat", 0f).toDouble()
         trustedLng = prefs.getFloat("trustedLng", 0f).toDouble()
         trustedRadius = prefs.getFloat("trustedRadius", 200f).toDouble()
         
-        // Reload time lock settings fresh before validation
-        nightLockEnabled = prefs.getBoolean("nightLockEnabled", false)
-        nightStartHour = prefs.getInt("nightStartHour", 22)
-        nightStartMinute = prefs.getInt("nightStartMinute", 0)
-        nightEndHour = prefs.getInt("nightEndHour", 6)
-        nightEndMinute = prefs.getInt("nightEndMinute", 0)
+        // Reload time lock settings (isTimeLockActive will also call refreshTimeLockSettings)
+        refreshTimeLockSettings()
         
-        Log.d(TAG, "🔄 Reloaded location lock settings - Enabled: $locationLockEnabled")
-        Log.d(TAG, "🔄 Reloaded time lock settings - Enabled: $nightLockEnabled")
+        Log.d(TAG, "🔄 Security settings refreshed before validation")
         
-        // TIME LOCK: Block ALL PINs if time lock is active
+        // TIME LOCK: Block ALL PINs if time lock is active (HIGHEST PRIORITY)
         if (isTimeLockActive()) {
-            Log.d(TAG, "❌ Time lock is ACTIVE - all PINs blocked!")
+            Log.d(TAG, "🚫 TIME LOCK ACTIVE - BLOCKING ALL PIN ATTEMPTS")
             blockAccessDueToTimeLock()  // Show countdown UI
             errorText.visibility = View.VISIBLE
             errorText.text = "⏰ Time locked. Try again outside lock window."
+            errorText.textSize = 13f
             enteredPin = ""
             updateDots()
             failedAttempts = 0
             return
         }
         
-        // LOCATION LOCK: Block ALL PINs if outside trusted location
+        // LOCATION LOCK: Block ALL PINs if outside trusted location (SECOND PRIORITY)
         if (isOutsideTrustedLocation()) {
-            Log.d(TAG, "❌ Location lock is ACTIVE - all PINs blocked!")
+            Log.d(TAG, "🚫 LOCATION LOCK ACTIVE - BLOCKING ALL PIN ATTEMPTS")
             errorText.visibility = View.VISIBLE
-            errorText.text = " Location locked. Try again from trusted location."
+            errorText.text = "📍 Location locked. Try again from trusted location."
+            errorText.textSize = 13f
             enteredPin = ""
             updateDots()
             failedAttempts = 0
@@ -894,39 +1036,40 @@ class AppLockActivity : FragmentActivity() {
     }
 
     private fun validatePattern(pattern: String) {
-        // Reload location lock settings fresh before validation
+        Log.d(TAG, "🔐 Pattern Validation Starting...")
+        
+        // Refresh all security settings before validation
         val prefs = getSharedPreferences("stealthseal_prefs", Context.MODE_PRIVATE)
+        
+        // Reload location lock settings
         locationLockEnabled = prefs.getBoolean("locationLockEnabled", false)
         trustedLat = prefs.getFloat("trustedLat", 0f).toDouble()
         trustedLng = prefs.getFloat("trustedLng", 0f).toDouble()
         trustedRadius = prefs.getFloat("trustedRadius", 200f).toDouble()
         
-        // Reload time lock settings fresh before validation
-        nightLockEnabled = prefs.getBoolean("nightLockEnabled", false)
-        nightStartHour = prefs.getInt("nightStartHour", 22)
-        nightStartMinute = prefs.getInt("nightStartMinute", 0)
-        nightEndHour = prefs.getInt("nightEndHour", 6)
-        nightEndMinute = prefs.getInt("nightEndMinute", 0)
+        // Reload time lock settings (isTimeLockActive will also call refreshTimeLockSettings)
+        refreshTimeLockSettings()
         
-        Log.d(TAG, "🔄 Reloaded location lock settings - Enabled: $locationLockEnabled")
-        Log.d(TAG, "🔄 Reloaded time lock settings - Enabled: $nightLockEnabled")
+        Log.d(TAG, "🔄 Security settings refreshed before validation")
         
-        // TIME LOCK: Block ALL patterns if time lock is active
+        // TIME LOCK: Block ALL patterns if time lock is active (HIGHEST PRIORITY)
         if (isTimeLockActive()) {
-            Log.d(TAG, "❌ Time lock is ACTIVE - all patterns blocked!")
+            Log.d(TAG, "🚫 TIME LOCK ACTIVE - BLOCKING ALL PATTERN ATTEMPTS")
             blockAccessDueToTimeLock()  // Show countdown UI
             errorText.visibility = View.VISIBLE
             errorText.text = "⏰ Time locked. Try again outside lock window."
+            errorText.textSize = 13f
             patternView.reset()
             failedAttempts = 0
             return
         }
         
-        // LOCATION LOCK: Block ALL patterns if outside trusted location
+        // LOCATION LOCK: Block ALL patterns if outside trusted location (SECOND PRIORITY)
         if (isOutsideTrustedLocation()) {
-            Log.d(TAG, "❌ Location lock is ACTIVE - all patterns blocked!")
+            Log.d(TAG, "🚫 LOCATION LOCK ACTIVE - BLOCKING ALL PATTERN ATTEMPTS")
             errorText.visibility = View.VISIBLE
             errorText.text = "📍 Location locked. Try again from trusted location."
+            errorText.textSize = 13f
             patternView.reset()
             failedAttempts = 0
             return
@@ -1127,40 +1270,100 @@ class AppLockActivity : FragmentActivity() {
             errorText.visibility = View.GONE
             patternView.reset()
             loadPins()  // Reload pins to get latest unlock_pattern
-            showUnlockMethodUI()
+            refreshTimeLockSettings()  // Refresh time lock for new app
+            
+            // Check if time lock should apply to this app too
+            if (isTimeLockActive()) {
+                blockAccessDueToTimeLock()
+            } else {
+                showUnlockMethodUI()
+            }
             currentlyBlockedPackage = lockedPackage
-            Log.d(TAG, "Unlock screen switched to: $appName ($lockedPackage)")
+            Log.d(TAG, "🔄 Unlock screen switched to: $appName ($lockedPackage)")
         } else {
-                // Same app — reload PINs in case settings changed, then check if UI needs refresh
-                val oldPattern = unlockPattern
-                loadPins()
-                if (oldPattern != unlockPattern) {
-                    Log.d(TAG, "Unlock pattern changed from '$oldPattern' to '$unlockPattern', refreshing UI")
-                    enteredPin = ""
-                    failedAttempts = 0
-                    errorText.visibility = View.GONE
-                    patternView.reset()
-                    showUnlockMethodUI()
+            // Same app — reload PINs in case settings changed, then check if UI needs refresh
+            val oldPattern = unlockPattern
+            loadPins()
+            refreshTimeLockSettings()  // Refresh time lock settings
+            
+            if (oldPattern != unlockPattern) {
+                Log.d(TAG, "🔄 Unlock pattern changed from '$oldPattern' to '$unlockPattern', refreshing UI")
+                enteredPin = ""
+                failedAttempts = 0
+                errorText.visibility = View.GONE
+                patternView.reset()
+                
+                // Check time lock for pattern change too
+                if (isTimeLockActive()) {
+                    blockAccessDueToTimeLock()
                 } else {
-                    Log.d(TAG, "Unlock screen re-focused for same app: $lockedPackage")
+                    showUnlockMethodUI()
                 }
+            } else {
+                Log.d(TAG, "🔄 Unlock screen re-focused for same app: $lockedPackage")
+            }
         }
     }
 
     override fun onResume() {
         super.onResume()
-        Log.d(TAG, "Lock screen resumed, ensuring it stays active")
+        Log.d(TAG, "🔄 Lock screen resumed - checking all security settings...")
         
-        // Reload unlock pattern in case it changed
+        // Reload all settings like Flutter's _loadSettings()
         val oldPattern = unlockPattern
-        loadPins()
+        loadPins()  // This also loads time/location lock settings
+        refreshTimeLockSettings()  // Ensure latest time lock settings
+        
+        Log.d(TAG, "🔄 Security settings reloaded on resume")
+        Log.d(TAG, "   Time lock: $nightLockEnabled (${String.format("%02d:%02d", nightStartHour, nightStartMinute)} - ${String.format("%02d:%02d", nightEndHour, nightEndMinute)})")
+        
+        // Check if unlock pattern changed
         if (oldPattern != unlockPattern) {
-            Log.d(TAG, "Unlock pattern changed from '$oldPattern' to '$unlockPattern' on resume, refreshing UI")
+            Log.d(TAG, "🔄 Unlock pattern changed from '$oldPattern' to '$unlockPattern' on resume, refreshing UI")
             enteredPin = ""
             failedAttempts = 0
             errorText.visibility = View.GONE
             patternView.reset()
-            showUnlockMethodUI()
+            if (isTimeLockActive()) {
+                blockAccessDueToTimeLock()
+            } else {
+                showUnlockMethodUI()
+            }
+            return
+        }
+        
+        // Re-check time lock status on resume (user may have set it while app was closed)
+        Log.d(TAG, "🔄 Re-checking time lock status on resume...")
+        
+        // Verify and log current configuration
+        verifyTimeLockConfiguration()
+        
+        val wasShowingTimeLock = timeLockCountdownText?.visibility == View.VISIBLE
+        val isNowLocked = isTimeLockActive()
+        
+        when {
+            isNowLocked && !wasShowingTimeLock -> {
+                // Time lock just became active - show lock UI
+                blockAccessDueToTimeLock()
+            }
+            !isNowLocked && wasShowingTimeLock -> {
+                // Lock period expired - show unlock UI
+                timeLockCountdownTimer?.cancel()
+                timeLockActiveText?.visibility = View.GONE
+                timeLockCountdownText?.visibility = View.GONE
+                enteredPin = ""
+                failedAttempts = 0
+                errorText.visibility = View.GONE
+                showUnlockMethodUI()
+            }
+            isNowLocked && wasShowingTimeLock -> {
+                // Still locked - verify countdown is running
+                if (!isCountdownRunning) {
+                    startTimeLockCountdown()
+                }
+            }
+            else -> {
+            }
         }
     }
 
@@ -1187,20 +1390,28 @@ class AppLockActivity : FragmentActivity() {
         super.onPause()
         // If not unlocked, keep activity alive; accessibility will re-show if needed
         if (!pinCorrect) {
-            Log.d(TAG, "Lock screen paused without unlock - staying alive (no auto-finish)")
+            // Note: We keep the countdown running in the background
+            // This allows the timer to continue even if app is hidden
+        } else {
+            // If unlocked, can safely stop timer
+            timeLockCountdownTimer?.cancel()
         }
     }
 
     override fun onDestroy() {
         super.onDestroy()
+        // Clean up countdown timer
+        timeLockCountdownTimer?.cancel()
+        timeLockCountdownTimer = null
+        
         isShowing = false
         currentlyBlockedPackage = null
         if (!pinCorrect) {
             dismissedAt = System.currentTimeMillis()
             dismissedPackage = lockedPackage
-            Log.d(TAG, "PIN dismissed without correct PIN for: $lockedPackage")
+            Log.d(TAG, "🔒 Lock screen destroyed without correct PIN for: $lockedPackage")
         } else {
-            Log.d(TAG, "PIN destroyed after correct PIN for: $lockedPackage")
+            Log.d(TAG, "✅ Lock screen destroyed after correct PIN for: $lockedPackage")
         }
     }
 }
