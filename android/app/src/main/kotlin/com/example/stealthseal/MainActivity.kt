@@ -1,6 +1,7 @@
 package com.example.stealthseal
 
 import android.app.usage.UsageStatsManager
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -109,6 +110,11 @@ class MainActivity : FlutterFragmentActivity() {
                         val imagePath = call.argument<String>("imagePath") ?: ""
                         val timestamp = call.argument<String>("timestamp") ?: ""
                         handleRemoveIntruderLog(imagePath, timestamp, result)
+                    }
+                    "setStealthDisguise" -> {
+                        val mode = call.argument<String>("mode") ?: "normal"
+                        val packageName = call.argument<String>("packageName") ?: ""
+                        handleSetStealthDisguise(mode, packageName, result)
                     }
                     else -> result.notImplemented()
                 }
@@ -286,7 +292,7 @@ class MainActivity : FlutterFragmentActivity() {
             val validLogEntries = mutableListOf<String>()
             
             if (logsString.isNotEmpty()) {
-                // Parse the logs from SharedPreferences format: "imagePath|timestamp|reason\n"
+                // Parse the logs from SharedPreferences format: "imagePath|timestamp|reason|pin\n"
                 val logEntries = logsString.trim().split("\n").filter { it.isNotEmpty() }
                 
                 for (entry in logEntries) {
@@ -295,6 +301,7 @@ class MainActivity : FlutterFragmentActivity() {
                         val imagePath = parts[0]
                         val timestamp = parts.getOrNull(1)?.toLongOrNull() ?: System.currentTimeMillis()
                         val reason = parts.getOrNull(2) ?: "Failed Attempt"
+                        val enteredPin = parts.getOrNull(3) ?: "***"  // Extract PIN from new format
                         
                         // Check if image file exists - only include valid logs
                         val imageFile = java.io.File(imagePath)
@@ -304,16 +311,16 @@ class MainActivity : FlutterFragmentActivity() {
                             continue
                         }
                         
-                        // Convert timestamp to ISO format
-                        val iso8601 = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", java.util.Locale.US).apply {
-                            timeZone = java.util.TimeZone.getTimeZone("UTC")
+                        // Convert timestamp to ISO format using device local timezone (matches image time)
+                        val iso8601 = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", java.util.Locale.US).apply {
+                            timeZone = java.util.TimeZone.getDefault()
                         }.format(java.util.Date(timestamp))
                         
                         val logMap = mapOf<String, Any>(
                             "imagePath" to imagePath,
                             "timestamp" to iso8601,
                             "reason" to reason,
-                            "enteredPin" to "***"
+                            "enteredPin" to enteredPin  // Use extracted PIN
                         )
                         logs.add(logMap)
                         validLogEntries.add(entry)  // Keep this entry
@@ -393,6 +400,75 @@ class MainActivity : FlutterFragmentActivity() {
         } catch (e: Exception) {
             Log.e("MainActivity", "Error removing intruder log: ${e.message}")
             result.error("ERROR", e.message, null)
+        }
+    }
+
+    private fun handleSetStealthDisguise(mode: String, packageName: String, result: MethodChannel.Result) {
+        try {
+            when (mode) {
+                "normal" -> {
+                    // Remove disguise preference
+                    val prefs = getSharedPreferences("stealthseal_prefs", Context.MODE_PRIVATE)
+                    prefs.edit().remove("disguisePackage").apply()
+                    
+                    Log.d("MainActivity", "✅ App set to NORMAL mode")
+                    result.success(true)
+                }
+                "disguise" -> {
+                    // Create a fake shortcut with selected app's icon and name
+                    createFakeAppShortcut(packageName, result)
+                }
+                else -> {
+                    result.error("INVALID_MODE", "Unknown stealth mode: $mode", null)
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("MainActivity", "Error setting stealth disguise: ${e.message}")
+            result.error("ERROR", e.message, null)
+        }
+    }
+
+    private fun createFakeAppShortcut(targetPackageName: String, result: MethodChannel.Result) {
+        try {
+            val pm = packageManager
+            
+            // Get the target app's info (the app we're disguising as)
+            val targetAppInfo = pm.getApplicationInfo(targetPackageName, 0)
+            val targetAppLabel = pm.getApplicationLabel(targetAppInfo).toString()
+            val targetAppIcon = pm.getApplicationIcon(targetPackageName)
+            
+            // Convert icon to bitmap
+            val bitmap = drawableToBitmap(targetAppIcon)
+            val stream = ByteArrayOutputStream()
+            bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream)
+            val iconData = stream.toByteArray()
+            
+            // Create intent that opens StealthSeal (our real app)
+            val launchIntent = Intent(Intent.ACTION_MAIN)
+            launchIntent.setPackage(packageName)  // StealthSeal's package
+            launchIntent.setClass(this, MainActivity::class.java)
+            launchIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            
+            // Create the shortcut
+            val shortcutIntent = Intent("com.android.launcher.action.INSTALL_SHORTCUT")
+            shortcutIntent.putExtra(Intent.EXTRA_SHORTCUT_INTENT, launchIntent)
+            shortcutIntent.putExtra(Intent.EXTRA_SHORTCUT_NAME, targetAppLabel)
+            shortcutIntent.putExtra(Intent.EXTRA_SHORTCUT_ICON, bitmap)
+            shortcutIntent.putExtra("duplicate", false)  // Don't create duplicates
+            
+            // Send the shortcut creation request
+            sendBroadcast(shortcutIntent)
+            
+            // Save preference
+            val prefs = getSharedPreferences("stealthseal_prefs", Context.MODE_PRIVATE)
+            prefs.edit().putString("disguisePackage", targetPackageName).apply()
+            
+            Log.d("MainActivity", "✅ Fake shortcut created: '$targetAppLabel' points to StealthSeal")
+            result.success(true)
+        } catch (e: Exception) {
+            Log.e("MainActivity", "❌ Error creating fake shortcut: ${e.message}")
+            e.printStackTrace()
+            result.error("ERROR", "Failed to create shortcut: ${e.message}", null)
         }
     }
 

@@ -25,13 +25,43 @@ class _IntruderLogsScreenState extends State<IntruderLogsScreen> {
       final result = await platform.invokeMethod('getIntruderLogs');
       if (result is List) {
         final securityBox = Hive.box('securityBox');
-        final List newLogs = result.map((log) => Map<String, dynamic>.from(log as Map)).toList();
         
-        // Only update if there are new logs or if Hive is empty
-        final currentLogs = securityBox.get('intruderLogs', defaultValue: []) as List;
-        if (newLogs.isNotEmpty || currentLogs.isEmpty) {
-          await securityBox.put('intruderLogs', newLogs);
-          debugPrint('🚨 Synced ${newLogs.length} intruder logs from native');
+        // Get native logs (from locked app / SharedPreferences)
+        final List nativeLogsRaw = result.map((log) => Map<String, dynamic>.from(log as Map)).toList();
+        
+        // Get existing logs from Hive (main app logs)
+        final List existingLogs = (securityBox.get('intruderLogs', defaultValue: []) as List)
+          .map((log) => Map<String, dynamic>.from(log as Map))
+          .toList();
+        
+        // MERGE: Combine both main app logs and locked app logs
+        final List mergedLogs = [...existingLogs];
+        
+        // Add native logs that don't already exist (by imagePath to avoid duplicates)
+        final existingPaths = existingLogs.map((l) => l['imagePath']).toSet();
+        for (var nativeLog in nativeLogsRaw) {
+          final imagePath = nativeLog['imagePath'];
+          if (imagePath != null && !existingPaths.contains(imagePath)) {
+            mergedLogs.add(nativeLog);
+            debugPrint('✅ Added new log from locked app: $imagePath');
+          }
+        }
+        
+        // Sort by timestamp (newest first)
+        mergedLogs.sort((a, b) {
+          try {
+            final timeA = DateTime.parse(a['timestamp']?.toString() ?? '');
+            final timeB = DateTime.parse(b['timestamp']?.toString() ?? '');
+            return timeB.compareTo(timeA);
+          } catch (_) {
+            return 0;
+          }
+        });
+        
+        // Update Hive with merged logs
+        if (mergedLogs.isNotEmpty) {
+          await securityBox.put('intruderLogs', mergedLogs);
+          debugPrint('🚨 Merged intruder logs: ${mergedLogs.length} total (${nativeLogsRaw.length} from locked app, ${existingLogs.length} main app)');
         }
         
         if (mounted) {
@@ -148,8 +178,18 @@ class _IntruderLogsScreenState extends State<IntruderLogsScreen> {
                 }
 
                 final timeStr = time != null
-                    ? '${time.day}/${time.month}/${time.year}, ${time.hour}:${time.minute.toString().padLeft(2, '0')}:${time.second.toString().padLeft(2, '0')} ${time.hour >= 12 ? 'pm' : 'am'}'
-                    : 'Time unavailable';
+                   ? () {
+                         final t = time!; // 🔥 FIX (force non-null)
+                         final hour12 = t.hour > 12
+                         ? t.hour - 12
+                         : (t.hour == 0 ? 12 : t.hour);
+                         final period = t.hour >= 12 ? 'pm' : 'am';
+                         return '${t.day}/${t.month}/${t.year}, '
+                         '${hour12.toString().padLeft(2, '0')}:'
+                         '${t.minute.toString().padLeft(2, '0')}:'
+                         '${t.second.toString().padLeft(2, '0')} $period';
+                        }()
+                : 'Time unavailable';
 
                 return GestureDetector(
                   onTap: () => _showFullImage(context, imagePath, reason, pin, timeStr),

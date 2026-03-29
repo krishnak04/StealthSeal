@@ -28,6 +28,9 @@ import com.example.stealthseal.BiometricService
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.FusedLocationProviderClient
 import android.location.Location
+import android.hardware.camera2.CaptureRequest
+import android.Manifest
+import android.content.pm.PackageManager
 
 /**
  * Standalone native PIN entry activity that appears on TOP of the locked app.
@@ -115,6 +118,16 @@ class AppLockActivity : FragmentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+         // 🔥 ADD THIS EXACTLY HERE (Camera Permission)
+    if (checkSelfPermission(android.Manifest.permission.CAMERA)
+        != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+
+        requestPermissions(
+            arrayOf(android.Manifest.permission.CAMERA),
+            101
+        )
+    }
 
         // Fullscreen, show over lock screen AND prevent bypass via recents/home
         window.addFlags(
@@ -970,8 +983,8 @@ class AppLockActivity : FragmentActivity() {
             errorText.visibility = View.VISIBLE
             if (failedAttempts >= 3) {
                 errorText.text = "Multiple failed attempts detected"
-                // Capture intruder selfie on 3+ failed attempts
-                captureIntruderSelfie()
+                // Capture intruder selfie on 3+ failed attempts with the entered PIN
+                captureIntruderSelfie(enteredPin)
                 // Reset counter but keep showing warning  
                 failedAttempts = 0
             } else {
@@ -1127,125 +1140,189 @@ class AppLockActivity : FragmentActivity() {
         }
     }
 
-    private fun captureIntruderSelfie() {
+    private fun captureIntruderSelfie(enteredPin: String = "***") {
         try {
             // Run on background thread to avoid blocking UI
-            Thread {
-                try {
-                    val cameraManager = getSystemService(Context.CAMERA_SERVICE) as android.hardware.camera2.CameraManager
-                    val cameraIds = cameraManager.cameraIdList
-                    
-                    // Find front-facing camera
-                    var frontCameraId: String? = null
-                    for (cameraId in cameraIds) {
-                        val characteristics = cameraManager.getCameraCharacteristics(cameraId)
-                        val facing = characteristics.get(android.hardware.camera2.CameraCharacteristics.LENS_FACING)
-                        if (facing == android.hardware.camera2.CameraCharacteristics.LENS_FACING_FRONT) {
-                            frontCameraId = cameraId
-                            break
-                        }
-                    }
-                    
-                    if (frontCameraId != null) {
-                        // Use getFilesDir() instead of cacheDir for persistent storage
-                        val intruderDir = java.io.File(filesDir, "intruder_logs")
-                        if (!intruderDir.exists()) {
-                            intruderDir.mkdirs()
-                        }
-                        
-                        val imageFileName = "intruder_${System.currentTimeMillis()}.jpg"
-                        val imageFile = java.io.File(intruderDir, imageFileName)
-                        val imagePath = imageFile.absolutePath
-                        
-                        Log.d(TAG, "🚨 Attempting to capture intruder selfie: $imagePath")
-                        
-                        // Create placeholder image with status
-                        val bitmap = android.graphics.Bitmap.createBitmap(320, 240, android.graphics.Bitmap.Config.ARGB_8888)
-                        val canvas = android.graphics.Canvas(bitmap)
-                        canvas.drawColor(android.graphics.Color.BLACK)
-                        val paint = android.graphics.Paint().apply {
-                            color = android.graphics.Color.WHITE
-                            textSize = 16f
-                        }
-                        val timeStr = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US).format(java.util.Date())
-                        canvas.drawText("⚠️ Intruder Detected", 10f, 80f, paint)
-                        canvas.drawText("Unauthorized Access", 10f, 110f, paint)
-                        canvas.drawText("Time: $timeStr", 10f, 150f, paint)
-                        canvas.drawText("App: $lockedPackage", 10f, 180f, paint)
-                        
-                        // Save bitmap to file with error handling
-                        try {
-                            imageFile.outputStream().use { output ->
-                                bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 90, output)
+           Handler(Looper.getMainLooper()).post {
+
+    try {
+        val cameraManager = getSystemService(Context.CAMERA_SERVICE) as android.hardware.camera2.CameraManager
+        val cameraIds = cameraManager.cameraIdList
+
+        var frontCameraId: String? = null
+        for (cameraId in cameraIds) {
+            val characteristics = cameraManager.getCameraCharacteristics(cameraId)
+            val facing = characteristics.get(android.hardware.camera2.CameraCharacteristics.LENS_FACING)
+            if (facing == android.hardware.camera2.CameraCharacteristics.LENS_FACING_FRONT) {
+                frontCameraId = cameraId
+                break
+            }
+        }
+
+        if (frontCameraId != null) {
+
+            val intruderDir = java.io.File(filesDir, "intruder_logs")
+            if (!intruderDir.exists()) {
+                intruderDir.mkdirs()
+            }
+
+            val imageFileName = "intruder_${System.currentTimeMillis()}.jpg"
+            val imageFile = java.io.File(intruderDir, imageFileName)
+            val imagePath = imageFile.absolutePath
+
+            Log.d(TAG, "🚨 Attempting to capture intruder selfie: $imagePath")
+
+            val captureComplete = java.util.concurrent.CountDownLatch(1)
+            var imageCaptured = false
+
+            val cameraStateCallback = object : android.hardware.camera2.CameraDevice.StateCallback() {
+
+                override fun onOpened(camera: android.hardware.camera2.CameraDevice) {
+
+                    try {
+                        val characteristics = cameraManager.getCameraCharacteristics(frontCameraId)
+                        val streamConfigMap = characteristics.get(
+                            android.hardware.camera2.CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP
+                        )
+
+                        val size = streamConfigMap!!.getOutputSizes(android.graphics.ImageFormat.JPEG)[0]
+
+                        val imageReader = android.media.ImageReader.newInstance(
+                            size.width,
+                            size.height,
+                            android.graphics.ImageFormat.JPEG,
+                            2
+                        )
+
+                        imageReader.setOnImageAvailableListener({ reader ->
+                            val image = reader.acquireLatestImage()
+                            if (image != null) {
+
+                                val buffer = image.planes[0].buffer
+                                val bytes = ByteArray(buffer.remaining())
+                                buffer.get(bytes)
+
+                                imageFile.writeBytes(bytes)
+
+                                Log.d(TAG, "✅ Image saved: ${imageFile.length()} bytes")
+
+                                imageCaptured = true
+                                image.close()
                             }
-                            Log.d(TAG, "✅ Intruder image saved successfully: $imagePath")
-                            
-                            // Verify file exists before logging
-                            if (imageFile.exists()) {
-                                Log.d(TAG, "✅ Image file verified to exist")
-                            } else {
-                                Log.e(TAG, "❌ Image file does not exist after save")
-                            }
-                        } catch (ex: Exception) {
-                            Log.e(TAG, "❌ Error saving image file: ${ex.message}")
-                        } finally {
-                            bitmap.recycle()
-                        }
-                        
-                        // Store the intruder log in SharedPreferences
-                        val prefs = getSharedPreferences("stealthseal_prefs", Context.MODE_PRIVATE)
-                        val existingLogs = prefs.getString("intruderLogs", "") ?: ""
-                        val logEntry = "$imagePath|${System.currentTimeMillis()}|Failed PIN attempt on $lockedPackage\n"
-                        prefs.edit().putString("intruderLogs", existingLogs + logEntry).apply()
-                        
-                        Log.d(TAG, "🚨 Intruder log recorded: Failed PIN attempt on $lockedPackage")
-                        Log.d(TAG, "   Image path: $imagePath")
-                        Log.d(TAG, "   File exists: ${imageFile.exists()}")
-                        Log.d(TAG, "   File size: ${imageFile.length()} bytes")
-                    } else {
-                        Log.w(TAG, "🚨 No front-facing camera found - still logging attempt")
-                        // Still log the attempt even without camera
-                        val intruderDir = java.io.File(filesDir, "intruder_logs")
-                        if (!intruderDir.exists()) {
-                            intruderDir.mkdirs()
-                        }
-                        val imageFileName = "intruder_${System.currentTimeMillis()}.jpg"
-                        val imageFile = java.io.File(intruderDir, imageFileName)
-                        val imagePath = imageFile.absolutePath
-                        
-                        // Create placeholder anyway
-                        val bitmap = android.graphics.Bitmap.createBitmap(320, 240, android.graphics.Bitmap.Config.ARGB_8888)
-                        val canvas = android.graphics.Canvas(bitmap)
-                        canvas.drawColor(android.graphics.Color.BLACK)
-                        val paint = android.graphics.Paint().apply {
-                            color = android.graphics.Color.WHITE
-                            textSize = 16f
-                        }
-                        canvas.drawText("⚠️ Intruder Detected", 10f, 80f, paint)
-                        canvas.drawText("(Camera N/A)", 10f, 110f, paint)
-                        canvas.drawText("App: $lockedPackage", 10f, 150f, paint)
-                        
-                        imageFile.outputStream().use { output ->
-                            bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 90, output)
-                        }
-                        bitmap.recycle()
-                        
-                        val prefs = getSharedPreferences("stealthseal_prefs", Context.MODE_PRIVATE)
-                        val existingLogs = prefs.getString("intruderLogs", "") ?: ""
-                        val logEntry = "$imagePath|${System.currentTimeMillis()}|Failed PIN attempt on $lockedPackage\n"
-                        prefs.edit().putString("intruderLogs", existingLogs + logEntry).apply()
-                        
-                        Log.d(TAG, "🚨 Intruder log recorded (no camera): Failed PIN attempt on $lockedPackage")
+
+                            reader.close()
+                            camera.close()
+                            captureComplete.countDown()
+
+                        }, Handler(Looper.getMainLooper()))
+
+                        val captureRequestBuilder = camera.createCaptureRequest(
+                            android.hardware.camera2.CameraDevice.TEMPLATE_STILL_CAPTURE
+                        )
+
+                        captureRequestBuilder.addTarget(imageReader.surface)
+                        captureRequestBuilder.set(
+                            android.hardware.camera2.CaptureRequest.CONTROL_AE_MODE,
+                            android.hardware.camera2.CaptureRequest.CONTROL_AE_MODE_ON
+                        )
+
+                        camera.createCaptureSession(
+                            listOf(imageReader.surface),
+                            object : android.hardware.camera2.CameraCaptureSession.StateCallback() {
+
+                                override fun onConfigured(session: android.hardware.camera2.CameraCaptureSession) {
+
+                                    Handler(Looper.getMainLooper()).postDelayed({
+
+                                        session.capture(
+                                            captureRequestBuilder.build(),
+                                            object : android.hardware.camera2.CameraCaptureSession.CaptureCallback() {},
+                                            null
+                                        )
+
+                                    }, 300)
+                                }
+
+                                override fun onConfigureFailed(session: android.hardware.camera2.CameraCaptureSession) {
+                                    camera.close()
+                                    captureComplete.countDown()
+                                }
+                            },
+                            null
+                        )
+
+                    } catch (e: Exception) {
+                        camera.close()
+                        captureComplete.countDown()
                     }
-                } catch (e: Exception) {
-                    Log.e(TAG, "🚨 Error capturing intruder selfie: ${e.message}")
-                    e.printStackTrace()
-                    // Fail silently to not break lock screen UX
                 }
-            }.start()
+
+                override fun onDisconnected(camera: android.hardware.camera2.CameraDevice) {
+                    camera.close()
+                    captureComplete.countDown()
+                }
+
+                override fun onError(camera: android.hardware.camera2.CameraDevice, error: Int) {
+                    camera.close()
+                    captureComplete.countDown()
+                }
+            }
+
+            try {
+                cameraManager.openCamera(frontCameraId, cameraStateCallback, Handler(Looper.getMainLooper()))
+
+                captureComplete.await(5, java.util.concurrent.TimeUnit.SECONDS)
+
+                if (!imageCaptured) {
+                    createPlaceholderImage(imagePath, enteredPin)
+                }
+
+            } catch (e: Exception) {
+                createPlaceholderImage(imagePath, enteredPin)
+            }
+
+        }
+
+    } catch (e: Exception) {
+        Log.e(TAG, "Error: ${e.message}")
+    }
+}
         } catch (e: Exception) {
             Log.e(TAG, "🚨 Exception in captureIntruderSelfie: ${e.message}")
-            // Fail silently
+        }
+    }
+    
+    private fun createPlaceholderImage(imagePath: String, enteredPin: String) {
+        val imageFile = java.io.File(imagePath)
+        try {
+            val bitmap = android.graphics.Bitmap.createBitmap(320, 240, android.graphics.Bitmap.Config.ARGB_8888)
+            val canvas = android.graphics.Canvas(bitmap)
+            canvas.drawColor(android.graphics.Color.BLACK)
+            val paint = android.graphics.Paint().apply {
+                color = android.graphics.Color.WHITE
+                textSize = 16f
+            }
+            val timeStr = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US).format(java.util.Date())
+            canvas.drawText("⚠️ Intruder Detected", 10f, 80f, paint)
+            canvas.drawText("Unauthorized Access", 10f, 110f, paint)
+            canvas.drawText("PIN: $enteredPin", 10f, 130f, paint)
+            canvas.drawText("Time: $timeStr", 10f, 160f, paint)
+            canvas.drawText("App: $lockedPackage", 10f, 190f, paint)
+            
+            imageFile.outputStream().use { output ->
+                bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 90, output)
+            }
+            bitmap.recycle()
+            
+            Log.d(TAG, "✅ Placeholder image created: $imagePath")
+            
+            // Store the intruder log in SharedPreferences with PIN included
+            val prefs = getSharedPreferences("stealthseal_prefs", Context.MODE_PRIVATE)
+            val existingLogs = prefs.getString("intruderLogs", "") ?: ""
+            val logEntry = "$imagePath|${System.currentTimeMillis()}|Failed PIN attempt on $lockedPackage|$enteredPin\n"
+            prefs.edit().putString("intruderLogs", existingLogs + logEntry).apply()
+        } catch (ex: Exception) {
+            Log.e(TAG, "❌ Error creating placeholder: ${ex.message}")
         }
     }
 
