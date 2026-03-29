@@ -26,12 +26,73 @@ class _IntruderLogsScreenState extends State<IntruderLogsScreen> {
       if (result is List) {
         final securityBox = Hive.box('securityBox');
         final List newLogs = result.map((log) => Map<String, dynamic>.from(log as Map)).toList();
-        await securityBox.put('intruderLogs', newLogs);
-        debugPrint('🚨 Synced ${newLogs.length} intruder logs from native');
-        setState(() {});
+        
+        // Only update if there are new logs or if Hive is empty
+        final currentLogs = securityBox.get('intruderLogs', defaultValue: []) as List;
+        if (newLogs.isNotEmpty || currentLogs.isEmpty) {
+          await securityBox.put('intruderLogs', newLogs);
+          debugPrint('🚨 Synced ${newLogs.length} intruder logs from native');
+        }
+        
+        if (mounted) {
+          setState(() {});
+        }
       }
     } catch (e) {
       debugPrint('Warning: Failed to sync intruder logs from native: $e');
+    }
+  }
+
+  Future<void> _removeLogFromNative(String imagePath, String timestamp) async {
+    try {
+      // Call native method to remove the log entry from SharedPreferences
+      await platform.invokeMethod('removeIntruderLog', {
+        'imagePath': imagePath,
+        'timestamp': timestamp,
+      });
+      debugPrint('✅ Removed log from native: $imagePath');
+    } catch (e) {
+      debugPrint('Warning: Failed to remove from native logs: $e');
+    }
+  }
+
+  Widget _buildImageWidget(String imagePath, BuildContext context) {
+    try {
+      final file = File(imagePath);
+      if (file.existsSync()) {
+        return Image.file(
+          file,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) {
+            debugPrint('❌ Error loading image: $error');
+            return Center(
+              child: Icon(
+                Icons.broken_image,
+                color: ThemeConfig.textSecondary(context),
+                size: 32,
+              ),
+            );
+          },
+        );
+      } else {
+        debugPrint('⚠️ Image file not found: $imagePath');
+        return Center(
+          child: Icon(
+            Icons.image_not_supported,
+            color: ThemeConfig.textSecondary(context),
+            size: 32,
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('❌ Error building image widget: $e');
+      return Center(
+        child: Icon(
+          Icons.error,
+          color: ThemeConfig.textSecondary(context),
+          size: 32,
+        ),
+      );
     }
   }
 
@@ -75,7 +136,17 @@ class _IntruderLogsScreenState extends State<IntruderLogsScreen> {
                   time = null;
                 }
 
-                final bool imageExists = imagePath != null && File(imagePath).existsSync();
+                // Improved image validation
+                bool imageExists = false;
+                if (imagePath != null && imagePath.isNotEmpty) {
+                  final file = File(imagePath);
+                  imageExists = file.existsSync();
+                  
+                  if (!imageExists) {
+                    debugPrint('⚠️ Image file not found: $imagePath');
+                  }
+                }
+
                 final timeStr = time != null
                     ? '${time.day}/${time.month}/${time.year}, ${time.hour}:${time.minute.toString().padLeft(2, '0')}:${time.second.toString().padLeft(2, '0')} ${time.hour >= 12 ? 'pm' : 'am'}'
                     : 'Time unavailable';
@@ -99,16 +170,26 @@ class _IntruderLogsScreenState extends State<IntruderLogsScreen> {
                             width: 80,
                             height: 80,
                             color: ThemeConfig.inputBackground(context),
-                            child: imageExists
-                                ? Image.file(
-                                    File(imagePath),
-                                    fit: BoxFit.cover,
-                                  )
+                            child: imageExists && imagePath != null
+                                ? _buildImageWidget(imagePath, context)
                                 : Center(
-                                    child: Icon(
-                                      Icons.person_off,
-                                      color: ThemeConfig.textSecondary(context),
-                                      size: 32,
+                                    child: Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          Icons.image_not_supported,
+                                          color: ThemeConfig.textSecondary(context),
+                                          size: 28,
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          'No Image',
+                                          style: TextStyle(
+                                            color: ThemeConfig.textSecondary(context),
+                                            fontSize: 9,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
                           ),
@@ -190,34 +271,72 @@ class _IntruderLogsScreenState extends State<IntruderLogsScreen> {
     String pin,
     String timeStr,
   ) {
+    final bool imageExists = imagePath != null && imagePath.isNotEmpty && File(imagePath).existsSync();
+    
     showDialog(
       context: context,
       builder: (_) => Dialog(
         backgroundColor: ThemeConfig.cardColor(context),
         child: Padding(
           padding: const EdgeInsets.all(12),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (imagePath != null && File(imagePath).existsSync())
-                Image.file(File(imagePath)),
-              const SizedBox(height: 10),
-              Text(
-                reason,
-                style: TextStyle(color: ThemeConfig.errorColor(context), fontSize: 12),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                'PIN: $pin',
-                style: TextStyle(color: ThemeConfig.textSecondary(context), fontSize: 12),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                'Time: $timeStr',
-                style: TextStyle(color: ThemeConfig.textSecondary(context), fontSize: 12),
-              ),
-            ],
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (imageExists && imagePath != null)
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      color: ThemeConfig.inputBackground(context),
+                    ),
+                    child: _buildImageWidget(imagePath, context),
+                  )
+                else
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    width: double.infinity,
+                    height: 200,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      color: ThemeConfig.inputBackground(context),
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.image_not_supported,
+                          size: 48,
+                          color: ThemeConfig.textSecondary(context),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Image not available',
+                          style: TextStyle(
+                            color: ThemeConfig.textSecondary(context),
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                Text(
+                  reason,
+                  style: TextStyle(color: ThemeConfig.errorColor(context), fontSize: 12, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'PIN: $pin',
+                  style: TextStyle(color: ThemeConfig.textSecondary(context), fontSize: 12),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Time: $timeStr',
+                  style: TextStyle(color: ThemeConfig.textSecondary(context), fontSize: 12),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -277,7 +396,7 @@ class _IntruderLogsScreenState extends State<IntruderLogsScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
 
-                      if (imageExists)
+                      if (imageExists && imagePath != null)
                         Container(
                           margin: const EdgeInsets.only(bottom: 16),
                           decoration: BoxDecoration(
@@ -296,11 +415,10 @@ class _IntruderLogsScreenState extends State<IntruderLogsScreen> {
                           ),
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(10),
-                            child: Image.file(
-                              File(imagePath),
+                            child: SizedBox(
                               width: double.infinity,
-                              height: 180,
-                              fit: BoxFit.cover,
+                              height: 150,
+                              child: _buildImageWidget(imagePath, ctx),
                             ),
                           ),
                         )
@@ -308,7 +426,7 @@ class _IntruderLogsScreenState extends State<IntruderLogsScreen> {
                         Container(
                           margin: const EdgeInsets.only(bottom: 16),
                           width: double.infinity,
-                          height: 180,
+                          height: 150,
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(12),
                             color: ThemeConfig.surfaceColor(ctx),
@@ -317,11 +435,24 @@ class _IntruderLogsScreenState extends State<IntruderLogsScreen> {
                               width: 2,
                             ),
                           ),
-                          child: const Center(
-                            child: Icon(
-                              Icons.image_not_supported,
-                              size: 60,
-                              color: Colors.white54,
+                          child: Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.image_not_supported,
+                                  size: 48,
+                                  color: ThemeConfig.textSecondary(ctx),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Image not available',
+                                  style: TextStyle(
+                                    color: ThemeConfig.textSecondary(ctx),
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ),
@@ -346,7 +477,7 @@ class _IntruderLogsScreenState extends State<IntruderLogsScreen> {
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: Text(
-                                    'Captured Intruder Image',
+                                    'Intruder Record Details',
                                     style: TextStyle(
                                       color: ThemeConfig.errorColor(ctx),
                                       fontWeight: FontWeight.bold,
@@ -377,7 +508,7 @@ class _IntruderLogsScreenState extends State<IntruderLogsScreen> {
 
                       const SizedBox(height: 12),
                       Text(
-                        'Are you sure you want to permanently delete this intruder record?',
+                        'This will permanently delete this intruder record and image. This action cannot be undone.',
                         style: TextStyle(
                           color: ThemeConfig.textSecondary(ctx),
                           fontSize: 12,
@@ -405,15 +536,27 @@ class _IntruderLogsScreenState extends State<IntruderLogsScreen> {
                         final securityBox = Hive.box('securityBox');
                         final List logs = securityBox.get('intruderLogs', defaultValue: []);
 
+                        // Delete image file if it exists
                         if (log['imagePath'] != null) {
                           final file = File(log['imagePath']);
                           if (file.existsSync()) {
-                            await file.delete();
+                            try {
+                              await file.delete();
+                              debugPrint('✅ Deleted intruder image: ${log['imagePath']}');
+                            } catch (e) {
+                              debugPrint('❌ Error deleting image file: $e');
+                            }
                           }
                         }
 
+                        // Remove from Hive
                         logs.remove(log);
                         await securityBox.put('intruderLogs', logs);
+
+                        // Remove from native SharedPreferences to prevent re-sync
+                        if (log['imagePath'] != null && log['timestamp'] != null) {
+                          await _removeLogFromNative(log['imagePath'], log['timestamp']);
+                        }
 
                         if (context.mounted) {
                           Navigator.pop(context);

@@ -105,6 +105,11 @@ class MainActivity : FlutterFragmentActivity() {
                     "getIntruderLogs" -> {
                         handleGetIntruderLogs(result)
                     }
+                    "removeIntruderLog" -> {
+                        val imagePath = call.argument<String>("imagePath") ?: ""
+                        val timestamp = call.argument<String>("timestamp") ?: ""
+                        handleRemoveIntruderLog(imagePath, timestamp, result)
+                    }
                     else -> result.notImplemented()
                 }
             }
@@ -278,6 +283,7 @@ class MainActivity : FlutterFragmentActivity() {
             val logsString = prefs.getString("intruderLogs", "") ?: ""
             
             val logs = mutableListOf<Map<String, Any>>()
+            val validLogEntries = mutableListOf<String>()
             
             if (logsString.isNotEmpty()) {
                 // Parse the logs from SharedPreferences format: "imagePath|timestamp|reason\n"
@@ -289,6 +295,14 @@ class MainActivity : FlutterFragmentActivity() {
                         val imagePath = parts[0]
                         val timestamp = parts.getOrNull(1)?.toLongOrNull() ?: System.currentTimeMillis()
                         val reason = parts.getOrNull(2) ?: "Failed Attempt"
+                        
+                        // Check if image file exists - only include valid logs
+                        val imageFile = java.io.File(imagePath)
+                        if (!imageFile.exists()) {
+                            Log.w("MainActivity", "⚠️ Skipping log with missing image: $imagePath")
+                            // Don't add to validLogEntries - effectively deletes it
+                            continue
+                        }
                         
                         // Convert timestamp to ISO format
                         val iso8601 = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", java.util.Locale.US).apply {
@@ -302,14 +316,82 @@ class MainActivity : FlutterFragmentActivity() {
                             "enteredPin" to "***"
                         )
                         logs.add(logMap)
+                        validLogEntries.add(entry)  // Keep this entry
                     }
+                }
+                
+                // If we found invalid entries, clean up SharedPreferences
+                if (validLogEntries.size < logEntries.size) {
+                    Log.d("MainActivity", "🧹 Cleaning up ${logEntries.size - validLogEntries.size} invalid log entries from SharedPreferences")
+                    val cleanedLogsString = if (validLogEntries.isNotEmpty()) {
+                        validLogEntries.joinToString("\n") + "\n"
+                    } else {
+                        ""
+                    }
+                    prefs.edit().putString("intruderLogs", cleanedLogsString).apply()
+                    Log.d("MainActivity", "✅ SharedPreferences cleaned up. Remaining logs: ${validLogEntries.size}")
                 }
             }
             
-            Log.d("MainActivity", "Returning ${logs.size} intruder logs")
+            Log.d("MainActivity", "Returning ${logs.size} valid intruder logs")
             result.success(logs)
         } catch (e: Exception) {
             Log.e("MainActivity", "Error getting intruder logs: ${e.message}")
+            result.error("ERROR", e.message, null)
+        }
+    }
+
+    private fun handleRemoveIntruderLog(imagePath: String, timestamp: String, result: MethodChannel.Result) {
+        try {
+            val prefs = getSharedPreferences("stealthseal_prefs", Context.MODE_PRIVATE)
+            val logsString = prefs.getString("intruderLogs", "") ?: ""
+            
+            if (logsString.isNotEmpty()) {
+                // Parse all log entries and filter out the one to remove
+                val logEntries = logsString.trim().split("\n").filter { it.isNotEmpty() }
+                
+                // Convert timestamp ISO format back to milliseconds for comparison
+                val timestampMillis = try {
+                    java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", java.util.Locale.US).apply {
+                        timeZone = java.util.TimeZone.getTimeZone("UTC")
+                    }.parse(timestamp)?.time ?: System.currentTimeMillis().toString().toLong()
+                } catch (e: Exception) {
+                    timestamp.toLongOrNull() ?: System.currentTimeMillis()
+                }
+                
+                Log.d("MainActivity", "Removing log: imagePath=$imagePath, timestamp=$timestamp (millis=$timestampMillis)")
+                
+                // Filter out the log entry that matches both imagePath and timestamp
+                val updatedEntries = logEntries.filter { entry ->
+                    val parts = entry.split("|")
+                    if (parts.size >= 2) {
+                        val entryPath = parts[0]
+                        val entryTimestamp = parts[1].toLongOrNull() ?: 0L
+                        !(entryPath == imagePath && (entryTimestamp.toString() == timestamp || java.util.Date(entryTimestamp).time.toString() == timestamp))
+                    } else {
+                        true
+                    }
+                }
+                
+                Log.d("MainActivity", "Filtered ${logEntries.size} entries to ${updatedEntries.size} entries")
+                
+                // Save updated logs back to SharedPreferences
+                val updatedLogsString = if (updatedEntries.isNotEmpty()) {
+                    updatedEntries.joinToString("\n") + "\n"
+                } else {
+                    ""
+                }
+                
+                prefs.edit().putString("intruderLogs", updatedLogsString).apply()
+                
+                Log.d("MainActivity", "✅ Intruder log removed successfully")
+                result.success(true)
+            } else {
+                Log.d("MainActivity", "Logs are already empty")
+                result.success(true)
+            }
+        } catch (e: Exception) {
+            Log.e("MainActivity", "Error removing intruder log: ${e.message}")
             result.error("ERROR", e.message, null)
         }
     }

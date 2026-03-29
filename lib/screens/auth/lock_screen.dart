@@ -115,6 +115,7 @@ class _LockScreenState extends State<LockScreen> {
     final minsRemaining = ((secondsRemaining % 3600) ~/ 60).toInt();
     final secsRemaining = (secondsRemaining % 60).toInt();
     
+    
     debugPrint('✨ Display time: ${hoursRemaining.toString().padLeft(2, '0')}:${minsRemaining.toString().padLeft(2, '0')}:${secsRemaining.toString().padLeft(2, '0')}');
     
     if (mounted) {

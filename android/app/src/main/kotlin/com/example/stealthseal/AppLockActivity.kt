@@ -309,65 +309,11 @@ class AppLockActivity : FragmentActivity() {
         errorText = findViewById(R.id.errorText)
         titleText = findViewById(R.id.titleText)
         
-        // Initialize time lock display views
-        timeLockActiveText = TextView(this).apply {
-            text = "⏰ TIME LOCK ACTIVE"
-            textSize = 20f
-            setTextColor(android.graphics.Color.parseColor("#FFA500"))
-            typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD)
-            gravity = android.view.Gravity.CENTER
-            setPadding(20, 20, 20, 20)
-            visibility = View.GONE
-        }
+        // Initialize time lock display views from XML layout
+        timeLockActiveText = findViewById(R.id.timeLockActiveText)
+        timeLockCountdownText = findViewById(R.id.timeLockCountdownText)
         
-        timeLockCountdownText = TextView(this).apply {
-            text = "⏰ Unlock Time Remaining\n00:00:00"
-            textSize = 32f
-            setTextColor(android.graphics.Color.parseColor("#C41C3B"))
-            typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD)
-            gravity = android.view.Gravity.CENTER
-            setPadding(40, 40, 40, 40)
-            visibility = View.GONE
-        }
-        
-        // Add views to the root layout container
-        try {
-            val rootView = window.decorView as android.view.ViewGroup
-            if (rootView != null) {
-                rootView.addView(timeLockActiveText, FrameLayout.LayoutParams(
-                    FrameLayout.LayoutParams.MATCH_PARENT,
-                    android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
-                    android.view.Gravity.TOP
-                ))
-                
-                rootView.addView(timeLockCountdownText, FrameLayout.LayoutParams(
-                    (380 * resources.displayMetrics.density).toInt(),
-                    android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
-                    android.view.Gravity.CENTER
-                ))
-                
-                // Bring time lock views to front
-                rootView.bringChildToFront(timeLockActiveText)
-                rootView.bringChildToFront(timeLockCountdownText)
-                
-                Log.d(TAG, "✅ Time lock views added to root ViewGroup successfully")
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "❌ Error adding time lock views to root: ${e.message}")
-            e.printStackTrace()
-            
-            // Fallback: try adding to a dialog or as a system overlay
-            try {
-                val contentView = findViewById<View>(android.R.id.content)
-                if (contentView is android.view.ViewGroup) {
-                    contentView.addView(timeLockActiveText)
-                    contentView.addView(timeLockCountdownText)
-                    Log.d(TAG, "✅ Time lock views added via fallback method")
-                }
-            } catch (e2: Exception) {
-                Log.e(TAG, "❌ Fallback method also failed: ${e2.message}")
-            }
-        }
+        Log.d(TAG, "✅ Time lock views initialized from XML layout")
         
         // Add dots to list in order
         dots.addAll(listOf(dot1, dot2, dot3, dot4, dot5, dot6))
@@ -383,11 +329,13 @@ class AppLockActivity : FragmentActivity() {
         patternView.isFocusable = true
         patternView.isClickable = true
 
-        // Set up biometric icon
+        // Set up biometric icon - lockIcon is inside fingerprintIconContainer
         val lockIcon = findViewById<ImageView>(R.id.lockIcon)
-        lockIcon.setColorFilter(Color.WHITE)
-        // Change icon to biometric
-        lockIcon.setImageResource(android.R.drawable.ic_dialog_info)
+        if (lockIcon != null) {
+            lockIcon.setColorFilter(Color.WHITE)
+            // Change icon to biometric
+            lockIcon.setImageResource(android.R.drawable.ic_dialog_info)
+        }
 
         // Set up pattern view callbacks
         patternView.onPatternCompleted = { pattern ->
@@ -786,10 +734,13 @@ class AppLockActivity : FragmentActivity() {
             // Show time lock UI immediately
             timeLockActiveText?.visibility = View.VISIBLE
             timeLockCountdownText?.visibility = View.VISIBLE
+            val timeLockCountdownContainer = findViewById<View>(R.id.timeLockCountdownContainer)
+            timeLockCountdownContainer?.visibility = View.VISIBLE
             
             // Request layout refresh to ensure views appear
             timeLockActiveText?.requestLayout()
             timeLockCountdownText?.requestLayout()
+            timeLockCountdownContainer?.requestLayout()
             
             // Get current time with seconds precision
             val calendar = java.util.Calendar.getInstance()
@@ -822,6 +773,7 @@ class AppLockActivity : FragmentActivity() {
                         // Lock is over for today
                         timeLockActiveText?.visibility = View.GONE
                         timeLockCountdownText?.visibility = View.GONE
+                        timeLockCountdownContainer?.visibility = View.GONE
                         isCountdownRunning = false
                         isStartingCountdown = false
                         showUnlockMethodUI()
@@ -843,6 +795,7 @@ class AppLockActivity : FragmentActivity() {
                         // Between end and start (e.g., between 6 AM and 10 PM)
                         timeLockActiveText?.visibility = View.GONE
                         timeLockCountdownText?.visibility = View.GONE
+                        timeLockCountdownContainer?.visibility = View.GONE
                         isCountdownRunning = false
                         isStartingCountdown = false
                         showUnlockMethodUI()
@@ -855,6 +808,7 @@ class AppLockActivity : FragmentActivity() {
             if (remainingMinutes < 0) {
                 timeLockActiveText?.visibility = View.GONE
                 timeLockCountdownText?.visibility = View.GONE
+                timeLockCountdownContainer?.visibility = View.GONE
                 isCountdownRunning = false
                 isStartingCountdown = false
                 showUnlockMethodUI()
@@ -863,9 +817,9 @@ class AppLockActivity : FragmentActivity() {
             
             val totalRemainingMillis = (remainingMinutes * 60 + remainingSeconds) * 1000L
             
-            // Update display immediately with initial time
-            timeLockCountdownText?.text = "⏰ Unlock Time Remaining\n${String.format("%02d:%02d:%02d", 
-                remainingMinutes / 60, remainingMinutes % 60, remainingSeconds)}"
+            // Update display immediately with initial time (format: HH:MM:SS)
+            timeLockCountdownText?.text = String.format("%02d:%02d:%02d", 
+                remainingMinutes / 60, remainingMinutes % 60, remainingSeconds)
             
             // Start countdown timer (now only one can run at a time)
             isCountdownRunning = true
@@ -877,7 +831,7 @@ class AppLockActivity : FragmentActivity() {
                         val seconds = (millisUntilFinished / 1000) % 60
                         
                         val timeStr = String.format("%02d:%02d:%02d", hours, minutes, seconds)
-                        timeLockCountdownText?.text = "⏰ Unlock Time Remaining\n$timeStr"
+                        timeLockCountdownText?.text = timeStr
                     } catch (e: Exception) {
                         Log.e(TAG, "Error updating countdown: ${e.message}")
                     }
@@ -888,6 +842,8 @@ class AppLockActivity : FragmentActivity() {
                         isCountdownRunning = false
                         timeLockActiveText?.visibility = View.GONE
                         timeLockCountdownText?.visibility = View.GONE
+                        val timeLockCountdownContainer = findViewById<View>(R.id.timeLockCountdownContainer)
+                        timeLockCountdownContainer?.visibility = View.GONE
                         
                         // Verify lock is actually over before unlocking
                         if (!isTimeLockActive()) {
@@ -919,6 +875,8 @@ class AppLockActivity : FragmentActivity() {
         isStartingCountdown = false
         timeLockActiveText?.visibility = View.GONE
         timeLockCountdownText?.visibility = View.GONE
+        val timeLockCountdownContainer = findViewById<View>(R.id.timeLockCountdownContainer)
+        timeLockCountdownContainer?.visibility = View.GONE
     }
 
     private fun validatePin() {
@@ -1189,31 +1147,50 @@ class AppLockActivity : FragmentActivity() {
                     }
                     
                     if (frontCameraId != null) {
-                        val cacheDir = cacheDir
+                        // Use getFilesDir() instead of cacheDir for persistent storage
+                        val intruderDir = java.io.File(filesDir, "intruder_logs")
+                        if (!intruderDir.exists()) {
+                            intruderDir.mkdirs()
+                        }
+                        
                         val imageFileName = "intruder_${System.currentTimeMillis()}.jpg"
-                        val imageFile = java.io.File(cacheDir, imageFileName)
+                        val imageFile = java.io.File(intruderDir, imageFileName)
                         val imagePath = imageFile.absolutePath
                         
                         Log.d(TAG, "🚨 Attempting to capture intruder selfie: $imagePath")
                         
-                        // Create blank placeholder image first (when camera capture fails, at least we have a log)
+                        // Create placeholder image with status
                         val bitmap = android.graphics.Bitmap.createBitmap(320, 240, android.graphics.Bitmap.Config.ARGB_8888)
                         val canvas = android.graphics.Canvas(bitmap)
                         canvas.drawColor(android.graphics.Color.BLACK)
                         val paint = android.graphics.Paint().apply {
                             color = android.graphics.Color.WHITE
-                            textSize = 20f
+                            textSize = 16f
                         }
-                        canvas.drawText("Intruder Attempt", 10f, 120f, paint)
-                        canvas.drawText(java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US).format(java.util.Date()), 10f, 150f, paint)
+                        val timeStr = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US).format(java.util.Date())
+                        canvas.drawText("⚠️ Intruder Detected", 10f, 80f, paint)
+                        canvas.drawText("Unauthorized Access", 10f, 110f, paint)
+                        canvas.drawText("Time: $timeStr", 10f, 150f, paint)
+                        canvas.drawText("App: $lockedPackage", 10f, 180f, paint)
                         
-                        // Save bitmap to file
-                        imageFile.outputStream().use { output ->
-                            bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 90, output)
+                        // Save bitmap to file with error handling
+                        try {
+                            imageFile.outputStream().use { output ->
+                                bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 90, output)
+                            }
+                            Log.d(TAG, "✅ Intruder image saved successfully: $imagePath")
+                            
+                            // Verify file exists before logging
+                            if (imageFile.exists()) {
+                                Log.d(TAG, "✅ Image file verified to exist")
+                            } else {
+                                Log.e(TAG, "❌ Image file does not exist after save")
+                            }
+                        } catch (ex: Exception) {
+                            Log.e(TAG, "❌ Error saving image file: ${ex.message}")
+                        } finally {
+                            bitmap.recycle()
                         }
-                        bitmap.recycle()
-                        
-                        Log.d(TAG, "🚨 Intruder image saved: $imagePath")
                         
                         // Store the intruder log in SharedPreferences
                         val prefs = getSharedPreferences("stealthseal_prefs", Context.MODE_PRIVATE)
@@ -1221,9 +1198,44 @@ class AppLockActivity : FragmentActivity() {
                         val logEntry = "$imagePath|${System.currentTimeMillis()}|Failed PIN attempt on $lockedPackage\n"
                         prefs.edit().putString("intruderLogs", existingLogs + logEntry).apply()
                         
-                        Log.d(TAG, "🚨 Intruder log recorded: Failed PIN attempt on $lockedPackage at $imagePath")
+                        Log.d(TAG, "🚨 Intruder log recorded: Failed PIN attempt on $lockedPackage")
+                        Log.d(TAG, "   Image path: $imagePath")
+                        Log.d(TAG, "   File exists: ${imageFile.exists()}")
+                        Log.d(TAG, "   File size: ${imageFile.length()} bytes")
                     } else {
-                        Log.w(TAG, "🚨 No front-facing camera found")
+                        Log.w(TAG, "🚨 No front-facing camera found - still logging attempt")
+                        // Still log the attempt even without camera
+                        val intruderDir = java.io.File(filesDir, "intruder_logs")
+                        if (!intruderDir.exists()) {
+                            intruderDir.mkdirs()
+                        }
+                        val imageFileName = "intruder_${System.currentTimeMillis()}.jpg"
+                        val imageFile = java.io.File(intruderDir, imageFileName)
+                        val imagePath = imageFile.absolutePath
+                        
+                        // Create placeholder anyway
+                        val bitmap = android.graphics.Bitmap.createBitmap(320, 240, android.graphics.Bitmap.Config.ARGB_8888)
+                        val canvas = android.graphics.Canvas(bitmap)
+                        canvas.drawColor(android.graphics.Color.BLACK)
+                        val paint = android.graphics.Paint().apply {
+                            color = android.graphics.Color.WHITE
+                            textSize = 16f
+                        }
+                        canvas.drawText("⚠️ Intruder Detected", 10f, 80f, paint)
+                        canvas.drawText("(Camera N/A)", 10f, 110f, paint)
+                        canvas.drawText("App: $lockedPackage", 10f, 150f, paint)
+                        
+                        imageFile.outputStream().use { output ->
+                            bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 90, output)
+                        }
+                        bitmap.recycle()
+                        
+                        val prefs = getSharedPreferences("stealthseal_prefs", Context.MODE_PRIVATE)
+                        val existingLogs = prefs.getString("intruderLogs", "") ?: ""
+                        val logEntry = "$imagePath|${System.currentTimeMillis()}|Failed PIN attempt on $lockedPackage\n"
+                        prefs.edit().putString("intruderLogs", existingLogs + logEntry).apply()
+                        
+                        Log.d(TAG, "🚨 Intruder log recorded (no camera): Failed PIN attempt on $lockedPackage")
                     }
                 } catch (e: Exception) {
                     Log.e(TAG, "🚨 Error capturing intruder selfie: ${e.message}")

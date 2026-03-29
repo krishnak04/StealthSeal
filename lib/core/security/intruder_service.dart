@@ -26,14 +26,23 @@ class IntruderService {
 
       await cameraController.initialize();
 
-      final directory = await getApplicationDocumentsDirectory();
-      final imagePath =
-          '${directory.path}/intruder_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      // Use a persistent directory (same as native implementation)
+      final appDocDir = await getApplicationDocumentsDirectory();
+      final intruderDir = Directory('${appDocDir.path}/intruder_logs');
+      if (!await intruderDir.exists()) {
+        await intruderDir.create(recursive: true);
+      }
+      
+      final imagePath = '${intruderDir.path}/intruder_${DateTime.now().millisecondsSinceEpoch}.jpg';
 
       final XFile picture = await cameraController.takePicture();
       await File(picture.path).copy(imagePath);
 
       await cameraController.dispose();
+
+      debugPrint('✅ Intruder image captured: $imagePath');
+      debugPrint('✅ Image file exists: ${await File(imagePath).exists()}');
+      debugPrint('✅ Image file size: ${await File(imagePath).length()} bytes');
 
       final securityBox = Hive.box('securityBox');
       final List intruderLogs =
@@ -47,9 +56,10 @@ class IntruderService {
       });
 
       await securityBox.put('intruderLogs', intruderLogs);
+      debugPrint('✅ Intruder log saved to Hive');
     } catch (error) {
 
-      debugPrint('IntruderService Error: $error');
+      debugPrint('❌ IntruderService Error: $error');
     }
   }
 }

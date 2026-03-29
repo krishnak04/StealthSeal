@@ -7,9 +7,26 @@
     android:background="#F0F0F0"
     android:padding="24dp">
 
-    <!-- Lock Icon Circle -->
+    <!-- TIME LOCK ACTIVE Badge -->
+    <TextView
+        android:id="@+id/timeLockActiveText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="TIME LOCK ACTIVE"
+        android:textColor="#FFA500"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:background="@drawable/time_lock_label_background"
+        android:paddingHorizontal="20dp"
+        android:paddingVertical="10dp"
+        android:gravity="center"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginBottom="24dp"
+        android:visibility="gone" />
+
+    <!-- Biometric Icon Circle -->
     <FrameLayout
-        android:id="@+id/lockIconContainer"
+        android:id="@+id/fingerprintIconContainer"
         android:layout_width="100dp"
         android:layout_height="100dp"
         android:background="@drawable/blue_circle_background"
@@ -107,16 +124,72 @@
             android:contentDescription="PIN dot 6" />
     </LinearLayout>
 
-    <!-- Error Message -->
+    <!-- Error Message Text -->
     <TextView
         android:id="@+id/errorText"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:textColor="#D32F2F"
         android:textSize="12sp"
-        android:layout_marginTop="12dp"
+        android:layout_marginTop="16dp"
         android:layout_gravity="center_horizontal"
+        android:gravity="center"
         android:visibility="gone" />
+
+    <!-- Unlock Time Remaining Box -->
+    <LinearLayout
+        android:id="@+id/timeLockCountdownContainer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:layout_marginTop="24dp"
+        android:layout_marginStart="32dp"
+        android:layout_marginEnd="32dp"
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp"
+        android:paddingTop="24dp"
+        android:paddingBottom="24dp"
+        android:background="@drawable/time_lock_countdown_background"
+        android:visibility="gone">
+
+        <!-- Label Row (Horizontal) -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:layout_marginBottom="12dp">
+
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:src="@android:drawable/ic_dialog_info"
+                android:tint="#C4435F"
+                android:layout_marginEnd="8dp"
+                android:contentDescription="Time lock info" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Unlock Time Remaining"
+                android:textColor="#C4435F"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <!-- Countdown Display -->
+        <TextView
+            android:id="@+id/timeLockCountdownText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="00:00:00"
+            android:textColor="#C4435F"
+            android:textSize="48sp"
+            android:textStyle="bold"
+            android:fontFamily="monospace"
+            android:gravity="center" />
+    </LinearLayout>
 
     <!-- Pattern Lock Container -->
     <FrameLayout
