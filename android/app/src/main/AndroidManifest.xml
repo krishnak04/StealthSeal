@@ -83,6 +83,48 @@
 
         </activity>
 
+        <!-- SETTINGS -->
+<activity-alias
+    android:name=".AliasSettings"
+    android:enabled="false"
+    android:exported="true"
+    android:icon="@mipmap/ic_settings"
+    android:label="Settings"
+    android:targetActivity=".MainActivity">
+    <intent-filter>
+        <action android:name="android.intent.action.MAIN"/>
+        <category android:name="android.intent.category.LAUNCHER"/>
+    </intent-filter>
+</activity-alias>
+
+<!-- PLAY STORE -->
+<activity-alias
+    android:name=".AliasPlayStore"
+    android:enabled="false"
+    android:exported="true"
+    android:icon="@mipmap/ic_playstore"
+    android:label="Play Store"
+    android:targetActivity=".MainActivity">
+    <intent-filter>
+        <action android:name="android.intent.action.MAIN"/>
+        <category android:name="android.intent.category.LAUNCHER"/>
+    </intent-filter>
+</activity-alias>
+
+<!-- YOUTUBE -->
+<activity-alias
+    android:name=".AliasYouTube"
+    android:enabled="false"
+    android:exported="true"
+    android:icon="@mipmap/ic_youtube"
+    android:label="YouTube"
+    android:targetActivity=".MainActivity">
+    <intent-filter>
+        <action android:name="android.intent.action.MAIN"/>
+        <category android:name="android.intent.category.LAUNCHER"/>
+    </intent-filter>
+</activity-alias>
+
         <!-- Lock Screen Overlay Activity (legacy - kept for compatibility) -->
         <activity
             android:name=".LockScreenOverlayActivity"

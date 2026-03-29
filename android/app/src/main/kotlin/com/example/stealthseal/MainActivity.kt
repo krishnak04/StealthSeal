@@ -403,30 +403,48 @@ class MainActivity : FlutterFragmentActivity() {
         }
     }
 
-    private fun handleSetStealthDisguise(mode: String, packageName: String, result: MethodChannel.Result) {
-        try {
-            when (mode) {
-                "normal" -> {
-                    // Remove disguise preference
-                    val prefs = getSharedPreferences("stealthseal_prefs", Context.MODE_PRIVATE)
-                    prefs.edit().remove("disguisePackage").apply()
-                    
-                    Log.d("MainActivity", "✅ App set to NORMAL mode")
-                    result.success(true)
-                }
-                "disguise" -> {
-                    // Create a fake shortcut with selected app's icon and name
-                    createFakeAppShortcut(packageName, result)
-                }
-                else -> {
-                    result.error("INVALID_MODE", "Unknown stealth mode: $mode", null)
-                }
-            }
-        } catch (e: Exception) {
-            Log.e("MainActivity", "Error setting stealth disguise: ${e.message}")
-            result.error("ERROR", e.message, null)
+  private fun handleSetStealthDisguise(mode: String, result: MethodChannel.Result) {
+    try {
+        val pm = packageManager
+
+        val aliases = listOf(
+            "com.example.stealthseal.MainActivity",
+            "com.example.stealthseal.AliasSettings",
+            "com.example.stealthseal.AliasPlayStore",
+            "com.example.stealthseal.AliasYouTube"
+        )
+
+        // 🔴 Disable ALL first
+        for (alias in aliases) {
+            pm.setComponentEnabledSetting(
+                ComponentName(this, alias),
+                PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
+                PackageManager.DONT_KILL_APP
+            )
         }
+
+        // 🟢 Enable selected
+        val selected = when (mode) {
+            "settings" -> "com.example.stealthseal.AliasSettings"
+            "playstore" -> "com.example.stealthseal.AliasPlayStore"
+            "youtube" -> "com.example.stealthseal.AliasYouTube"
+            else -> "com.example.stealthseal.MainActivity"
+        }
+
+        pm.setComponentEnabledSetting(
+            ComponentName(this, selected),
+            PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
+            PackageManager.DONT_KILL_APP
+        )
+
+        Log.d("Stealth", "✅ Switched to $mode disguise")
+        result.success(true)
+
+    } catch (e: Exception) {
+        Log.e("Stealth", "❌ Error: ${e.message}")
+        result.error("ERROR", e.message, null)
     }
+}
 
     private fun createFakeAppShortcut(targetPackageName: String, result: MethodChannel.Result) {
         try {
@@ -445,8 +463,7 @@ class MainActivity : FlutterFragmentActivity() {
             
             // Create intent that opens StealthSeal (our real app)
             val launchIntent = Intent(Intent.ACTION_MAIN)
-            launchIntent.setPackage(packageName)  // StealthSeal's package
-            launchIntent.setClass(this, MainActivity::class.java)
+            launchIntent.setComponent(ComponentName(this.packageName, MainActivity::class.java.name))
             launchIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             
             // Create the shortcut
