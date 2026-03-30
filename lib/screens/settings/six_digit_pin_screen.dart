@@ -34,7 +34,7 @@ class _SixDigitPinScreenState extends State<SixDigitPinScreen>
 
   String? _currentRealPin;
   String? _currentDecoyPin;
-  String _currentUnlockPattern = '4-digit'; // Track current unlock mode
+  String _currentUnlockPattern = '4-digit'; 
   bool _isSaving = false;
   bool _isLoading = true;
   bool _showError = false;
@@ -101,7 +101,7 @@ class _SixDigitPinScreenState extends State<SixDigitPinScreen>
   int get _targetLen => widget.targetPinLength;
 
   int get _currentPinMaxLength {
-    // Determine max length of the current PINs (could be 4 or 6)
+    
     final realLen = _currentRealPin?.length ?? 4;
     final decoyLen = _currentDecoyPin?.length ?? 4;
     return realLen > decoyLen ? realLen : decoyLen;
@@ -117,7 +117,6 @@ class _SixDigitPinScreenState extends State<SixDigitPinScreen>
       _showError = false;
     });
 
-    // Auto-validate when input reaches the required length
     if (_enteredPin.length == maxLen) {
       _processStep();
     }
@@ -132,7 +131,7 @@ class _SixDigitPinScreenState extends State<SixDigitPinScreen>
   }
 
   void _onPatternCompleted(String pattern) {
-    // Only used for verifying current pattern when switching from pattern mode
+    
     if (_step != SixDigitStep.currentPin || _currentUnlockPattern != 'pattern') return;
 
     if (pattern == _currentRealPin || pattern == _currentDecoyPin) {
@@ -234,14 +233,12 @@ class _SixDigitPinScreenState extends State<SixDigitPinScreen>
     try {
       final userId = await UserIdentifierService.getUserId();
 
-      // Save to Hive
       final securityBox = Hive.box('securityBox');
       await securityBox.put('realPin', _newRealPin);
       await securityBox.put('decoyPin', _newDecoyPin);
       await securityBox.put('unlockPattern', '$_targetLen-digit');
       debugPrint('$_targetLen-digit PINs saved to Hive');
 
-      // Cache to native SharedPreferences
       try {
         const platform = MethodChannel('com.stealthseal.app/applock');
         await platform.invokeMethod('cachePins', {
@@ -254,7 +251,6 @@ class _SixDigitPinScreenState extends State<SixDigitPinScreen>
         debugPrint('Warning: Failed to cache PINs: $error');
       }
 
-      // Sync to Supabase (upsert to handle missing rows)
       try {
         await Supabase.instance.client
             .from('user_security')
@@ -339,7 +335,7 @@ class _SixDigitPinScreenState extends State<SixDigitPinScreen>
                 onPressed: () {
                   Navigator.pop(ctx);
                   if (mounted) {
-                    Navigator.pop(context, true); // Return true to indicate success
+                    Navigator.pop(context, true); 
                   }
                 },
                 style: ElevatedButton.styleFrom(
@@ -368,7 +364,7 @@ class _SixDigitPinScreenState extends State<SixDigitPinScreen>
   String get _subtitle {
     switch (_step) {
       case SixDigitStep.currentPin:
-        // Check if there are existing credentials
+        
         final hasExistingCredentials = _currentRealPin != null && _currentRealPin!.isNotEmpty &&
                                       _currentDecoyPin != null && _currentDecoyPin!.isNotEmpty;
         
@@ -377,7 +373,7 @@ class _SixDigitPinScreenState extends State<SixDigitPinScreen>
         } else if (_currentUnlockPattern == 'pattern') {
           return 'Draw Current Pattern to Verify';
         } else {
-          // Show the current PIN length (4-digit or 6-digit)
+          
           final currentLen = _currentRealPin?.length ?? 4;
           return 'Enter your current $currentLen-digit PIN';
         }
@@ -395,7 +391,7 @@ class _SixDigitPinScreenState extends State<SixDigitPinScreen>
   String get _title {
     switch (_step) {
       case SixDigitStep.currentPin:
-        // Check if there are existing credentials
+        
         final hasExistingCredentials = _currentRealPin != null && _currentRealPin!.isNotEmpty &&
                                       _currentDecoyPin != null && _currentDecoyPin!.isNotEmpty;
         
@@ -417,7 +413,6 @@ class _SixDigitPinScreenState extends State<SixDigitPinScreen>
         return 'Confirm Decoy PIN';
     }
   }
-  
 
   int get _dotCount {
     return _step == SixDigitStep.currentPin ? _currentPinMaxLength : _targetLen;
@@ -438,7 +433,7 @@ class _SixDigitPinScreenState extends State<SixDigitPinScreen>
           : SafeArea(
               child: Column(
                 children: [
-                  // Top bar with back button
+                  
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                     child: Row(
@@ -457,13 +452,12 @@ class _SixDigitPinScreenState extends State<SixDigitPinScreen>
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          // Step indicator
+                          
                           if (_step != SixDigitStep.currentPin)
                             _buildStepIndicator(),
 
                           const SizedBox(height: 16),
 
-                          // Title
                           Text(
                             _title,
                             style: const TextStyle(
@@ -475,7 +469,6 @@ class _SixDigitPinScreenState extends State<SixDigitPinScreen>
                           ),
                           const SizedBox(height: 8),
 
-                          // Subtitle
                           Text(
                             _subtitle,
                             textAlign: TextAlign.center,
@@ -486,7 +479,6 @@ class _SixDigitPinScreenState extends State<SixDigitPinScreen>
                           ),
                           const SizedBox(height: 24),
 
-                          // Show verification widget based on current unlock pattern
                           if (_step == SixDigitStep.currentPin && _currentUnlockPattern == 'pattern') ...[
                             ConstrainedBox(
                               constraints: const BoxConstraints(
@@ -500,7 +492,7 @@ class _SixDigitPinScreenState extends State<SixDigitPinScreen>
                               ),
                             ),
                           ] else ...[
-                            // PIN dots animation
+                            
                             AnimatedBuilder(
                               animation: _shakeAnimation,
                               builder: (context, child) {
@@ -523,12 +515,11 @@ class _SixDigitPinScreenState extends State<SixDigitPinScreen>
 
                           const Spacer(),
 
-                          // Numeric keypad or message
                           _isSaving
                               ? const CircularProgressIndicator(color: Colors.white)
                               : (_step == SixDigitStep.currentPin && 
                                  _currentUnlockPattern == 'pattern')
-                                  ? const SizedBox.shrink() // No keypad for pattern verification
+                                  ? const SizedBox.shrink() 
                                   : _buildKeypad(),
 
                           const SizedBox(height: 40),
@@ -544,7 +535,7 @@ class _SixDigitPinScreenState extends State<SixDigitPinScreen>
 
   Widget _buildStepIndicator() {
     final steps = ['Real PIN', 'Confirm', 'Decoy PIN', 'Confirm'];
-    final currentIndex = _step.index - 1; // Subtract 1 because currentPin is step 0
+    final currentIndex = _step.index - 1; 
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -620,11 +611,11 @@ class _SixDigitPinScreenState extends State<SixDigitPinScreen>
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              // Empty space on the left
+              
               const SizedBox(width: 75, height: 75),
-              // 0 key
+              
               _buildKey('0', onTap: () => _onKeyPress('0')),
-              // Backspace key
+              
               _buildKey('⌫', onTap: _onDelete, isIcon: true),
             ],
           ),

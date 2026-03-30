@@ -109,7 +109,6 @@ class _SplashScreenState extends State<SplashScreen> {
       final userId = await UserIdentifierService.getUserId();
       debugPrint('User ID: $userId');
 
-      // Check local Hive cache first for offline resilience
       final securityBox = Hive.box('securityBox');
       final isPinSetupDone = securityBox.get('isPinSetupDone', defaultValue: false) as bool;
       final localRealPin = securityBox.get('realPin', defaultValue: '') as String;

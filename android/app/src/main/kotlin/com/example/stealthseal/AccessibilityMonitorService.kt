@@ -1,4 +1,4 @@
-package com.example.stealthseal
+﻿package com.example.stealthseal
 
 import android.app.Service
 import android.content.Context
@@ -10,10 +10,6 @@ import android.provider.Settings
 import android.util.Log
 import android.view.accessibility.AccessibilityManager
 
-/**
- * Service that monitors whether the Accessibility Service is enabled.
- * If it gets disabled (manually or by removing from active apps), notifies the user.
- */
 class AccessibilityMonitorService : Service() {
 
     companion object {
@@ -35,8 +31,7 @@ class AccessibilityMonitorService : Service() {
     private var isAccessibilityEnabled = false
     private val handler = Handler(Looper.getMainLooper())
     private var monitoringRunnable: Runnable? = null
-    private val MONITOR_INTERVAL_MS = 5000  // Check every 5 seconds
-
+    private val MONITOR_INTERVAL_MS = 5000  
     override fun onCreate() {
         super.onCreate()
         Log.d(TAG, "Accessibility monitor service created")
@@ -84,30 +79,24 @@ class AccessibilityMonitorService : Service() {
             val accessibilityManager = getSystemService(Context.ACCESSIBILITY_SERVICE) as AccessibilityManager
             val enabled = accessibilityManager.isEnabled
             
-            // Check if our specific accessibility service is enabled
-            val isOurServiceEnabled = isOurAccessibilityServiceEnabled()
+                        val isOurServiceEnabled = isOurAccessibilityServiceEnabled()
             
             if (isAccessibilityEnabled && !isOurServiceEnabled) {
-                // Was enabled, now disabled
-                Log.w(TAG, "❌ Accessibility service is NOW DISABLED!")
+                                Log.w(TAG, "âŒ Accessibility service is NOW DISABLED!")
                 isAccessibilityEnabled = false
                 
                 NotificationHelper.notifyAccessibilityDisabled(this)
                 
-                // Store in preferences that accessibility was disabled
-                val prefs = getSharedPreferences("stealthseal_prefs", Context.MODE_PRIVATE)
+                                val prefs = getSharedPreferences("stealthseal_prefs", Context.MODE_PRIVATE)
                 prefs.edit().putBoolean("accessibility_was_disabled", true).apply()
             } else if (!isAccessibilityEnabled && isOurServiceEnabled) {
-                // Was disabled, now enabled
-                Log.d(TAG, "✅ Accessibility service is NOW ENABLED")
+                                Log.d(TAG, "âœ… Accessibility service is NOW ENABLED")
                 isAccessibilityEnabled = true
                 
-                // Clear the flag
-                val prefs = getSharedPreferences("stealthseal_prefs", Context.MODE_PRIVATE)
+                                val prefs = getSharedPreferences("stealthseal_prefs", Context.MODE_PRIVATE)
                 prefs.edit().putBoolean("accessibility_was_disabled", false).apply()
                 
-                // Cancel any previous notification
-                NotificationHelper.cancelNotification(this, NotificationHelper.ID_ACCESSIBILITY_DISABLED)
+                                NotificationHelper.cancelNotification(this, NotificationHelper.ID_ACCESSIBILITY_DISABLED)
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error checking accessibility status: ${e.message}")

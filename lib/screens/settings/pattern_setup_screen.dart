@@ -30,7 +30,7 @@ class _PatternSetupScreenState extends State<PatternSetupScreen> {
 
   String? _currentRealPin;
   String? _currentDecoyPin;
-  String _currentUnlockPattern = '4-digit'; // Track current unlock mode
+  String _currentUnlockPattern = '4-digit'; 
   bool _isSaving = false;
   bool _isLoading = true;
   String _statusMessage = '';
@@ -104,7 +104,6 @@ class _PatternSetupScreenState extends State<PatternSetupScreen> {
     return realLen > decoyLen ? realLen : decoyLen;
   }
 
-  // Called from PinKeypad during currentPin step
   void _onKeyPress(String value) {
     if (_isSaving || _isLoading) return;
     if (_step != PatternSetupStep.currentPin) return;
@@ -153,13 +152,12 @@ class _PatternSetupScreenState extends State<PatternSetupScreen> {
     }
   }
 
-
   void _onPatternCompleted(String pattern) {
     if (_isSaving) return;
 
     switch (_step) {
       case PatternSetupStep.currentPin:
-        // User is verifying current pattern (if current mode is pattern)
+        
         if (_currentRealPin == null || _currentRealPin!.isEmpty) {
           _showPatternError('Error: Current password not loaded. Please go back and try again.');
           return;
@@ -177,7 +175,7 @@ class _PatternSetupScreenState extends State<PatternSetupScreen> {
         } else {
           debugPrint('✗ Pattern verification FAILED - Pattern does not match');
           _showPatternError('Incorrect pattern. Try again.');
-          // Status message already set by _showPatternError
+          
         }
         break;
 
@@ -258,14 +256,12 @@ class _PatternSetupScreenState extends State<PatternSetupScreen> {
     try {
       final userId = await UserIdentifierService.getUserId();
 
-      // Save to Hive
       final securityBox = Hive.box('securityBox');
       await securityBox.put('realPin', _newRealPattern);
       await securityBox.put('decoyPin', _newDecoyPattern);
       await securityBox.put('unlockPattern', 'pattern');
       debugPrint('Pattern PINs saved to Hive');
 
-      // Cache to native SharedPreferences
       try {
         const platform = MethodChannel('com.stealthseal.app/applock');
         await platform.invokeMethod('cachePins', {
@@ -278,7 +274,6 @@ class _PatternSetupScreenState extends State<PatternSetupScreen> {
         debugPrint('Warning: Failed to cache PINs: $error');
       }
 
-      // Sync to Supabase (upsert to handle missing rows)
       try {
         await Supabase.instance.client
             .from('user_security')
@@ -438,7 +433,7 @@ class _PatternSetupScreenState extends State<PatternSetupScreen> {
           : SafeArea(
               child: Column(
                 children: [
-                  // Top bar
+                  
                   Padding(
                     padding:
                         const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
@@ -459,13 +454,12 @@ class _PatternSetupScreenState extends State<PatternSetupScreen> {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          // Step indicator (after current PIN step)
+                          
                           if (_step != PatternSetupStep.currentPin)
                             _buildStepIndicator(),
 
                           const SizedBox(height: 16),
 
-                          // Title
                           Text(
                             _title,
                             style: const TextStyle(
@@ -477,7 +471,6 @@ class _PatternSetupScreenState extends State<PatternSetupScreen> {
                           ),
                           const SizedBox(height: 8),
 
-                          // Subtitle
                           Text(
                             _subtitle,
                             textAlign: TextAlign.center,
@@ -487,7 +480,6 @@ class _PatternSetupScreenState extends State<PatternSetupScreen> {
                             ),
                           ),
 
-                          // Status message
                           if (_statusMessage.isNotEmpty) ...[
                             const SizedBox(height: 8),
                             Text(
@@ -502,9 +494,8 @@ class _PatternSetupScreenState extends State<PatternSetupScreen> {
 
                           const SizedBox(height: 40),
 
-                          // Show verification widget based on current unlock pattern
                           if (_step == PatternSetupStep.currentPin)
-                            // If current mode is pattern, show pattern grid to verify
+                            
                             if (_currentUnlockPattern == 'pattern')
                               ConstrainedBox(
                                 constraints: const BoxConstraints(
@@ -584,7 +575,7 @@ class _PatternSetupScreenState extends State<PatternSetupScreen> {
   Widget _buildCurrentPinInput() {
     return Column(
       children: [
-        // PIN dots
+        
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: List.generate(
@@ -610,7 +601,6 @@ class _PatternSetupScreenState extends State<PatternSetupScreen> {
         ),
         const SizedBox(height: 40),
 
-        // Keypad
         _buildKeypad(),
       ],
     );

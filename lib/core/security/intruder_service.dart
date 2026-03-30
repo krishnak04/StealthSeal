@@ -26,7 +26,6 @@ class IntruderService {
 
       await cameraController.initialize();
 
-      // Use a persistent directory (same as native implementation)
       final appDocDir = await getApplicationDocumentsDirectory();
       final intruderDir = Directory('${appDocDir.path}/intruder_logs');
       if (!await intruderDir.exists()) {

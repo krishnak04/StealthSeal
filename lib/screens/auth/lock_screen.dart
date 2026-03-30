@@ -31,9 +31,8 @@ class _LockScreenState extends State<LockScreen> {
   bool _biometricEnabled = false;
   bool _biometricSupported = false;
   int _pinLength = 4;
-  String _unlockMode = '4-digit'; // '4-digit', '6-digit', or 'pattern'
-  
-  // Time lock countdown timer
+  String _unlockMode = '4-digit'; 
+
   Timer? _countdownTimer;
   String _timeRemaining = '00:00:00';
 
@@ -83,13 +82,12 @@ class _LockScreenState extends State<LockScreen> {
     debugPrint('🕐 End: ${(endSeconds~/3600)}:${((endSeconds%3600)~/60).toString().padLeft(2, '0')} ($endSeconds s)');
     
     int secondsRemaining = 0;
-    
-    // Handle same-day quick lock (e.g., 14:05 to 14:10)
+
     if (endSeconds > startSeconds && currentSeconds >= startSeconds && currentSeconds < endSeconds) {
       debugPrint('✅ Same-day lock: Current is between start and end');
       secondsRemaining = endSeconds - currentSeconds;
     }
-    // Handle overnight lock (e.g., 22:00 to 06:00)
+    
     else if (endSeconds < startSeconds) {
       debugPrint('🌙 Overnight lock detected');
       if (currentSeconds >= startSeconds) {
@@ -105,8 +103,7 @@ class _LockScreenState extends State<LockScreen> {
     }
     
     debugPrint('🕐 Seconds remaining: $secondsRemaining');
-    
-    // Ensure non-negative value
+
     if (secondsRemaining < 0) {
       secondsRemaining = 0;
     }
@@ -114,8 +111,7 @@ class _LockScreenState extends State<LockScreen> {
     final hoursRemaining = (secondsRemaining ~/ 3600).toInt();
     final minsRemaining = ((secondsRemaining % 3600) ~/ 60).toInt();
     final secsRemaining = (secondsRemaining % 60).toInt();
-    
-    
+
     debugPrint('✨ Display time: ${hoursRemaining.toString().padLeft(2, '0')}:${minsRemaining.toString().padLeft(2, '0')}:${secsRemaining.toString().padLeft(2, '0')}');
     
     if (mounted) {
@@ -150,12 +146,10 @@ class _LockScreenState extends State<LockScreen> {
       final userId = await UserIdentifierService.getUserId();
       debugPrint('Loading PINs and security flags for user: $userId');
 
-      // Load from Hive first as fallback
       final securityBox = Hive.box('securityBox');
       final localRealPin = securityBox.get('realPin', defaultValue: '') as String;
       final localDecoyPin = securityBox.get('decoyPin', defaultValue: '') as String;
 
-      // Try Supabase but fall back to Hive if unreachable
       Map<String, dynamic>? data;
       try {
         final supabase = Supabase.instance.client;
@@ -186,7 +180,6 @@ class _LockScreenState extends State<LockScreen> {
         }
       }
 
-      // Load PIN length preference
       final pinPattern = Hive.box('securityBox').get('unlockPattern', defaultValue: '4-digit');
       final pinLen = pinPattern == '6-digit' ? 6 : 4;
 
@@ -201,13 +194,12 @@ class _LockScreenState extends State<LockScreen> {
           debugPrint(
               'PINs and security flags loaded from Supabase for user: $userId');
 
-          // Update local cache with latest from server
           securityBox.put('realPin', data['real_pin'] ?? '');
           securityBox.put('decoyPin', data['decoy_pin'] ?? '');
 
           _cachePinsToNative(data['real_pin'], data['decoy_pin']);
         } else if (localRealPin.isNotEmpty && localDecoyPin.isNotEmpty) {
-          // Offline fallback: use Hive-cached PINs
+          
           realPin = localRealPin;
           decoyPin = localDecoyPin;
           _biometricEnabled = BiometricService.isEnabled();
@@ -222,7 +214,7 @@ class _LockScreenState extends State<LockScreen> {
       });
     } catch (error) {
       debugPrint('Error loading PINs: $error');
-      // Last resort: try Hive
+      
       try {
         final securityBox = Hive.box('securityBox');
         final localRealPin = securityBox.get('realPin', defaultValue: '') as String;
@@ -249,14 +241,12 @@ class _LockScreenState extends State<LockScreen> {
       final securityBox = Hive.box('securityBox');
       final securityTimeBox = Hive.box('security');
       final unlockPattern = securityBox.get('unlockPattern', defaultValue: '4-digit');
-      
-      // Load location lock settings
+
       final locationLockEnabled = securityBox.get('locationLockEnabled', defaultValue: false) as bool;
       final trustedLat = securityBox.get('trustedLat', defaultValue: 0.0) as double;
       final trustedLng = securityBox.get('trustedLng', defaultValue: 0.0) as double;
       final trustedRadius = securityBox.get('trustedRadius', defaultValue: 200.0) as double;
-      
-      // Load time lock settings using correct HiveKeys
+
       final nightLockEnabled = securityTimeBox.get(HiveKeys.nightLockEnabled, defaultValue: false) as bool;
       final nightStartHour = securityTimeBox.get(HiveKeys.nightStartHour, defaultValue: 22) as int;
       final nightStartMinute = securityTimeBox.get(HiveKeys.nightStartMinute, defaultValue: 0) as int;
@@ -313,14 +303,12 @@ class _LockScreenState extends State<LockScreen> {
   Future<void> _validatePin() async {
     if (realPin == null || decoyPin == null) return;
 
-    // Location Lock - COMPLETELY BLOCK ACCESS (highest priority - no PIN works outside trusted location)
     if (await LocationLockService.isOutsideTrustedLocation()) {
       if (!mounted) return;
       _handleLocationLockedBlock();
       return;
     }
 
-    // Time Lock - COMPLETELY BLOCK ACCESS (no PIN can unlock)
     if (TimeLockService.isNightLockActive()) {
       if (!mounted) return;
       _handleTimeLockedBlock();
@@ -381,7 +369,7 @@ class _LockScreenState extends State<LockScreen> {
   }
 
   Future<void> _handleLocationLockedBlock() async {
-    // Location Lock is ACTIVE - completely block all access outside trusted location
+    
     if (!await LocationLockService.isOutsideTrustedLocation()) {
       return;
     }
@@ -404,7 +392,7 @@ class _LockScreenState extends State<LockScreen> {
   }
 
   Future<void> _handleTimeLockedBlock() async {
-    // Time Lock is ACTIVE - completely block all access
+    
     if (!TimeLockService.isNightLockActive()) {
       return;
     }
@@ -450,7 +438,7 @@ class _LockScreenState extends State<LockScreen> {
 
   Future<void> _authenticateWithBiometrics() async {
     try {
-      // Check Location Lock FIRST - complete block outside trusted location
+      
       if (await LocationLockService.isOutsideTrustedLocation()) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
@@ -463,7 +451,6 @@ class _LockScreenState extends State<LockScreen> {
         return;
       }
 
-      // Check Time Lock FIRST - complete block
       if (TimeLockService.isNightLockActive()) {
         if (!mounted) return;
         

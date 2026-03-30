@@ -27,14 +27,13 @@ class MainActivity : FlutterFragmentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // Start foreground service to keep app lock alive when removed from recents
+        
         AppLockForegroundService.start(this)
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
 
-        // Register engine for accessibility service (kept for future use)
         FlutterEngineCache.getInstance().put("stealth_engine", flutterEngine)
 
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL)
@@ -48,7 +47,7 @@ class MainActivity : FlutterFragmentActivity() {
                         val sharedPref = getSharedPreferences("stealthseal_prefs", Context.MODE_PRIVATE)
                         sharedPref.edit()
                             .putString("lockedApps", apps)
-                            .putString("sessionUnlockedApps", "")  // Clear all session unlocks
+                            .putString("sessionUnlockedApps", "")  
                             .apply()
                         Log.d("MainActivity", "Locked apps synced: $apps (sessions cleared)")
                         result.success(true)
@@ -57,14 +56,12 @@ class MainActivity : FlutterFragmentActivity() {
                         val realPin = call.argument<String>("real_pin") ?: ""
                         val decoyPin = call.argument<String>("decoy_pin") ?: ""
                         val unlockPattern = call.argument<String>("unlock_pattern") ?: "4-digit"
-                        
-                        // Get location lock settings if available
+
                         val locationLockEnabled = call.argument<Boolean>("location_lock_enabled") ?: false
                         val trustedLat = call.argument<Double>("trusted_lat") ?: 0.0
                         val trustedLng = call.argument<Double>("trusted_lng") ?: 0.0
                         val trustedRadius = call.argument<Double>("trusted_radius") ?: 200.0
-                        
-                        // Get time lock settings if available
+
                         val nightLockEnabled = call.argument<Boolean>("night_lock_enabled") ?: false
                         val nightStartHour = call.argument<Int>("night_start_hour") ?: 22
                         val nightStartMinute = call.argument<Int>("night_start_minute") ?: 0
@@ -292,7 +289,7 @@ class MainActivity : FlutterFragmentActivity() {
             val validLogEntries = mutableListOf<String>()
             
             if (logsString.isNotEmpty()) {
-                // Parse the logs from SharedPreferences format: "imagePath|timestamp|reason|pin\n"
+                
                 val logEntries = logsString.trim().split("\n").filter { it.isNotEmpty() }
                 
                 for (entry in logEntries) {
@@ -301,17 +298,15 @@ class MainActivity : FlutterFragmentActivity() {
                         val imagePath = parts[0]
                         val timestamp = parts.getOrNull(1)?.toLongOrNull() ?: System.currentTimeMillis()
                         val reason = parts.getOrNull(2) ?: "Failed Attempt"
-                        val enteredPin = parts.getOrNull(3) ?: "***"  // Extract PIN from new format
-                        
-                        // Check if image file exists - only include valid logs
+                        val enteredPin = parts.getOrNull(3) ?: "***"  
+
                         val imageFile = java.io.File(imagePath)
                         if (!imageFile.exists()) {
                             Log.w("MainActivity", "⚠️ Skipping log with missing image: $imagePath")
-                            // Don't add to validLogEntries - effectively deletes it
+                            
                             continue
                         }
-                        
-                        // Convert timestamp to ISO format using device local timezone (matches image time)
+
                         val iso8601 = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", java.util.Locale.US).apply {
                             timeZone = java.util.TimeZone.getDefault()
                         }.format(java.util.Date(timestamp))
@@ -320,14 +315,13 @@ class MainActivity : FlutterFragmentActivity() {
                             "imagePath" to imagePath,
                             "timestamp" to iso8601,
                             "reason" to reason,
-                            "enteredPin" to enteredPin  // Use extracted PIN
+                            "enteredPin" to enteredPin  
                         )
                         logs.add(logMap)
-                        validLogEntries.add(entry)  // Keep this entry
+                        validLogEntries.add(entry)  
                     }
                 }
-                
-                // If we found invalid entries, clean up SharedPreferences
+
                 if (validLogEntries.size < logEntries.size) {
                     Log.d("MainActivity", "🧹 Cleaning up ${logEntries.size - validLogEntries.size} invalid log entries from SharedPreferences")
                     val cleanedLogsString = if (validLogEntries.isNotEmpty()) {
@@ -354,10 +348,9 @@ class MainActivity : FlutterFragmentActivity() {
             val logsString = prefs.getString("intruderLogs", "") ?: ""
             
             if (logsString.isNotEmpty()) {
-                // Parse all log entries and filter out the one to remove
-                val logEntries = logsString.trim().split("\n").filter { it.isNotEmpty() }
                 
-                // Convert timestamp ISO format back to milliseconds for comparison
+                val logEntries = logsString.trim().split("\n").filter { it.isNotEmpty() }
+
                 val timestampMillis = try {
                     java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", java.util.Locale.US).apply {
                         timeZone = java.util.TimeZone.getTimeZone("UTC")
@@ -367,8 +360,7 @@ class MainActivity : FlutterFragmentActivity() {
                 }
                 
                 Log.d("MainActivity", "Removing log: imagePath=$imagePath, timestamp=$timestamp (millis=$timestampMillis)")
-                
-                // Filter out the log entry that matches both imagePath and timestamp
+
                 val updatedEntries = logEntries.filter { entry ->
                     val parts = entry.split("|")
                     if (parts.size >= 2) {
@@ -381,8 +373,7 @@ class MainActivity : FlutterFragmentActivity() {
                 }
                 
                 Log.d("MainActivity", "Filtered ${logEntries.size} entries to ${updatedEntries.size} entries")
-                
-                // Save updated logs back to SharedPreferences
+
                 val updatedLogsString = if (updatedEntries.isNotEmpty()) {
                     updatedEntries.joinToString("\n") + "\n"
                 } else {
@@ -412,15 +403,12 @@ class MainActivity : FlutterFragmentActivity() {
         val playstore = ComponentName(this, "com.example.stealthseal.AliasPlayStore")
         val youtube = ComponentName(this, "com.example.stealthseal.AliasYouTube")
 
-        // Disable all aliases
         pm.setComponentEnabledSetting(settings, PackageManager.COMPONENT_ENABLED_STATE_DISABLED, 0)
         pm.setComponentEnabledSetting(playstore, PackageManager.COMPONENT_ENABLED_STATE_DISABLED, 0)
         pm.setComponentEnabledSetting(youtube, PackageManager.COMPONENT_ENABLED_STATE_DISABLED, 0)
 
-        // Enable main by default
         pm.setComponentEnabledSetting(main, PackageManager.COMPONENT_ENABLED_STATE_ENABLED, 0)
 
-        // Enable selected alias
         when (mode) {
             "settings" -> {
                 pm.setComponentEnabledSetting(main, PackageManager.COMPONENT_ENABLED_STATE_DISABLED, 0)
@@ -446,34 +434,28 @@ class MainActivity : FlutterFragmentActivity() {
     private fun createFakeAppShortcut(targetPackageName: String, result: MethodChannel.Result) {
         try {
             val pm = packageManager
-            
-            // Get the target app's info (the app we're disguising as)
+
             val targetAppInfo = pm.getApplicationInfo(targetPackageName, 0)
             val targetAppLabel = pm.getApplicationLabel(targetAppInfo).toString()
             val targetAppIcon = pm.getApplicationIcon(targetPackageName)
-            
-            // Convert icon to bitmap
+
             val bitmap = drawableToBitmap(targetAppIcon)
             val stream = ByteArrayOutputStream()
             bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream)
             val iconData = stream.toByteArray()
-            
-            // Create intent that opens StealthSeal (our real app)
+
             val launchIntent = Intent(Intent.ACTION_MAIN)
             launchIntent.setComponent(ComponentName(this.packageName, MainActivity::class.java.name))
             launchIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            
-            // Create the shortcut
+
             val shortcutIntent = Intent("com.android.launcher.action.INSTALL_SHORTCUT")
             shortcutIntent.putExtra(Intent.EXTRA_SHORTCUT_INTENT, launchIntent)
             shortcutIntent.putExtra(Intent.EXTRA_SHORTCUT_NAME, targetAppLabel)
             shortcutIntent.putExtra(Intent.EXTRA_SHORTCUT_ICON, bitmap)
-            shortcutIntent.putExtra("duplicate", false)  // Don't create duplicates
-            
-            // Send the shortcut creation request
+            shortcutIntent.putExtra("duplicate", false)  
+
             sendBroadcast(shortcutIntent)
-            
-            // Save preference
+
             val prefs = getSharedPreferences("stealthseal_prefs", Context.MODE_PRIVATE)
             prefs.edit().putString("disguisePackage", targetPackageName).apply()
             

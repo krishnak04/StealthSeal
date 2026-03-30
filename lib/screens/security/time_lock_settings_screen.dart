@@ -98,15 +98,13 @@ class _TimeLockSettingsScreenState extends State<TimeLockSettingsScreen> {
       _endTime = TimeOfDay(hour: endTime.hour, minute: endTime.minute);
       _timeLockEnabled = true;
     });
-    
-    // Set BOTH start time (now) and end time (now + duration)
+
     await _securityBox.put(HiveKeys.nightStartHour, now.hour);
     await _securityBox.put(HiveKeys.nightStartMinute, now.minute);
     await _securityBox.put(HiveKeys.nightEndHour, endTime.hour);
     await _securityBox.put(HiveKeys.nightEndMinute, endTime.minute);
     await _securityBox.put(HiveKeys.nightLockEnabled, true);
-    
-    // Sync time lock settings to native
+
     await _syncTimeLocksToNative();
     
     debugPrint('🔒 Quick lock set:');
@@ -131,13 +129,12 @@ class _TimeLockSettingsScreenState extends State<TimeLockSettingsScreen> {
 
   Future<void> _syncTimeLocksToNative() async {
     try {
-      // Get PINs from securityBox
+      
       final securityBox = Hive.box('securityBox');
       final realPin = securityBox.get('realPin', defaultValue: '') as String;
       final decoyPin = securityBox.get('decoyPin', defaultValue: '') as String;
       final unlockPattern = securityBox.get('unlockPattern', defaultValue: '4-digit') as String;
-      
-      // Get location lock settings
+
       final locationLockEnabled = securityBox.get('locationLockEnabled', defaultValue: false) as bool;
       final trustedLat = securityBox.get('trustedLat', defaultValue: 0.0) as double;
       final trustedLng = securityBox.get('trustedLng', defaultValue: 0.0) as double;
@@ -378,7 +375,6 @@ class _TimeLockSettingsScreenState extends State<TimeLockSettingsScreen> {
               ),
               const SizedBox(height: 20),
 
-              // Quick Lock Section
               Container(
                 decoration: BoxDecoration(
                   color: ThemeConfig.surfaceColor(context),

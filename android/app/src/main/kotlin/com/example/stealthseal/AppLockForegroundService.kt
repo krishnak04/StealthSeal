@@ -11,13 +11,6 @@ import android.os.Build
 import android.os.IBinder
 import android.util.Log
 
-/**
- * Foreground service that keeps StealthSeal alive in the background.
- * This ensures the AppLockActivity can launch without restarting the 
- * entire app process (which would show the StealthSeal lock screen first).
- * 
- * Shows a minimal persistent notification so Android doesn't kill the process.
- */
 class AppLockForegroundService : Service() {
 
     companion object {
@@ -47,14 +40,13 @@ class AppLockForegroundService : Service() {
         Log.d(TAG, "Foreground service created")
         createNotificationChannel()
         startForeground(NOTIFICATION_ID, buildNotification())
-        
-        // Start accessibility monitor service
+
         AccessibilityMonitorService.start(this)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Log.d(TAG, "Foreground service started")
-        // Return START_STICKY so Android restarts the service if killed
+        
         return START_STICKY
     }
 
@@ -63,7 +55,7 @@ class AppLockForegroundService : Service() {
     override fun onTaskRemoved(rootIntent: Intent?) {
         super.onTaskRemoved(rootIntent)
         Log.d(TAG, "Task removed (app swiped from recents) - service stays alive")
-        // Service continues running, no need to do anything special
+        
     }
 
     private fun createNotificationChannel() {
@@ -71,11 +63,11 @@ class AppLockForegroundService : Service() {
             val channel = NotificationChannel(
                 CHANNEL_ID,
                 "App Lock Protection",
-                NotificationManager.IMPORTANCE_LOW  // Low importance = no sound, minimal visibility
+                NotificationManager.IMPORTANCE_LOW  
             ).apply {
                 description = "Keeps StealthSeal app lock running in the background"
                 setShowBadge(false)
-                lockscreenVisibility = Notification.VISIBILITY_SECRET  // Hidden on lock screen
+                lockscreenVisibility = Notification.VISIBILITY_SECRET  
             }
 
             val manager = getSystemService(NotificationManager::class.java)
@@ -85,7 +77,7 @@ class AppLockForegroundService : Service() {
     }
 
     private fun buildNotification(): Notification {
-        // Tapping notification opens StealthSeal
+        
         val pendingIntent = PendingIntent.getActivity(
             this,
             0,
@@ -105,7 +97,7 @@ class AppLockForegroundService : Service() {
             .setContentText("By turning off the app you are turning off the app lock")
             .setSmallIcon(android.R.drawable.ic_lock_lock)
             .setContentIntent(pendingIntent)
-            .setOngoing(true)  // Cannot be swiped away
+            .setOngoing(true)  
             .build()
     }
 }

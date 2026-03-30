@@ -14,20 +14,11 @@ import androidx.fragment.app.FragmentActivity
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 
-/**
- * Biometric authentication service wrapper around AndroidX BiometricPrompt.
- * Handles fingerprint/face recognition on supported devices.
- * Thread-safe with SharedPreferences storage for enable/disable state.
- */
 object BiometricService {
     private const val TAG = "BiometricService"
     private const val PREF_NAME = "stealthseal_prefs"
     private const val KEY_BIOMETRIC_ENABLED = "biometric_enabled"
 
-    /**
-     * Check if device supports biometric authentication (fingerprint or face).
-     * Returns true if hardware is available; false otherwise.
-     */
     fun isSupported(context: Context): Boolean {
         return try {
             val biometricManager = BiometricManager.from(context)
@@ -55,9 +46,6 @@ object BiometricService {
         }
     }
 
-    /**
-     * Check if biometric is enabled in SharedPreferences (user has registered).
-     */
     fun isEnabled(context: Context): Boolean {
         return try {
             val prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
@@ -68,9 +56,6 @@ object BiometricService {
         }
     }
 
-    /**
-     * Enable biometric (user registered) in SharedPreferences.
-     */
     fun enable(context: Context) {
         try {
             val prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
@@ -81,9 +66,6 @@ object BiometricService {
         }
     }
 
-    /**
-     * Disable biometric in SharedPreferences.
-     */
     fun disable(context: Context) {
         try {
             val prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
@@ -94,19 +76,14 @@ object BiometricService {
         }
     }
 
-    /**
-     * Authenticate user with biometric (fingerprint/face).
-     * Suspend function that shows BiometricPrompt and returns true on success, false otherwise.
-     * Handles all error cases gracefully.
-     */
     suspend fun authenticate(activity: FragmentActivity): Boolean = suspendCancellableCoroutine { continuation ->
         Log.d(TAG, "🔐 Starting biometric authentication...")
         
         try {
-            // Check if device supports biometric BEFORE showing prompt
+            
             if (!isSupported(activity)) {
                 Log.d(TAG, "⚠️ Device does not support biometric - showing error dialog")
-                // Show error dialog to user
+                
                 androidx.appcompat.app.AlertDialog.Builder(activity)
                     .setTitle("Biometric Not Available")
                     .setMessage("Your device does not have fingerprint or face recognition hardware.")

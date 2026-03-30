@@ -10,9 +10,6 @@ import android.view.MotionEvent
 import android.view.View
 import kotlin.math.sqrt
 
-/**
- * Custom view for pattern lock (3x3 grid) with drag-to-connect functionality.
- */
 class PatternView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
@@ -40,7 +37,7 @@ class PatternView @JvmOverloads constructor(
     }
 
     inner class Dot(val row: Int, val col: Int) {
-        val index = row * 3 + col  // Convert to 0-8 index
+        val index = row * 3 + col  
         var x = 0f
         var y = 0f
         var radius = 30f
@@ -65,19 +62,17 @@ class PatternView @JvmOverloads constructor(
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
 
-        // Draw lines connecting dots
         if (connectedDots.size > 1) {
             for (i in 0 until connectedDots.size - 1) {
                 val from = connectedDots[i]
                 val to = connectedDots[i + 1]
                 canvas.drawLine(from.x, from.y, to.x, to.y, linePaint)
             }
-            // Draw line from last dot to current touch
+            
             val lastDot = connectedDots.last()
             canvas.drawLine(lastDot.x, lastDot.y, lastX, lastY, linePaint)
         }
 
-        // Draw dots
         for (row in 0..2) {
             for (col in 0..2) {
                 val dot = dots[row][col]
@@ -85,7 +80,6 @@ class PatternView @JvmOverloads constructor(
                 paint.color = color
                 canvas.drawCircle(dot.x, dot.y, dot.radius, paint)
 
-                // Draw border
                 paint.style = Paint.Style.STROKE
                 paint.color = if (dot.isConnected) Color.parseColor("#0099CC") else Color.parseColor("#999999")
                 paint.strokeWidth = 2f

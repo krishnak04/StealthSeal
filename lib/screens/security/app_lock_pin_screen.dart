@@ -194,7 +194,7 @@ class _AppLockPinScreenState extends State<AppLockPinScreen> {
       canPop: false,
       onPopInvokedWithResult: (didPop, result) {
         if (!didPop) {
-          // Send user to home screen instead of dismissing PIN screen
+          
           SystemNavigator.pop();
         }
       },

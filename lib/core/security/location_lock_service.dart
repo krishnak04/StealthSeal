@@ -46,7 +46,6 @@ class LocationLockService {
       return false;
     }
 
-    // Check if trusted location is actually configured
     if (!isTrustedLocationConfigured()) {
       debugPrint('⚠️  Trusted location NOT configured - allowing access');
       return false;
@@ -75,7 +74,6 @@ class LocationLockService {
         desiredAccuracy: LocationAccuracy.high,
       );
 
-      // Retrieve with safe defaults
       final trustedLat = _securityBox.get('trustedLat', defaultValue: 0.0) as double;
       final trustedLng = _securityBox.get('trustedLng', defaultValue: 0.0) as double;
       final trustedRadius =
@@ -100,7 +98,7 @@ class LocationLockService {
       return isOutside;
     } catch (e) {
       debugPrint('❌ Error calculating distance: $e');
-      // On error, allow access (don't block unintentionally)
+      
       return false;
     }
   }

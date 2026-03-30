@@ -96,7 +96,6 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       _showErrorSnackBar('Current password is incorrect');
       return;
     }
-    
 
     setState(() => _isLoading = true);
 
@@ -106,7 +105,6 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
 
       bool isUpdatingRealPin = _currentPasswordController.text == _currentRealPin;
 
-      // Save to Hive FIRST (guaranteed local storage)
       final securityBox = Hive.box('securityBox');
       if (isUpdatingRealPin) {
         await securityBox.put('realPin', newPassword);
@@ -117,7 +115,6 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       }
       debugPrint('Password updated in Hive');
 
-      // Sync to Supabase
       try {
         await Supabase.instance.client
             .from('user_security')

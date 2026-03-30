@@ -126,25 +126,23 @@ class _SetupScreenState extends State<SetupScreen> {
       final userId = await UserIdentifierService.getUserId();
       debugPrint('Saving PINs for user: $userId');
 
-      // Step 1: Save to Hive FIRST (guaranteed local storage)
       final securityBox = Hive.box('securityBox');
       securityBox.put('realPin', realPin);
       securityBox.put('decoyPin', decoyPin);
       securityBox.put('isPinSetupDone', true);
       debugPrint('PINs saved locally to Hive');
 
-      // Step 2: Cache to native SharedPreferences (for app lock)
       try {
         const platform = MethodChannel('com.stealthseal.app/applock');
         await platform.invokeMethod('cachePins', {
           'real_pin': realPin,
           'decoy_pin': decoyPin,
           'unlock_pattern': '4-digit',
-          'location_lock_enabled': false,  // Default to disabled on first setup
+          'location_lock_enabled': false,  
           'trusted_lat': 0.0,
           'trusted_lng': 0.0,
           'trusted_radius': 200.0,
-          'night_lock_enabled': false,  // Default to disabled on first setup
+          'night_lock_enabled': false,  
           'night_start_hour': 22,
           'night_start_minute': 0,
           'night_end_hour': 6,
@@ -155,7 +153,6 @@ class _SetupScreenState extends State<SetupScreen> {
         debugPrint('Warning: Failed to cache PINs: $error');
       }
 
-      // Step 3: Sync to Supabase
       try {
         final supabase = Supabase.instance.client;
         final response = await supabase.from('user_security').upsert(

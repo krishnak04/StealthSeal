@@ -39,7 +39,6 @@ class _StealthModeSettingsScreenState extends State<StealthModeSettingsScreen> {
   void _loadSettings() {
     _selectedMode = _securityBox.get('stealthMode', defaultValue: 'normal');
 
-// 🔥 FIX: convert old value
 if (_selectedMode == 'settings') {
   _selectedMode = 'normal';
 }
@@ -81,8 +80,7 @@ if (_selectedMode == 'settings') {
     String message = mode == 'normal' 
         ? 'Switched to Normal Mode' 
         : 'Switched to App Disguise';
-    
-    // Apply normal mode setting
+
     if (mode == 'normal') {
       _applyNormalMode();
     }
@@ -119,8 +117,6 @@ if (_selectedMode == 'settings') {
     _securityBox.put('selectedAppPackage', app.packageName);
     _securityBox.put('selectedAppLabel', app.label);
 
-    
-
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('✅ Shortcut created: "${app.label}"\nTap and pin it to home screen'),
@@ -131,7 +127,6 @@ if (_selectedMode == 'settings') {
 
     Navigator.pop(context);
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -160,7 +155,7 @@ if (_selectedMode == 'settings') {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Warning Container
+              
               Container(
                 decoration: BoxDecoration(
                   color: ThemeConfig.surfaceColor(context),
@@ -230,7 +225,6 @@ if (_selectedMode == 'settings') {
   ),
 ),
 
-              // Normal Mode Option
               GestureDetector(
                 onTap: () => _setStealthMode('normal'),
                 child: Container(
@@ -290,7 +284,6 @@ if (_selectedMode == 'settings') {
               ),
               const SizedBox(height: 16),
 
-              // App Disguise Option
               GestureDetector(
                 onTap: () {
                   if (_selectedMode != 'settings') {
@@ -362,7 +355,6 @@ if (_selectedMode == 'settings') {
               ),
               const SizedBox(height: 24),
 
-              // Info Container
               Container(
                 decoration: BoxDecoration(
                   color: ThemeConfig.surfaceColor(context),

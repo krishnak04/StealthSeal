@@ -25,19 +25,15 @@ class _IntruderLogsScreenState extends State<IntruderLogsScreen> {
       final result = await platform.invokeMethod('getIntruderLogs');
       if (result is List) {
         final securityBox = Hive.box('securityBox');
-        
-        // Get native logs (from locked app / SharedPreferences)
+
         final List nativeLogsRaw = result.map((log) => Map<String, dynamic>.from(log as Map)).toList();
-        
-        // Get existing logs from Hive (main app logs)
+
         final List existingLogs = (securityBox.get('intruderLogs', defaultValue: []) as List)
           .map((log) => Map<String, dynamic>.from(log as Map))
           .toList();
-        
-        // MERGE: Combine both main app logs and locked app logs
+
         final List mergedLogs = [...existingLogs];
-        
-        // Add native logs that don't already exist (by imagePath to avoid duplicates)
+
         final existingPaths = existingLogs.map((l) => l['imagePath']).toSet();
         for (var nativeLog in nativeLogsRaw) {
           final imagePath = nativeLog['imagePath'];
@@ -46,8 +42,7 @@ class _IntruderLogsScreenState extends State<IntruderLogsScreen> {
             debugPrint('✅ Added new log from locked app: $imagePath');
           }
         }
-        
-        // Sort by timestamp (newest first)
+
         mergedLogs.sort((a, b) {
           try {
             final timeA = DateTime.parse(a['timestamp']?.toString() ?? '');
@@ -57,8 +52,7 @@ class _IntruderLogsScreenState extends State<IntruderLogsScreen> {
             return 0;
           }
         });
-        
-        // Update Hive with merged logs
+
         if (mergedLogs.isNotEmpty) {
           await securityBox.put('intruderLogs', mergedLogs);
           debugPrint('🚨 Merged intruder logs: ${mergedLogs.length} total (${nativeLogsRaw.length} from locked app, ${existingLogs.length} main app)');
@@ -75,7 +69,7 @@ class _IntruderLogsScreenState extends State<IntruderLogsScreen> {
 
   Future<void> _removeLogFromNative(String imagePath, String timestamp) async {
     try {
-      // Call native method to remove the log entry from SharedPreferences
+      
       await platform.invokeMethod('removeIntruderLog', {
         'imagePath': imagePath,
         'timestamp': timestamp,
@@ -166,7 +160,6 @@ class _IntruderLogsScreenState extends State<IntruderLogsScreen> {
                   time = null;
                 }
 
-                // Improved image validation
                 bool imageExists = false;
                 if (imagePath != null && imagePath.isNotEmpty) {
                   final file = File(imagePath);
@@ -179,7 +172,7 @@ class _IntruderLogsScreenState extends State<IntruderLogsScreen> {
 
                 final timeStr = time != null
                    ? () {
-                         final t = time!; // 🔥 FIX (force non-null)
+                         final t = time!; 
                          final hour12 = t.hour > 12
                          ? t.hour - 12
                          : (t.hour == 0 ? 12 : t.hour);
@@ -576,7 +569,6 @@ class _IntruderLogsScreenState extends State<IntruderLogsScreen> {
                         final securityBox = Hive.box('securityBox');
                         final List logs = securityBox.get('intruderLogs', defaultValue: []);
 
-                        // Delete image file if it exists
                         if (log['imagePath'] != null) {
                           final file = File(log['imagePath']);
                           if (file.existsSync()) {
@@ -589,11 +581,9 @@ class _IntruderLogsScreenState extends State<IntruderLogsScreen> {
                           }
                         }
 
-                        // Remove from Hive
                         logs.remove(log);
                         await securityBox.put('intruderLogs', logs);
 
-                        // Remove from native SharedPreferences to prevent re-sync
                         if (log['imagePath'] != null && log['timestamp'] != null) {
                           await _removeLogFromNative(log['imagePath'], log['timestamp']);
                         }

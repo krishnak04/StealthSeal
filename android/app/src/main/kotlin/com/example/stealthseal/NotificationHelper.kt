@@ -9,17 +9,12 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 import android.util.Log
 
-/**
- * Helper class for managing StealthSeal notifications.
- */
 object NotificationHelper {
     private const val TAG = "NotificationHelper"
-    
-    // Notification channels
+
     const val CHANNEL_SECURITY = "stealthseal_security_alerts"
     const val CHANNEL_APP_LOCK = "stealthseal_applock_channel"
-    
-    // Notification IDs
+
     const val ID_ACCESSIBILITY_DISABLED = 2001
     const val ID_APP_REMOVED_FROM_ACTIVE = 2002
     const val ID_ACCESSIBILITY_PROMPT = 2003
@@ -27,8 +22,7 @@ object NotificationHelper {
     fun createNotificationChannels(context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val manager = context.getSystemService(NotificationManager::class.java)
-            
-            // Security alerts channel
+
             val securityChannel = NotificationChannel(
                 CHANNEL_SECURITY,
                 "Security Alerts",
@@ -43,9 +37,6 @@ object NotificationHelper {
         }
     }
 
-    /**
-     * Show notification when accessibility service is disabled.
-     */
     fun notifyAccessibilityDisabled(context: Context) {
         createNotificationChannels(context)
         
@@ -77,9 +68,6 @@ object NotificationHelper {
         Log.d(TAG, "Accessibility disabled notification sent")
     }
 
-    /**
-     * Show notification when user tries to remove app from active apps.
-     */
     fun notifyAppRemovedFromActive(context: Context) {
         createNotificationChannels(context)
         
@@ -106,9 +94,6 @@ object NotificationHelper {
         Log.d(TAG, "App removed from active notification sent")
     }
 
-    /**
-     * Cancel notifications.
-     */
     fun cancelNotification(context: Context, notificationId: Int) {
         val notificationManager = context.getSystemService(NotificationManager::class.java)
         notificationManager.cancel(notificationId)

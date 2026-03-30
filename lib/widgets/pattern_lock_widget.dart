@@ -1,28 +1,19 @@
 import 'package:flutter/material.dart';
 
-/// A 3x3 pattern lock widget that allows users to draw a pattern
-/// by connecting dots. Returns the pattern as a string of dot indices (0-8).
 class PatternLockWidget extends StatefulWidget {
-  /// Called when the user lifts their finger after drawing a pattern.
-  /// The pattern is a string of dot indices, e.g., "0123" or "04826".
+
   final ValueChanged<String> onPatternCompleted;
 
-  /// Called when the user draws fewer than the minimum required dots.
   final VoidCallback? onPatternTooShort;
 
-  /// Size of each dot (radius)
   final double dotRadius;
 
-  /// Color of unselected dots
   final Color dotColor;
 
-  /// Color of selected dots and lines
   final Color selectedColor;
 
-  /// Whether to show the drawn lines
   final bool showLines;
 
-  /// Minimum number of dots required (default 4)
   final int minDots;
 
   const PatternLockWidget({
@@ -45,7 +36,6 @@ class _PatternLockWidgetState extends State<PatternLockWidget> {
   Offset? _currentTouch;
   bool _isDragging = false;
 
-  // Each dot's center position, recomputed when size changes
   List<Offset> _dotCenters = [];
   double _gridSize = 280;
 
@@ -101,7 +91,7 @@ class _PatternLockWidgetState extends State<PatternLockWidget> {
     setState(() {
       _currentTouch = localPos;
       if (dot != null && !_selectedDots.contains(dot)) {
-        // Auto-connect intermediate dots (e.g., swiping from 0→2 selects 1)
+        
         if (_selectedDots.isNotEmpty) {
           final lastDot = _selectedDots.last;
           final intermediate = _getIntermediateDot(lastDot, dot);
@@ -114,10 +104,8 @@ class _PatternLockWidgetState extends State<PatternLockWidget> {
     });
   }
 
-  /// Returns the intermediate dot between two dots if they are
-  /// in the same row, column, or diagonal with a dot in between.
   int? _getIntermediateDot(int from, int to) {
-    // Grid positions: row = index ~/ 3, col = index % 3
+    
     final fromRow = from ~/ 3;
     final fromCol = from % 3;
     final toRow = to ~/ 3;
@@ -126,7 +114,6 @@ class _PatternLockWidgetState extends State<PatternLockWidget> {
     final midRow = fromRow + toRow;
     final midCol = fromCol + toCol;
 
-    // Check if mid-point falls exactly on a dot (both coordinates even)
     if (midRow % 2 == 0 && midCol % 2 == 0) {
       final midDot = (midRow ~/ 2) * 3 + (midCol ~/ 2);
       if (midDot >= 0 && midDot < 9 && midDot != from && midDot != to) {
@@ -144,11 +131,10 @@ class _PatternLockWidgetState extends State<PatternLockWidget> {
       final pattern = _selectedDots.join('');
       widget.onPatternCompleted(pattern);
     } else if (_selectedDots.isNotEmpty) {
-      // Provide feedback that the pattern is too short
+      
       widget.onPatternTooShort?.call();
     }
 
-    // Clear after a short delay so user can see the pattern
     Future.delayed(const Duration(milliseconds: 400), () {
       if (mounted) {
         setState(() {
@@ -161,7 +147,7 @@ class _PatternLockWidgetState extends State<PatternLockWidget> {
 
   @override
   Widget build(BuildContext context) {
-    // Use LayoutBuilder to adapt to available width, capped at 320
+    
     return LayoutBuilder(
       builder: (context, constraints) {
         final availableWidth = constraints.maxWidth.isFinite
@@ -169,7 +155,6 @@ class _PatternLockWidgetState extends State<PatternLockWidget> {
             : 280.0;
         final gridSize = availableWidth.clamp(200.0, 320.0);
 
-        // Recompute dot centers if size changed
         if (gridSize != _gridSize || _dotCenters.isEmpty) {
           _computeDotCenters(gridSize);
         }
@@ -224,7 +209,7 @@ class _PatternPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    // Draw connecting lines
+    
     if (showLines && selectedDots.length > 1) {
       final linePaint = Paint()
         ..color = selectedColor.withValues(alpha: 0.4)
@@ -239,7 +224,6 @@ class _PatternPainter extends CustomPainter {
         );
       }
 
-      // Draw line from last selected dot to current touch position
       if (currentTouch != null && selectedDots.isNotEmpty) {
         canvas.drawLine(
           dotCenters[selectedDots.last],
@@ -249,12 +233,10 @@ class _PatternPainter extends CustomPainter {
       }
     }
 
-    // Draw dots
     for (int i = 0; i < dotCenters.length; i++) {
       final isSelected = selectedDots.contains(i);
       final center = dotCenters[i];
 
-      // Outer ring
       final outerPaint = Paint()
         ..color = isSelected
             ? selectedColor.withValues(alpha: 0.3)
@@ -262,13 +244,11 @@ class _PatternPainter extends CustomPainter {
         ..style = PaintingStyle.fill;
       canvas.drawCircle(center, dotRadius + 4, outerPaint);
 
-      // Inner dot
       final dotPaint = Paint()
         ..color = isSelected ? selectedColor : dotColor
         ..style = PaintingStyle.fill;
       canvas.drawCircle(center, dotRadius, dotPaint);
 
-      // Border
       final borderPaint = Paint()
         ..color = isSelected
             ? selectedColor.withValues(alpha: 0.6)
@@ -281,8 +261,7 @@ class _PatternPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _PatternPainter oldDelegate) {
-    // Always repaint — selectedDots is mutated in place so reference
-    // comparison is unreliable, and currentTouch changes every frame.
+
     return true;
   }
 }

@@ -42,7 +42,7 @@ class _PatternScreenState extends State<PatternScreen> {
   }
 
   Future<void> _updatePattern(String pattern) async {
-    // If selecting 4-digit or 6-digit, navigate to PIN change screen
+    
     if (pattern == '6-digit' || pattern == '4-digit') {
       final targetLength = pattern == '6-digit' ? 6 : 4;
       final result = await Navigator.push<bool>(
@@ -52,7 +52,6 @@ class _PatternScreenState extends State<PatternScreen> {
         ),
       );
 
-      // If the user successfully set PINs, update the display
       if (result == true && mounted) {
         setState(() {
           _selectedPattern = pattern;
@@ -61,7 +60,6 @@ class _PatternScreenState extends State<PatternScreen> {
       return;
     }
 
-    // If selecting pattern, navigate to pattern setup screen
     if (pattern == 'pattern') {
       final result = await Navigator.push<bool>(
         context,
