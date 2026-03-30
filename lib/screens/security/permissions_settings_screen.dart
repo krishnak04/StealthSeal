@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../../core/theme/theme_config.dart';
 
@@ -11,9 +12,9 @@ class PermissionsSettingsScreen extends StatefulWidget {
 }
 
 class _PermissionsSettingsScreenState extends State<PermissionsSettingsScreen> {
+  static const platform = MethodChannel('com.stealthseal.app/applock');
 
   PermissionStatus _cameraStatus = PermissionStatus.denied;
-  PermissionStatus _storageStatus = PermissionStatus.denied;
   PermissionStatus _locationStatus = PermissionStatus.denied;
   PermissionStatus _photosStatus = PermissionStatus.denied;
   PermissionStatus _accessibilityStatus = PermissionStatus.denied;
@@ -27,19 +28,23 @@ class _PermissionsSettingsScreenState extends State<PermissionsSettingsScreen> {
 
   Future<void> _checkPermissions() async {
     final camera = await Permission.camera.status;
-    final storage = await Permission.storage.status;
     final location = await Permission.location.status;
     final photos = await Permission.photos.status;
-
-    final accessibility = await Permission.sensors.status;
+// Check accessibility service status via native method
+    bool isAccessibilityEnabled = false;
+    try {
+      final result = await platform.invokeMethod<bool>('isAccessibilityServiceEnabled');
+      isAccessibilityEnabled = result ?? false;
+    } catch (e) {
+      debugPrint('Error checking accessibility: $e');
+    }
 
     if (mounted) {
       setState(() {
         _cameraStatus = camera;
-        _storageStatus = storage;
         _locationStatus = location;
         _photosStatus = photos;
-        _accessibilityStatus = accessibility;
+        _accessibilityStatus = isAccessibilityEnabled ? PermissionStatus.granted : PermissionStatus.denied;
         _isInitializing = false;
       });
     }
@@ -49,12 +54,6 @@ class _PermissionsSettingsScreenState extends State<PermissionsSettingsScreen> {
     final status = await Permission.camera.request();
     setState(() => _cameraStatus = status);
     _showPermissionResult(status, 'Camera');
-  }
-
-  Future<void> _requestStoragePermission() async {
-    final status = await Permission.storage.request();
-    setState(() => _storageStatus = status);
-    _showPermissionResult(status, 'Storage');
   }
 
   Future<void> _requestLocationPermission() async {
@@ -70,10 +69,37 @@ class _PermissionsSettingsScreenState extends State<PermissionsSettingsScreen> {
   }
 
   Future<void> _requestAccessibilityPermission() async {
-
-    final status = await Permission.ignoreBatteryOptimizations.request();
-    setState(() => _accessibilityStatus = status);
-    _showPermissionResult(status, 'Accessibility');
+    try {
+      // Open accessibility settings for user to enable the service
+      await platform.invokeMethod('openAccessibilitySettings');
+      
+      // After user returns, check status again
+      Future.delayed(const Duration(seconds: 1), () {
+        if (mounted) {
+          _checkPermissions();
+        }
+      });
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please enable StealthSeal in Accessibility settings'),
+            backgroundColor: Color(0xFF4CAF50),
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Error requesting accessibility: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not open accessibility settings'),
+            backgroundColor: Color(0xFFFF6B5B),
+          ),
+        );
+      }
+    }
   }
 
   void _showPermissionResult(PermissionStatus status, String permission) {
@@ -151,15 +177,6 @@ class _PermissionsSettingsScreenState extends State<PermissionsSettingsScreen> {
                 description: 'Required for intruder detection photos',
                 status: _cameraStatus,
                 onTap: _requestCameraPermission,
-              ),
-              const SizedBox(height: 12),
-              _buildPermissionCard(
-                icon: Icons.folder,
-                iconColor: ThemeConfig.accentColor(context),
-                title: 'Storage',
-                description: 'Store intruder photos and app settings',
-                status: _storageStatus,
-                onTap: _requestStoragePermission,
               ),
               const SizedBox(height: 12),
               _buildPermissionCard(

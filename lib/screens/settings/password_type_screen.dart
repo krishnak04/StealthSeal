@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../../core/theme/theme_config.dart';
+import '../../core/theme/theme_service.dart';
 import 'six_digit_pin_screen.dart';
 import 'pattern_setup_screen.dart';
 
@@ -115,114 +116,119 @@ class _PatternScreenState extends State<PatternScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Password Type'),
-        backgroundColor: ThemeConfig.appBarBackground(context),
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context),
-        ),
-      ),
-      backgroundColor: ThemeConfig.backgroundColor(context),
-      body: _isLoading
-          ? Center(
-              child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(
-                  ThemeConfig.accentColor(context),
-                ),
-              ),
-            )
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Unlock Pin',
-                    style: TextStyle(
-                      color: ThemeConfig.textPrimary(context),
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
+    return ValueListenableBuilder<AppThemeMode>(
+      valueListenable: ThemeService.themeNotifier,
+      builder: (context, themeMode, child) {
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text('Password Type'),
+            backgroundColor: ThemeConfig.appBarBackground(context),
+            elevation: 0,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ),
+          backgroundColor: ThemeConfig.backgroundColor(context),
+          body: _isLoading
+              ? Center(
+                  child: CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      ThemeConfig.accentColor(context),
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Select your preferred unlock pattern',
-                    style: TextStyle(
-                      color: ThemeConfig.textSecondary(context),
-                      fontSize: 13,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  _buildPatternOption(
-                    context: context,
-                    title: '4-digit PIN',
-                    description: 'Numeric PIN\nExample: 1234',
-                    pattern: '4-digit',
-                    icon: Icons.dialpad,
-                  ),
-                  const SizedBox(height: 12),
-                  _buildPatternOption(
-                    context: context,
-                    title: '6-digit PIN',
-                    description: 'Longer numeric PIN\nExample: 123456',
-                    pattern: '6-digit',
-                    icon: Icons.pin,
-                  ),
-                  const SizedBox(height: 24),
-                  _buildPatternOption(
-                    context: context,
-                    title: 'Pattern',
-                    description: 'Pattern-based unlock\nExample: L-shaped pattern',
-                    pattern: 'pattern',
-                    icon: Icons.lock,
-                  ),
-                  const SizedBox(height: 24),
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: ThemeConfig.infoColor(context).withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: ThemeConfig.infoColor(context),
+                )
+              : SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Unlock Pin',
+                        style: TextStyle(
+                          color: ThemeConfig.textPrimary(context),
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
+                      const SizedBox(height: 8),
+                      Text(
+                        'Select your preferred unlock pattern',
+                        style: TextStyle(
+                          color: ThemeConfig.textSecondary(context),
+                          fontSize: 13,
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      _buildPatternOption(
+                        context: context,
+                        title: '4-digit PIN',
+                        description: 'Numeric PIN\nExample: 1234',
+                        pattern: '4-digit',
+                        icon: Icons.dialpad,
+                      ),
+                      const SizedBox(height: 12),
+                      _buildPatternOption(
+                        context: context,
+                        title: '6-digit PIN',
+                        description: 'Longer numeric PIN\nExample: 123456',
+                        pattern: '6-digit',
+                        icon: Icons.pin,
+                      ),
+                      const SizedBox(height: 24),
+                      _buildPatternOption(
+                        context: context,
+                        title: 'Pattern',
+                        description: 'Pattern-based unlock\nExample: L-shaped pattern',
+                        pattern: 'pattern',
+                        icon: Icons.lock,
+                      ),
+                      const SizedBox(height: 24),
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: ThemeConfig.infoColor(context).withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: ThemeConfig.infoColor(context),
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Icon(Icons.info,
-                                color: ThemeConfig.infoColor(context)),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                'Current Pattern: $_selectedPattern',
-                                style: TextStyle(
-                                  color: ThemeConfig.textPrimary(context),
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
+                            Row(
+                              children: [
+                                Icon(Icons.info,
+                                    color: ThemeConfig.infoColor(context)),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    'Current Pattern: $_selectedPattern',
+                                    style: TextStyle(
+                                      color: ThemeConfig.textPrimary(context),
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
                                 ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              'Your chosen pattern will be used for future authentication.',
+                              style: TextStyle(
+                                color: ThemeConfig.textPrimary(context),
+                                fontSize: 12,
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 12),
-                        Text(
-                          'Your chosen pattern will be used for future authentication.',
-                          style: TextStyle(
-                            color: ThemeConfig.textPrimary(context),
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            ),
+                ),
+        );
+      },
     );
   }
 

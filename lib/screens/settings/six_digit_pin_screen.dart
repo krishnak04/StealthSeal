@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:hive/hive.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/theme/theme_config.dart';
+import '../../core/theme/theme_service.dart';
 import '../../core/services/user_identifier_service.dart';
 import '../../widgets/pattern_lock_widget.dart';
 
@@ -420,34 +421,37 @@ class _SixDigitPinScreenState extends State<SixDigitPinScreen>
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return ValueListenableBuilder<AppThemeMode>(
+      valueListenable: ThemeService.themeNotifier,
+      builder: (context, themeMode, child) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF1a1a2e) : const Color(0xFF2d2d2d),
-      body: _isLoading
-          ? Center(
-              child: CircularProgressIndicator(
-                color: ThemeConfig.accentColor(context),
-              ),
-            )
-          : SafeArea(
-              child: Column(
-                children: [
-                  
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                    child: Row(
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.arrow_back, color: Colors.white),
-                          onPressed: () => Navigator.pop(context),
-                        ),
-                      ],
-                    ),
+        return Scaffold(
+          backgroundColor: isDark ? const Color(0xFF1a1a2e) : const Color(0xFF2d2d2d),
+          body: _isLoading
+              ? Center(
+                  child: CircularProgressIndicator(
+                    color: ThemeConfig.accentColor(context),
                   ),
+                )
+              : SafeArea(
+                  child: Column(
+                    children: [
+                      
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                        child: Row(
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.arrow_back, color: Colors.white),
+                              onPressed: () => Navigator.pop(context),
+                            ),
+                          ],
+                        ),
+                      ),
 
-                  Expanded(
-                    child: Padding(
+                      Expanded(
+                        child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 24),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -530,6 +534,8 @@ class _SixDigitPinScreenState extends State<SixDigitPinScreen>
                 ],
               ),
             ),
+        );
+      },
     );
   }
 
