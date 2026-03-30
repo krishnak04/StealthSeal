@@ -1,4 +1,4 @@
-﻿package com.example.stealthseal
+package com.example.stealthseal
 
 import android.app.Service
 import android.content.Context

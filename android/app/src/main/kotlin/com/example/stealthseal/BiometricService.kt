@@ -24,24 +24,24 @@ object BiometricService {
             val biometricManager = BiometricManager.from(context)
             when (biometricManager.canAuthenticate(Authenticators.BIOMETRIC_STRONG or Authenticators.BIOMETRIC_WEAK)) {
                 BIOMETRIC_SUCCESS -> {
-                    Log.d(TAG, "✅ Biometric is supported on this device")
+                    Log.d(TAG, " Biometric is supported on this device")
                     true
                 }
                 BIOMETRIC_ERROR_NO_HARDWARE -> {
-                    Log.d(TAG, "❌ No biometric hardware found")
+                    Log.d(TAG, " No biometric hardware found")
                     false
                 }
                 BIOMETRIC_ERROR_SECURITY_UPDATE_REQUIRED -> {
-                    Log.d(TAG, "⚠️ Biometric requires security update")
+                    Log.d(TAG, " Biometric requires security update")
                     false
                 }
                 else -> {
-                    Log.d(TAG, "❌ Biometric not supported")
+                    Log.d(TAG, " Biometric not supported")
                     false
                 }
             }
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Error checking biometric support: ${e.message}")
+            Log.e(TAG, " Error checking biometric support: ${e.message}")
             false
         }
     }
@@ -51,7 +51,7 @@ object BiometricService {
             val prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
             prefs.getBoolean(KEY_BIOMETRIC_ENABLED, false)
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Error checking biometric enabled state: ${e.message}")
+            Log.e(TAG, " Error checking biometric enabled state: ${e.message}")
             false
         }
     }
@@ -60,9 +60,9 @@ object BiometricService {
         try {
             val prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
             prefs.edit().putBoolean(KEY_BIOMETRIC_ENABLED, true).apply()
-            Log.d(TAG, "✅ Biometric enabled in preferences")
+            Log.d(TAG, " Biometric enabled in preferences")
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Error enabling biometric: ${e.message}")
+            Log.e(TAG, " Error enabling biometric: ${e.message}")
         }
     }
 
@@ -70,19 +70,19 @@ object BiometricService {
         try {
             val prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
             prefs.edit().putBoolean(KEY_BIOMETRIC_ENABLED, false).apply()
-            Log.d(TAG, "✅ Biometric disabled in preferences")
+            Log.d(TAG, " Biometric disabled in preferences")
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Error disabling biometric: ${e.message}")
+            Log.e(TAG, " Error disabling biometric: ${e.message}")
         }
     }
 
     suspend fun authenticate(activity: FragmentActivity): Boolean = suspendCancellableCoroutine { continuation ->
-        Log.d(TAG, "🔐 Starting biometric authentication...")
+        Log.d(TAG, " Starting biometric authentication...")
         
         try {
             
             if (!isSupported(activity)) {
-                Log.d(TAG, "⚠️ Device does not support biometric - showing error dialog")
+                Log.d(TAG, " Device does not support biometric - showing error dialog")
                 
                 androidx.appcompat.app.AlertDialog.Builder(activity)
                     .setTitle("Biometric Not Available")
@@ -101,19 +101,19 @@ object BiometricService {
             val callback = object : BiometricPrompt.AuthenticationCallback() {
                 override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
                     super.onAuthenticationSucceeded(result)
-                    Log.d(TAG, "✅ Biometric authentication successful!")
+                    Log.d(TAG, " Biometric authentication successful!")
                     continuation.resume(true)
                 }
 
                 override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
                     super.onAuthenticationError(errorCode, errString)
-                    Log.d(TAG, "❌ Biometric error ($errorCode): $errString")
+                    Log.d(TAG, " Biometric error ($errorCode): $errString")
                     continuation.resume(false)
                 }
 
                 override fun onAuthenticationFailed() {
                     super.onAuthenticationFailed()
-                    Log.d(TAG, "❌ Biometric authentication failed - wrong fingerprint/face")
+                    Log.d(TAG, " Biometric authentication failed - wrong fingerprint/face")
                     continuation.resume(false)
                 }
             }
@@ -130,11 +130,11 @@ object BiometricService {
                 .setNegativeButtonText("Cancel")
                 .build()
 
-            Log.d(TAG, "📋 Showing biometric prompt to user...")
+            Log.d(TAG, " Showing biometric prompt to user...")
             biometricPrompt.authenticate(promptInfo)
 
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Exception during biometric authentication: ${e.message}")
+            Log.e(TAG, " Exception during biometric authentication: ${e.message}")
             e.printStackTrace()
             continuation.resume(false)
         }

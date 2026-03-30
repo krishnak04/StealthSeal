@@ -183,7 +183,7 @@ class _FakeDashboardState extends State<FakeDashboard> with WidgetsBindingObserv
             children: [
               _buildStatItem(context, '12', 'Last Backup', Colors.green),
               _buildStatItem(context, '98%', 'Storage Free', Colors.blue),
-              _buildStatItem(context, '✓', 'Status', ThemeConfig.accentColor(context)),
+              _buildStatItem(context, '', 'Status', ThemeConfig.accentColor(context)),
             ],
           ),
         ],

@@ -302,7 +302,7 @@ class MainActivity : FlutterFragmentActivity() {
 
                         val imageFile = java.io.File(imagePath)
                         if (!imageFile.exists()) {
-                            Log.w("MainActivity", "⚠️ Skipping log with missing image: $imagePath")
+                            Log.w("MainActivity", " Skipping log with missing image: $imagePath")
                             
                             continue
                         }
@@ -323,14 +323,14 @@ class MainActivity : FlutterFragmentActivity() {
                 }
 
                 if (validLogEntries.size < logEntries.size) {
-                    Log.d("MainActivity", "🧹 Cleaning up ${logEntries.size - validLogEntries.size} invalid log entries from SharedPreferences")
+                    Log.d("MainActivity", " Cleaning up ${logEntries.size - validLogEntries.size} invalid log entries from SharedPreferences")
                     val cleanedLogsString = if (validLogEntries.isNotEmpty()) {
                         validLogEntries.joinToString("\n") + "\n"
                     } else {
                         ""
                     }
                     prefs.edit().putString("intruderLogs", cleanedLogsString).apply()
-                    Log.d("MainActivity", "✅ SharedPreferences cleaned up. Remaining logs: ${validLogEntries.size}")
+                    Log.d("MainActivity", " SharedPreferences cleaned up. Remaining logs: ${validLogEntries.size}")
                 }
             }
             
@@ -382,7 +382,7 @@ class MainActivity : FlutterFragmentActivity() {
                 
                 prefs.edit().putString("intruderLogs", updatedLogsString).apply()
                 
-                Log.d("MainActivity", "✅ Intruder log removed successfully")
+                Log.d("MainActivity", " Intruder log removed successfully")
                 result.success(true)
             } else {
                 Log.d("MainActivity", "Logs are already empty")
@@ -459,10 +459,10 @@ class MainActivity : FlutterFragmentActivity() {
             val prefs = getSharedPreferences("stealthseal_prefs", Context.MODE_PRIVATE)
             prefs.edit().putString("disguisePackage", targetPackageName).apply()
             
-            Log.d("MainActivity", "✅ Fake shortcut created: '$targetAppLabel' points to StealthSeal")
+            Log.d("MainActivity", " Fake shortcut created: '$targetAppLabel' points to StealthSeal")
             result.success(true)
         } catch (e: Exception) {
-            Log.e("MainActivity", "❌ Error creating fake shortcut: ${e.message}")
+            Log.e("MainActivity", " Error creating fake shortcut: ${e.message}")
             e.printStackTrace()
             result.error("ERROR", "Failed to create shortcut: ${e.message}", null)
         }

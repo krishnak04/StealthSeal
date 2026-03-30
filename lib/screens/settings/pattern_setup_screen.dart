@@ -173,7 +173,7 @@ class _PatternSetupScreenState extends State<PatternSetupScreen> {
             _statusColor = Colors.white70;
           });
         } else {
-          debugPrint('✗ Pattern verification FAILED - Pattern does not match');
+          debugPrint(' Pattern verification FAILED - Pattern does not match');
           _showPatternError('Incorrect pattern. Try again.');
           
         }

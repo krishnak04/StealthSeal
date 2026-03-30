@@ -100,9 +100,9 @@ if (_selectedMode == 'settings') {
         'mode': 'normal',
         'packageName': '',
       });
-      debugPrint('✅ Normal mode applied');
+      debugPrint(' Normal mode applied');
     } catch (e) {
-      debugPrint('⚠️ Error applying normal mode: $e');
+      debugPrint(' Error applying normal mode: $e');
     }
   }
 
@@ -119,7 +119,7 @@ if (_selectedMode == 'settings') {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('✅ Shortcut created: "${app.label}"\nTap and pin it to home screen'),
+        content: Text(' Shortcut created: "${app.label}"\nTap and pin it to home screen'),
         backgroundColor: const Color(0xFF00BCD4),
         duration: const Duration(seconds: 3),
       ),

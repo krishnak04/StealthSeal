@@ -156,7 +156,7 @@ class AppLockActivity : FragmentActivity() {
     }
 
     private fun blockAccessDueToTimeLock() {
-        Log.d(TAG, "🔒 Blocking access due to time lock - showing keypad only")
+        Log.d(TAG, " Blocking access due to time lock - showing keypad only")
         
         try {
             
@@ -173,11 +173,11 @@ class AppLockActivity : FragmentActivity() {
             errorText.text = "⏰ Time locked. Try again outside lock window."
             errorText.textSize = 13f
             
-            Log.d(TAG, "✅ Keypad UI displayed during time lock")
+            Log.d(TAG, " Keypad UI displayed during time lock")
 
             startTimeLockCountdown()
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Error blocking access: ${e.message}")
+            Log.e(TAG, " Error blocking access: ${e.message}")
             e.printStackTrace()
         }
     }
@@ -201,24 +201,24 @@ class AppLockActivity : FragmentActivity() {
 
         pinLength = if (unlockPattern.contains("6")) 6 else 4
 
-        Log.d(TAG, "╔════════════════════════════════════════╗")
-        Log.d(TAG, "║        PINS LOADED FROM STORAGE        ║")
-        Log.d(TAG, "╚════════════════════════════════════════╝")
+        Log.d(TAG, "")
+        Log.d(TAG, "        PINS LOADED FROM STORAGE        ")
+        Log.d(TAG, "")
         Log.d(TAG, "Unlock pattern: '$unlockPattern'")
         Log.d(TAG, "PIN length to expect: $pinLength")
         Log.d(TAG, "Location lock: $locationLockEnabled (Trusted: $trustedLat, $trustedLng, Radius: $trustedRadius m)")
         Log.d(TAG, "Time lock: $nightLockEnabled (${String.format("%02d:%02d", nightStartHour, nightStartMinute)} - ${String.format("%02d:%02d", nightEndHour, nightEndMinute)})")
         Log.d(TAG, "Real PIN:   '$realPin'")
         if (realPin != null) {
-            Log.d(TAG, "  └─ Length: ${realPin!!.length}, Bytes: ${realPin!!.toByteArray().joinToString(",")}")
+            Log.d(TAG, "   Length: ${realPin!!.length}, Bytes: ${realPin!!.toByteArray().joinToString(",")}")
         }
         Log.d(TAG, "Decoy PIN:  '$decoyPin'")
         if (decoyPin != null) {
-            Log.d(TAG, "  └─ Length: ${decoyPin!!.length}, Bytes: ${decoyPin!!.toByteArray().joinToString(",")}")
+            Log.d(TAG, "   Length: ${decoyPin!!.length}, Bytes: ${decoyPin!!.toByteArray().joinToString(",")}")
         }
 
         if (realPin == null) {
-            Log.e(TAG, "❌ No PINs found in SharedPreferences! App lock cannot validate.")
+            Log.e(TAG, " No PINs found in SharedPreferences! App lock cannot validate.")
         }
     }
 
@@ -230,16 +230,16 @@ class AppLockActivity : FragmentActivity() {
         nightEndHour = prefs.getInt("nightEndHour", 6)
         nightEndMinute = prefs.getInt("nightEndMinute", 0)
         
-        Log.d(TAG, "🔄 Time lock settings refreshed:")
+        Log.d(TAG, " Time lock settings refreshed:")
         Log.d(TAG, "   Enabled: $nightLockEnabled")
         Log.d(TAG, "   Window: ${String.format("%02d:%02d", nightStartHour, nightStartMinute)} - ${String.format("%02d:%02d", nightEndHour, nightEndMinute)}")
     }
 
     private fun verifyTimeLockConfiguration() {
-        Log.d(TAG, "╔════════════════════════════════════════╗")
-        Log.d(TAG, "║     TIME LOCK CONFIGURATION SUMMARY    ║")
-        Log.d(TAG, "╚════════════════════════════════════════╝")
-        Log.d(TAG, "Status: ${if (nightLockEnabled) "🔒 ENABLED" else "✅ DISABLED"}")
+        Log.d(TAG, "")
+        Log.d(TAG, "     TIME LOCK CONFIGURATION SUMMARY    ")
+        Log.d(TAG, "")
+        Log.d(TAG, "Status: ${if (nightLockEnabled) " ENABLED" else " DISABLED"}")
         Log.d(TAG, "Lock Window: ${String.format("%02d:%02d", nightStartHour, nightStartMinute)} - ${String.format("%02d:%02d", nightEndHour, nightEndMinute)}")
 
         val startMinutes = nightStartHour * 60 + nightStartMinute
@@ -264,8 +264,8 @@ class AppLockActivity : FragmentActivity() {
             false
         }
         
-        Log.d(TAG, "Currently Locked: ${if (isCurrentlyLocked) "🔒 YES" else "✅ NO"}")
-        Log.d(TAG, "╚════════════════════════════════════════╝")
+        Log.d(TAG, "Currently Locked: ${if (isCurrentlyLocked) " YES" else " NO"}")
+        Log.d(TAG, "")
     }
 
     private fun initViews() {
@@ -281,7 +281,7 @@ class AppLockActivity : FragmentActivity() {
         timeLockActiveText = findViewById(R.id.timeLockActiveText)
         timeLockCountdownText = findViewById(R.id.timeLockCountdownText)
         
-        Log.d(TAG, "✅ Time lock views initialized from XML layout")
+        Log.d(TAG, " Time lock views initialized from XML layout")
 
         dots.addAll(listOf(dot1, dot2, dot3, dot4, dot5, dot6))
 
@@ -327,7 +327,7 @@ class AppLockActivity : FragmentActivity() {
     }
 
     private fun setupFingerprintButton() {
-        Log.d(TAG, "📱 Setting up fingerprint button (always visible)")
+        Log.d(TAG, " Setting up fingerprint button (always visible)")
         fingerprintButtonContainer.visibility = View.VISIBLE
         fingerprintHelpText.visibility = View.VISIBLE
 
@@ -337,7 +337,7 @@ class AppLockActivity : FragmentActivity() {
     }
 
     private fun showBiometricPrompt() {
-        Log.d(TAG, "📋 Biometric button tapped - starting authentication...")
+        Log.d(TAG, " Biometric button tapped - starting authentication...")
         CoroutineScope(Dispatchers.Main).launch {
             try {
                 Log.d(TAG, "Calling BiometricService.authenticate()...")
@@ -346,7 +346,7 @@ class AppLockActivity : FragmentActivity() {
                 Log.d(TAG, "Biometric result: $isAuthenticated")
                 
                 if (isAuthenticated) {
-                    Log.d(TAG, "✅ Biometric authentication successful - unlocking app")
+                    Log.d(TAG, " Biometric authentication successful - unlocking app")
 
                     BiometricService.enable(this@AppLockActivity)
 
@@ -359,7 +359,7 @@ class AppLockActivity : FragmentActivity() {
                     unlockedSet.add(lockedPackage)
                     prefs.edit().putString("sessionUnlockedApps", unlockedSet.joinToString(",")).apply()
                     
-                    Log.d(TAG, "✅ Session-unlocked via biometric: $lockedPackage")
+                    Log.d(TAG, " Session-unlocked via biometric: $lockedPackage")
 
                     val accessibilityEnabled = isAccessibilityServiceEnabled()
                     val hasShownAccessibilityPrompt = prefs.getBoolean("accessibility_prompt_shown", false)
@@ -372,11 +372,11 @@ class AppLockActivity : FragmentActivity() {
                         onAccessibilitySetupComplete()
                     }
                 } else {
-                    Log.d(TAG, "❌ Biometric authentication failed - user can still try PIN")
+                    Log.d(TAG, " Biometric authentication failed - user can still try PIN")
                     
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "❌ Error during biometric authentication: ${e.message}")
+                Log.e(TAG, " Error during biometric authentication: ${e.message}")
                 e.printStackTrace()
             }
         }
@@ -516,12 +516,12 @@ class AppLockActivity : FragmentActivity() {
 
     private fun isOutsideTrustedLocation(): Boolean {
         if (!locationLockEnabled) {
-            Log.d(TAG, "📍 Location lock is DISABLED")
+            Log.d(TAG, " Location lock is DISABLED")
             return false
         }
 
         if (trustedLat == 0.0 && trustedLng == 0.0) {
-            Log.d(TAG, "📍 Trusted location NOT configured - allowing access")
+            Log.d(TAG, " Trusted location NOT configured - allowing access")
             return false
         }
 
@@ -530,7 +530,7 @@ class AppLockActivity : FragmentActivity() {
                 android.Manifest.permission.ACCESS_FINE_LOCATION
             ) != android.content.pm.PackageManager.PERMISSION_GRANTED
         ) {
-            Log.d(TAG, "📍 Location permission DENIED - allowing access (can't verify location)")
+            Log.d(TAG, " Location permission DENIED - allowing access (can't verify location)")
             return false
         }
 
@@ -551,18 +551,18 @@ class AppLockActivity : FragmentActivity() {
                         trustedLng
                     )
                     
-                    Log.d(TAG, "📍 Current: ${currentLocation.latitude}, ${currentLocation.longitude}")
-                    Log.d(TAG, "📍 Trusted: $trustedLat, $trustedLng")
-                    Log.d(TAG, "📍 Distance: $distance m, Radius: $trustedRadius m")
+                    Log.d(TAG, " Current: ${currentLocation.latitude}, ${currentLocation.longitude}")
+                    Log.d(TAG, " Trusted: $trustedLat, $trustedLng")
+                    Log.d(TAG, " Distance: $distance m, Radius: $trustedRadius m")
                     
                     isOutside = distance > trustedRadius
                     if (isOutside) {
-                        Log.d(TAG, "📍❌ OUTSIDE trusted location - BLOCKING")
+                        Log.d(TAG, " OUTSIDE trusted location - BLOCKING")
                     } else {
-                        Log.d(TAG, "📍 INSIDE trusted location - ALLOWING")
+                        Log.d(TAG, " INSIDE trusted location - ALLOWING")
                     }
                 } else {
-                    Log.d(TAG, "📍 No last location available - allowing access (maybe first time)")
+                    Log.d(TAG, " No last location available - allowing access (maybe first time)")
                     isOutside = false
                 }
             }
@@ -574,13 +574,13 @@ class AppLockActivity : FragmentActivity() {
             }
 
             if (!locationObtained) {
-                Log.d(TAG, "📍⏱️ Location timeout - allowing access (location service slow)")
+                Log.d(TAG, "⏱ Location timeout - allowing access (location service slow)")
                 return false
             }
             
             return isOutside
         } catch (e: Exception) {
-            Log.e(TAG, "📍 Exception checking location: ${e.message} - allowing access")
+            Log.e(TAG, " Exception checking location: ${e.message} - allowing access")
             return false
         }
     }
@@ -636,7 +636,7 @@ class AppLockActivity : FragmentActivity() {
         isStartingCountdown = true
 
         if (timeLockActiveText == null || timeLockCountdownText == null) {
-            Log.e(TAG, "❌ Time lock views not initialized!")
+            Log.e(TAG, " Time lock views not initialized!")
             isStartingCountdown = false
             return
         }
@@ -766,7 +766,7 @@ class AppLockActivity : FragmentActivity() {
             isStartingCountdown = false
             
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Error in startTimeLockCountdown: ${e.message}")
+            Log.e(TAG, " Error in startTimeLockCountdown: ${e.message}")
             e.printStackTrace()
             isCountdownRunning = false
             isStartingCountdown = false
@@ -785,7 +785,7 @@ class AppLockActivity : FragmentActivity() {
     }
 
     private fun validatePin() {
-        Log.d(TAG, "🔐 PIN Validation Starting...")
+        Log.d(TAG, " PIN Validation Starting...")
 
         val prefs = getSharedPreferences("stealthseal_prefs", Context.MODE_PRIVATE)
 
@@ -796,10 +796,10 @@ class AppLockActivity : FragmentActivity() {
 
         refreshTimeLockSettings()
         
-        Log.d(TAG, "🔄 Security settings refreshed before validation")
+        Log.d(TAG, " Security settings refreshed before validation")
 
         if (isTimeLockActive()) {
-            Log.d(TAG, "🚫 TIME LOCK ACTIVE - BLOCKING ALL PIN ATTEMPTS")
+            Log.d(TAG, " TIME LOCK ACTIVE - BLOCKING ALL PIN ATTEMPTS")
             blockAccessDueToTimeLock()  
             errorText.visibility = View.VISIBLE
             errorText.text = "⏰ Time locked. Try again outside lock window."
@@ -811,9 +811,9 @@ class AppLockActivity : FragmentActivity() {
         }
 
         if (isOutsideTrustedLocation()) {
-            Log.d(TAG, "🚫 LOCATION LOCK ACTIVE - BLOCKING ALL PIN ATTEMPTS")
+            Log.d(TAG, " LOCATION LOCK ACTIVE - BLOCKING ALL PIN ATTEMPTS")
             errorText.visibility = View.VISIBLE
-            errorText.text = "📍 Location locked. Try again from trusted location."
+            errorText.text = " Location locked. Try again from trusted location."
             errorText.textSize = 13f
             enteredPin = ""
             updateDots()
@@ -887,7 +887,7 @@ class AppLockActivity : FragmentActivity() {
     }
 
     private fun validatePattern(pattern: String) {
-        Log.d(TAG, "🔐 Pattern Validation Starting...")
+        Log.d(TAG, " Pattern Validation Starting...")
 
         val prefs = getSharedPreferences("stealthseal_prefs", Context.MODE_PRIVATE)
 
@@ -898,10 +898,10 @@ class AppLockActivity : FragmentActivity() {
 
         refreshTimeLockSettings()
         
-        Log.d(TAG, "🔄 Security settings refreshed before validation")
+        Log.d(TAG, " Security settings refreshed before validation")
 
         if (isTimeLockActive()) {
-            Log.d(TAG, "🚫 TIME LOCK ACTIVE - BLOCKING ALL PATTERN ATTEMPTS")
+            Log.d(TAG, " TIME LOCK ACTIVE - BLOCKING ALL PATTERN ATTEMPTS")
             blockAccessDueToTimeLock()  
             errorText.visibility = View.VISIBLE
             errorText.text = "⏰ Time locked. Try again outside lock window."
@@ -912,9 +912,9 @@ class AppLockActivity : FragmentActivity() {
         }
 
         if (isOutsideTrustedLocation()) {
-            Log.d(TAG, "🚫 LOCATION LOCK ACTIVE - BLOCKING ALL PATTERN ATTEMPTS")
+            Log.d(TAG, " LOCATION LOCK ACTIVE - BLOCKING ALL PATTERN ATTEMPTS")
             errorText.visibility = View.VISIBLE
-            errorText.text = "📍 Location locked. Try again from trusted location."
+            errorText.text = " Location locked. Try again from trusted location."
             errorText.textSize = 13f
             patternView.reset()
             failedAttempts = 0
@@ -923,9 +923,9 @@ class AppLockActivity : FragmentActivity() {
         
         val entered = pattern.trim()
         
-        Log.d(TAG, "╔════════════════════════════════════════╗")
-        Log.d(TAG, "║       PATTERN VALIDATION CHECK        ║")
-        Log.d(TAG, "╚════════════════════════════════════════╝")
+        Log.d(TAG, "")
+        Log.d(TAG, "       PATTERN VALIDATION CHECK        ")
+        Log.d(TAG, "")
         Log.d(TAG, "Entered: '$entered'")
         Log.d(TAG, "  Length: ${entered.length}")
         Log.d(TAG, "  Bytes: ${entered.toByteArray().joinToString(",")}")
@@ -943,7 +943,7 @@ class AppLockActivity : FragmentActivity() {
         }
         
         if (entered.isEmpty() || realPin == null) {
-            Log.e(TAG, "❌ VALIDATION FAILED: Empty entered or no realPin!")
+            Log.e(TAG, " VALIDATION FAILED: Empty entered or no realPin!")
             errorText.visibility = View.VISIBLE
             errorText.text = "Invalid pattern"
             return
@@ -959,7 +959,7 @@ class AppLockActivity : FragmentActivity() {
 
         if (realMatch) {
             Log.d(TAG, "")
-            Log.d(TAG, "✅ CORRECT REAL PIN! Pattern matches!")
+            Log.d(TAG, " CORRECT REAL PIN! Pattern matches!")
             failedAttempts = 0
             errorText.visibility = View.GONE
 
@@ -989,7 +989,7 @@ class AppLockActivity : FragmentActivity() {
         } else {
             failedAttempts++
             Log.d(TAG, "")
-            Log.d(TAG, "❌ INCORRECT! Pattern does not match.")
+            Log.d(TAG, " INCORRECT! Pattern does not match.")
             Log.d(TAG, "Attempt #$failedAttempts")
 
             try {
@@ -1043,7 +1043,7 @@ class AppLockActivity : FragmentActivity() {
             val imageFile = java.io.File(intruderDir, imageFileName)
             val imagePath = imageFile.absolutePath
 
-            Log.d(TAG, "🚨 Attempting to capture intruder selfie: $imagePath")
+            Log.d(TAG, " Attempting to capture intruder selfie: $imagePath")
 
             val captureComplete = java.util.concurrent.CountDownLatch(1)
             var imageCaptured = false
@@ -1077,7 +1077,7 @@ class AppLockActivity : FragmentActivity() {
 
                                 imageFile.writeBytes(bytes)
 
-                                Log.d(TAG, "✅ Image saved: ${imageFile.length()} bytes")
+                                Log.d(TAG, " Image saved: ${imageFile.length()} bytes")
 
                                 imageCaptured = true
                                 image.close()
@@ -1161,7 +1161,7 @@ class AppLockActivity : FragmentActivity() {
     }
 }
         } catch (e: Exception) {
-            Log.e(TAG, "🚨 Exception in captureIntruderSelfie: ${e.message}")
+            Log.e(TAG, " Exception in captureIntruderSelfie: ${e.message}")
         }
     }
     
@@ -1176,7 +1176,7 @@ class AppLockActivity : FragmentActivity() {
                 textSize = 16f
             }
             val timeStr = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US).format(java.util.Date())
-            canvas.drawText("⚠️ Intruder Detected", 10f, 80f, paint)
+            canvas.drawText(" Intruder Detected", 10f, 80f, paint)
             canvas.drawText("Unauthorized Access", 10f, 110f, paint)
             canvas.drawText("PIN: $enteredPin", 10f, 130f, paint)
             canvas.drawText("Time: $timeStr", 10f, 160f, paint)
@@ -1187,14 +1187,14 @@ class AppLockActivity : FragmentActivity() {
             }
             bitmap.recycle()
             
-            Log.d(TAG, "✅ Placeholder image created: $imagePath")
+            Log.d(TAG, " Placeholder image created: $imagePath")
 
             val prefs = getSharedPreferences("stealthseal_prefs", Context.MODE_PRIVATE)
             val existingLogs = prefs.getString("intruderLogs", "") ?: ""
             val logEntry = "$imagePath|${System.currentTimeMillis()}|Failed PIN attempt on $lockedPackage|$enteredPin\n"
             prefs.edit().putString("intruderLogs", existingLogs + logEntry).apply()
         } catch (ex: Exception) {
-            Log.e(TAG, "❌ Error creating placeholder: ${ex.message}")
+            Log.e(TAG, " Error creating placeholder: ${ex.message}")
         }
     }
 
@@ -1238,7 +1238,7 @@ class AppLockActivity : FragmentActivity() {
                 showUnlockMethodUI()
             }
             currentlyBlockedPackage = lockedPackage
-            Log.d(TAG, "🔄 Unlock screen switched to: $appName ($lockedPackage)")
+            Log.d(TAG, " Unlock screen switched to: $appName ($lockedPackage)")
         } else {
             
             val oldPattern = unlockPattern
@@ -1246,7 +1246,7 @@ class AppLockActivity : FragmentActivity() {
             refreshTimeLockSettings()  
             
             if (oldPattern != unlockPattern) {
-                Log.d(TAG, "🔄 Unlock pattern changed from '$oldPattern' to '$unlockPattern', refreshing UI")
+                Log.d(TAG, " Unlock pattern changed from '$oldPattern' to '$unlockPattern', refreshing UI")
                 enteredPin = ""
                 failedAttempts = 0
                 errorText.visibility = View.GONE
@@ -1258,24 +1258,24 @@ class AppLockActivity : FragmentActivity() {
                     showUnlockMethodUI()
                 }
             } else {
-                Log.d(TAG, "🔄 Unlock screen re-focused for same app: $lockedPackage")
+                Log.d(TAG, " Unlock screen re-focused for same app: $lockedPackage")
             }
         }
     }
 
     override fun onResume() {
         super.onResume()
-        Log.d(TAG, "🔄 Lock screen resumed - checking all security settings...")
+        Log.d(TAG, " Lock screen resumed - checking all security settings...")
 
         val oldPattern = unlockPattern
         loadPins()  
         refreshTimeLockSettings()  
         
-        Log.d(TAG, "🔄 Security settings reloaded on resume")
+        Log.d(TAG, " Security settings reloaded on resume")
         Log.d(TAG, "   Time lock: $nightLockEnabled (${String.format("%02d:%02d", nightStartHour, nightStartMinute)} - ${String.format("%02d:%02d", nightEndHour, nightEndMinute)})")
 
         if (oldPattern != unlockPattern) {
-            Log.d(TAG, "🔄 Unlock pattern changed from '$oldPattern' to '$unlockPattern' on resume, refreshing UI")
+            Log.d(TAG, " Unlock pattern changed from '$oldPattern' to '$unlockPattern' on resume, refreshing UI")
             enteredPin = ""
             failedAttempts = 0
             errorText.visibility = View.GONE
@@ -1288,7 +1288,7 @@ class AppLockActivity : FragmentActivity() {
             return
         }
 
-        Log.d(TAG, "🔄 Re-checking time lock status on resume...")
+        Log.d(TAG, " Re-checking time lock status on resume...")
 
         verifyTimeLockConfiguration()
         
@@ -1357,9 +1357,9 @@ class AppLockActivity : FragmentActivity() {
         if (!pinCorrect) {
             dismissedAt = System.currentTimeMillis()
             dismissedPackage = lockedPackage
-            Log.d(TAG, "🔒 Lock screen destroyed without correct PIN for: $lockedPackage")
+            Log.d(TAG, " Lock screen destroyed without correct PIN for: $lockedPackage")
         } else {
-            Log.d(TAG, "✅ Lock screen destroyed after correct PIN for: $lockedPackage")
+            Log.d(TAG, " Lock screen destroyed after correct PIN for: $lockedPackage")
         }
     }
 }

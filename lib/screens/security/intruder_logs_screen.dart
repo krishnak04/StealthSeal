@@ -39,7 +39,7 @@ class _IntruderLogsScreenState extends State<IntruderLogsScreen> {
           final imagePath = nativeLog['imagePath'];
           if (imagePath != null && !existingPaths.contains(imagePath)) {
             mergedLogs.add(nativeLog);
-            debugPrint('✅ Added new log from locked app: $imagePath');
+            debugPrint(' Added new log from locked app: $imagePath');
           }
         }
 
@@ -55,7 +55,7 @@ class _IntruderLogsScreenState extends State<IntruderLogsScreen> {
 
         if (mergedLogs.isNotEmpty) {
           await securityBox.put('intruderLogs', mergedLogs);
-          debugPrint('🚨 Merged intruder logs: ${mergedLogs.length} total (${nativeLogsRaw.length} from locked app, ${existingLogs.length} main app)');
+          debugPrint(' Merged intruder logs: ${mergedLogs.length} total (${nativeLogsRaw.length} from locked app, ${existingLogs.length} main app)');
         }
         
         if (mounted) {
@@ -74,7 +74,7 @@ class _IntruderLogsScreenState extends State<IntruderLogsScreen> {
         'imagePath': imagePath,
         'timestamp': timestamp,
       });
-      debugPrint('✅ Removed log from native: $imagePath');
+      debugPrint(' Removed log from native: $imagePath');
     } catch (e) {
       debugPrint('Warning: Failed to remove from native logs: $e');
     }
@@ -88,7 +88,7 @@ class _IntruderLogsScreenState extends State<IntruderLogsScreen> {
           file,
           fit: BoxFit.cover,
           errorBuilder: (context, error, stackTrace) {
-            debugPrint('❌ Error loading image: $error');
+            debugPrint(' Error loading image: $error');
             return Center(
               child: Icon(
                 Icons.broken_image,
@@ -99,7 +99,7 @@ class _IntruderLogsScreenState extends State<IntruderLogsScreen> {
           },
         );
       } else {
-        debugPrint('⚠️ Image file not found: $imagePath');
+        debugPrint(' Image file not found: $imagePath');
         return Center(
           child: Icon(
             Icons.image_not_supported,
@@ -109,7 +109,7 @@ class _IntruderLogsScreenState extends State<IntruderLogsScreen> {
         );
       }
     } catch (e) {
-      debugPrint('❌ Error building image widget: $e');
+      debugPrint(' Error building image widget: $e');
       return Center(
         child: Icon(
           Icons.error,
@@ -166,7 +166,7 @@ class _IntruderLogsScreenState extends State<IntruderLogsScreen> {
                   imageExists = file.existsSync();
                   
                   if (!imageExists) {
-                    debugPrint('⚠️ Image file not found: $imagePath');
+                    debugPrint(' Image file not found: $imagePath');
                   }
                 }
 
@@ -574,9 +574,9 @@ class _IntruderLogsScreenState extends State<IntruderLogsScreen> {
                           if (file.existsSync()) {
                             try {
                               await file.delete();
-                              debugPrint('✅ Deleted intruder image: ${log['imagePath']}');
+                              debugPrint(' Deleted intruder image: ${log['imagePath']}');
                             } catch (e) {
-                              debugPrint('❌ Error deleting image file: $e');
+                              debugPrint(' Error deleting image file: $e');
                             }
                           }
                         }

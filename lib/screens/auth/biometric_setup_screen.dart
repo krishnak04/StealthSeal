@@ -89,7 +89,7 @@ class _BiometricSetupScreenState extends State<BiometricSetupScreen> {
 
       setState(() {
         _isRegistering = false;
-        _statusMessage = 'Biometric registered successfully! ✓';
+        _statusMessage = 'Biometric registered successfully! ';
         _biometricEnabled = true;
       });
 

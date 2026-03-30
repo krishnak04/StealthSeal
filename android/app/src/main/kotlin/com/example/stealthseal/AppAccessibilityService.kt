@@ -153,7 +153,7 @@ class AppAccessibilityService : AccessibilityService() {
             for (unlockedApp in unlockedApps) {
                 if (unlockedApp != currentForegroundApp && !NEVER_LOCKABLE.contains(unlockedApp)) {
                     reLockApp(unlockedApp)
-                    Log.d(TAG, "🔒 Auto re-locked background unlocked app: $unlockedApp")
+                    Log.d(TAG, " Auto re-locked background unlocked app: $unlockedApp")
                 }
             }
         } catch (e: Exception) {
@@ -190,11 +190,11 @@ class AppAccessibilityService : AccessibilityService() {
 
         val cls = event.className?.toString() ?: ""
         if (cls.contains("Recents", true) || cls.contains("Overview", true) || cls.contains("TaskSwitcher", true)) {
-            Log.d(TAG, "📋 Recents switcher opened (class=$cls) - re-locking app: $currentUserApp")
+            Log.d(TAG, " Recents switcher opened (class=$cls) - re-locking app: $currentUserApp")
             
             if (currentUserApp != null && isSessionUnlocked(currentUserApp!!) && !NEVER_LOCKABLE.contains(currentUserApp)) {
                 reLockApp(currentUserApp!!)
-                Log.d(TAG, "   ✅ Re-locked: $currentUserApp before entering recents")
+                Log.d(TAG, "    Re-locked: $currentUserApp before entering recents")
             }
             return
         }
@@ -203,18 +203,18 @@ class AppAccessibilityService : AccessibilityService() {
             val prev = currentUserApp
 
             if (NEVER_LOCKABLE.contains(packageName)) {
-                Log.d(TAG, "🏠 HOME/LAUNCHER detected: $packageName - clearing ALL session unlocks")
+                Log.d(TAG, " HOME/LAUNCHER detected: $packageName - clearing ALL session unlocks")
                 clearAllSessionUnlocks()
 
                 if (prev != null && isSessionUnlocked(prev) && !NEVER_LOCKABLE.contains(prev)) {
                     reLockApp(prev)
-                    Log.d(TAG, "   ✅ Also re-locked previous app: $prev")
+                    Log.d(TAG, "    Also re-locked previous app: $prev")
                 }
             }
             
             else if (prev != null && isSessionUnlocked(prev) && !NEVER_LOCKABLE.contains(prev)) {
                 reLockApp(prev)
-                Log.d(TAG, "✅ RE-LOCKED when exiting: $prev → $packageName")
+                Log.d(TAG, " RE-LOCKED when exiting: $prev → $packageName")
 
                 reLockUnlockedAppsNotInForeground(packageName)
             }
@@ -227,26 +227,26 @@ class AppAccessibilityService : AccessibilityService() {
         if (!lockedApps.containsKey(packageName)) return
 
         val isUnlocked = isSessionUnlocked(packageName)
-        Log.d(TAG, "📱 $packageName - isSessionUnlocked? $isUnlocked")
+        Log.d(TAG, " $packageName - isSessionUnlocked? $isUnlocked")
         
         if (isUnlocked) {
             
             justUnlockedAt[packageName] = System.currentTimeMillis()
-            Log.d(TAG, "   ✅ User already unlocked $packageName in this session, allowing")
+            Log.d(TAG, "    User already unlocked $packageName in this session, allowing")
             return
         } else {
             
-            Log.d(TAG, "   🔒 $packageName NOT in sessionUnlockedApps - will show PIN screen")
+            Log.d(TAG, "    $packageName NOT in sessionUnlockedApps - will show PIN screen")
         }
 
         if (AppLockActivity.isShowing) {
             if (AppLockActivity.currentlyBlockedPackage == packageName) {
                 
-                Log.d(TAG, "⏭️  PIN already showing for $packageName, skip duplicate")
+                Log.d(TAG, "⏭  PIN already showing for $packageName, skip duplicate")
                 return  
             } else {
 
-                Log.d(TAG, "⏭️  Different app PIN can show: prev=${AppLockActivity.currentlyBlockedPackage}, new=$packageName")
+                Log.d(TAG, "⏭  Different app PIN can show: prev=${AppLockActivity.currentlyBlockedPackage}, new=$packageName")
             }
         }
 
@@ -264,9 +264,9 @@ class AppAccessibilityService : AccessibilityService() {
             intent.putExtra(AppLockActivity.EXTRA_LOCKED_PACKAGE, packageName)
             intent.putExtra(AppLockActivity.EXTRA_APP_NAME, appName)
             startActivity(intent)
-            Log.d(TAG, "🔐 LOCKED: Showing PIN screen for $appName ($packageName)")
+            Log.d(TAG, " LOCKED: Showing PIN screen for $appName ($packageName)")
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Error launching PIN: ${e.message}")
+            Log.e(TAG, " Error launching PIN: ${e.message}")
         }
     }
 

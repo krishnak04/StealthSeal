@@ -39,9 +39,9 @@ class IntruderService {
 
       await cameraController.dispose();
 
-      debugPrint('✅ Intruder image captured: $imagePath');
-      debugPrint('✅ Image file exists: ${await File(imagePath).exists()}');
-      debugPrint('✅ Image file size: ${await File(imagePath).length()} bytes');
+      debugPrint(' Intruder image captured: $imagePath');
+      debugPrint(' Image file exists: ${await File(imagePath).exists()}');
+      debugPrint(' Image file size: ${await File(imagePath).length()} bytes');
 
       final securityBox = Hive.box('securityBox');
       final List intruderLogs =
@@ -55,10 +55,10 @@ class IntruderService {
       });
 
       await securityBox.put('intruderLogs', intruderLogs);
-      debugPrint('✅ Intruder log saved to Hive');
+      debugPrint(' Intruder log saved to Hive');
     } catch (error) {
 
-      debugPrint('❌ IntruderService Error: $error');
+      debugPrint(' IntruderService Error: $error');
     }
   }
 }

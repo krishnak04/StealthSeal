@@ -70,39 +70,39 @@ class _LockScreenState extends State<LockScreen> {
     final endHour = (endHourValue is int) ? endHourValue : (endHourValue as num).toInt();
     final endMinute = (endMinuteValue is int) ? endMinuteValue : (endMinuteValue as num).toInt();
     
-    debugPrint('🕐 Timer Debug - Start: $startHour:${startMinute.toString().padLeft(2, '0')}, End: $endHour:${endMinute.toString().padLeft(2, '0')}');
+    debugPrint(' Timer Debug - Start: $startHour:${startMinute.toString().padLeft(2, '0')}, End: $endHour:${endMinute.toString().padLeft(2, '0')}');
     
     final now = DateTime.now();
     final currentSeconds = now.hour * 3600 + now.minute * 60 + now.second;
     final startSeconds = startHour * 3600 + startMinute * 60;
     final endSeconds = endHour * 3600 + endMinute * 60;
     
-    debugPrint('🕐 Current: ${now.hour}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')} (${currentSeconds}s)');
-    debugPrint('🕐 Start: ${(startSeconds~/3600)}:${((startSeconds%3600)~/60).toString().padLeft(2, '0')} ($startSeconds s)');
-    debugPrint('🕐 End: ${(endSeconds~/3600)}:${((endSeconds%3600)~/60).toString().padLeft(2, '0')} ($endSeconds s)');
+    debugPrint(' Current: ${now.hour}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')} (${currentSeconds}s)');
+    debugPrint(' Start: ${(startSeconds~/3600)}:${((startSeconds%3600)~/60).toString().padLeft(2, '0')} ($startSeconds s)');
+    debugPrint(' End: ${(endSeconds~/3600)}:${((endSeconds%3600)~/60).toString().padLeft(2, '0')} ($endSeconds s)');
     
     int secondsRemaining = 0;
 
     if (endSeconds > startSeconds && currentSeconds >= startSeconds && currentSeconds < endSeconds) {
-      debugPrint('✅ Same-day lock: Current is between start and end');
+      debugPrint(' Same-day lock: Current is between start and end');
       secondsRemaining = endSeconds - currentSeconds;
     }
     
     else if (endSeconds < startSeconds) {
-      debugPrint('🌙 Overnight lock detected');
+      debugPrint(' Overnight lock detected');
       if (currentSeconds >= startSeconds) {
-        debugPrint('✅ After start time (towards midnight)');
+        debugPrint(' After start time (towards midnight)');
         secondsRemaining = (24 * 3600) - currentSeconds + endSeconds;
       } else if (currentSeconds < endSeconds) {
-        debugPrint('✅ After midnight, before end time');
+        debugPrint(' After midnight, before end time');
         secondsRemaining = endSeconds - currentSeconds;
       }
     }
     else {
-      debugPrint('⚠️ No lock condition met - endSeconds: $endSeconds, startSeconds: $startSeconds, currentSeconds: $currentSeconds');
+      debugPrint(' No lock condition met - endSeconds: $endSeconds, startSeconds: $startSeconds, currentSeconds: $currentSeconds');
     }
     
-    debugPrint('🕐 Seconds remaining: $secondsRemaining');
+    debugPrint(' Seconds remaining: $secondsRemaining');
 
     if (secondsRemaining < 0) {
       secondsRemaining = 0;
@@ -112,7 +112,7 @@ class _LockScreenState extends State<LockScreen> {
     final minsRemaining = ((secondsRemaining % 3600) ~/ 60).toInt();
     final secsRemaining = (secondsRemaining % 60).toInt();
 
-    debugPrint('✨ Display time: ${hoursRemaining.toString().padLeft(2, '0')}:${minsRemaining.toString().padLeft(2, '0')}:${secsRemaining.toString().padLeft(2, '0')}');
+    debugPrint(' Display time: ${hoursRemaining.toString().padLeft(2, '0')}:${minsRemaining.toString().padLeft(2, '0')}:${secsRemaining.toString().padLeft(2, '0')}');
     
     if (mounted) {
       setState(() {
@@ -379,7 +379,7 @@ class _LockScreenState extends State<LockScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text(
-          '📍 Location Lock Active. You are outside the trusted location. App cannot be unlocked here.',
+          ' Location Lock Active. You are outside the trusted location. App cannot be unlocked here.',
           style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
         ),
         backgroundColor: Color.fromARGB(255, 255, 152, 0),
@@ -443,7 +443,7 @@ class _LockScreenState extends State<LockScreen> {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('📍 Location Lock Active. Biometric access blocked outside trusted location.'),
+            content: Text(' Location Lock Active. Biometric access blocked outside trusted location.'),
             backgroundColor: Color.fromARGB(255, 255, 152, 0),
             duration: Duration(seconds: 3),
           ),
@@ -460,7 +460,7 @@ final endHour = securityBox.get(HiveKeys.nightEndHour, defaultValue: 6);
         
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Time Lock Active 🔒\nApp locked until $endHour:${endMinute.toString().padLeft(2, '0')}'),
+            content: Text('Time Lock Active \nApp locked until $endHour:${endMinute.toString().padLeft(2, '0')}'),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 3),
           ),
@@ -737,7 +737,7 @@ final endHour = securityBox.get(HiveKeys.nightEndHour, defaultValue: 6);
       child: Column(
         children: [
           const Text(
-            '⏱️ Unlock Time Remaining',
+            '⏱ Unlock Time Remaining',
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w600,
@@ -870,12 +870,12 @@ final endHour = securityBox.get(HiveKeys.nightEndHour, defaultValue: 6);
               _troubleshootingSection(
                 'Tips for Using Biometric:',
                 [
-                  '✓ Make sure the screen is ON and display is not locked',
-                  '✓ For Fingerprint: Press firmly on the sensor area',
-                  '✓ For Face: Position your face clearly in view',
-                  '✓ Ensure good lighting for face recognition',
-                  '✓ Keep your face/finger clean and dry',
-                  '✓ Try multiple times if one attempt fails',
+                  ' Make sure the screen is ON and display is not locked',
+                  ' For Fingerprint: Press firmly on the sensor area',
+                  ' For Face: Position your face clearly in view',
+                  ' Ensure good lighting for face recognition',
+                  ' Keep your face/finger clean and dry',
+                  ' Try multiple times if one attempt fails',
                 ],
                 ctx,
               ),
@@ -883,11 +883,11 @@ final endHour = securityBox.get(HiveKeys.nightEndHour, defaultValue: 6);
               _troubleshootingSection(
                 'If Still Not Working:',
                 [
-                  '✓ Go to phone Settings → Biometrics',
-                  '✓ Delete and re-enroll your fingerprint',
-                  '✓ Test biometric in device settings first',
-                  '✓ Restart the app and try again',
-                  '✓ Use PIN unlock as fallback',
+                  ' Go to phone Settings → Biometrics',
+                  ' Delete and re-enroll your fingerprint',
+                  ' Test biometric in device settings first',
+                  ' Restart the app and try again',
+                  ' Use PIN unlock as fallback',
                 ],
                 ctx,
               ),
@@ -925,7 +925,7 @@ final endHour = securityBox.get(HiveKeys.nightEndHour, defaultValue: 6);
       if (!mounted) return;
 
       String biometricInfo =
-          'Device Support: ${isSupported ? 'YES ✓' : 'NO ✗'}\n\n';
+          'Device Support: ${isSupported ? 'YES ' : 'NO '}\n\n';
       biometricInfo += 'Available Biometric Types:\n';
 
       if (available.isEmpty) {
@@ -933,7 +933,7 @@ final endHour = securityBox.get(HiveKeys.nightEndHour, defaultValue: 6);
         biometricInfo += 'Action: Enroll biometric in device settings';
       } else {
         for (var bio in available) {
-          biometricInfo += '✓ $bio\n';
+          biometricInfo += ' $bio\n';
         }
         biometricInfo += '\nDetailed Status:\n';
         biometricInfo +=

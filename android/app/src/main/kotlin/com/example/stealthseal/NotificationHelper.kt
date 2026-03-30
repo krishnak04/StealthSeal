@@ -50,7 +50,7 @@ object NotificationHelper {
         )
         
         val notification = NotificationCompat.Builder(context, CHANNEL_SECURITY)
-            .setContentTitle("⚠️ App Lock Disabled")
+            .setContentTitle(" App Lock Disabled")
             .setContentText("StealthSeal Accessibility Service is OFF. Your apps are no longer protected.")
             .setSmallIcon(android.R.drawable.ic_dialog_alert)
             .setContentIntent(pendingIntent)
@@ -81,7 +81,7 @@ object NotificationHelper {
         )
         
         val notification = NotificationCompat.Builder(context, CHANNEL_SECURITY)
-            .setContentTitle("🚨 App Lock Stopping")
+            .setContentTitle(" App Lock Stopping")
             .setContentText("You tried to remove StealthSeal from active apps. App lock has stopped.")
             .setSmallIcon(android.R.drawable.ic_dialog_alert)
             .setContentIntent(pendingIntent)

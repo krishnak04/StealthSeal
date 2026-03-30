@@ -107,7 +107,7 @@ class _TimeLockSettingsScreenState extends State<TimeLockSettingsScreen> {
 
     await _syncTimeLocksToNative();
     
-    debugPrint('🔒 Quick lock set:');
+    debugPrint(' Quick lock set:');
     debugPrint('   Start: ${now.hour}:${now.minute.toString().padLeft(2, '0')}');
     debugPrint('   End: ${endTime.hour}:${endTime.minute.toString().padLeft(2, '0')}');
     debugPrint('   Duration: $minutes minutes');
@@ -115,7 +115,7 @@ class _TimeLockSettingsScreenState extends State<TimeLockSettingsScreen> {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('🔒 App locked for $minutes minutes until ${_formatTime(_endTime)}'),
+          content: Text(' App locked for $minutes minutes until ${_formatTime(_endTime)}'),
           backgroundColor: Colors.red,
           duration: const Duration(seconds: 2),
         ),
@@ -155,7 +155,7 @@ class _TimeLockSettingsScreenState extends State<TimeLockSettingsScreen> {
         'night_end_hour': _endTime.hour,
         'night_end_minute': _endTime.minute,
       });
-      debugPrint('✅ Time lock settings synced to native');
+      debugPrint(' Time lock settings synced to native');
       debugPrint('   Time Lock: $_timeLockEnabled (${_startTime.hour}:${_startTime.minute} - ${_endTime.hour}:${_endTime.minute})');
       debugPrint('   Location Lock: $locationLockEnabled');
     } catch (error) {
