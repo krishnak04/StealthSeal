@@ -51,8 +51,61 @@ class _AppLockManagementScreenState extends State<AppLockManagementScreen> {
   @override
   void initState() {
     super.initState();
+    _checkAccessibilityPermission();
     _loadLockedApps();
     _loadInstalledApps();
+  }
+
+  Future<void> _checkAccessibilityPermission() async {
+    try {
+      final isEnabled =
+          await platform.invokeMethod<bool>('isAccessibilityServiceEnabled');
+
+      if (isEnabled != true && mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (BuildContext dialogContext) {
+            return AlertDialog(
+              title: const Text('Accessibility Service Required'),
+              content: const Text(
+                'App locking requires accessibility permission to work.\n\n'
+                'Without it, the PIN screen won\'t appear when you try to open locked apps.\n\n'
+                'Enable it in Settings > Accessibility > StealthSeal',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: const Text('Enable Later'),
+                ),
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(dialogContext);
+
+                    try {
+                      platform.invokeMethod('openAccessibilitySettings');
+                    } catch (error) {
+                      debugPrint('Error opening accessibility settings: $error');
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Please manually open Settings > Accessibility > StealthSeal'),
+                            backgroundColor: Colors.orange,
+                          ),
+                        );
+                      }
+                    }
+                  },
+                  child: const Text('Open Settings'),
+                ),
+              ],
+            );
+          },
+        );
+      }
+    } catch (error) {
+      debugPrint('Error checking accessibility permission: $error');
+    }
   }
 
   Future<void> _loadInstalledApps() async {
@@ -108,9 +161,54 @@ class _AppLockManagementScreenState extends State<AppLockManagementScreen> {
 
   Future<void> _toggleAppLock(String packageName) async {
     final securityBox = Hive.box('securityBox');
-
     final isLocking = !_lockedApps.contains(packageName);
 
+    // Get app name for confirmation dialog
+    final app = _installedApps.firstWhere(
+      (a) => a["package"] == packageName,
+      orElse: () => {"name": packageName.split('.').last},
+    );
+    final appName = app["name"] ?? packageName;
+
+    // Show confirmation dialog before locking/unlocking
+    if (!mounted) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: Text(isLocking ? 'Lock App?' : 'Unlock App?'),
+          content: Text(
+            isLocking
+                ? 'Are you sure you want to lock "$appName"?\n\n'
+                  'When locked, the PIN screen will appear when you try to open it.'
+                : 'Are you sure you want to unlock "$appName"?\n\n'
+                  'This app will be accessible without entering PIN.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              style: TextButton.styleFrom(
+                foregroundColor: isLocking ? Colors.red : Colors.green,
+              ),
+              child: Text(isLocking ? 'Lock' : 'Unlock'),
+            ),
+          ],
+        );
+      },
+    );
+
+    // If user didn't confirm, return
+    if (confirmed != true) {
+      return;
+    }
+
+    // Proceed with locking/unlocking after confirmation
     if (isLocking) {
       try {
         final isEnabled =
