@@ -20,6 +20,9 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
 
   late String _currentRealPin;
   late String _currentDecoyPin;
+  late String _currentUnlockPattern; // 4-digit, 6-digit, or pattern
+  
+  String _selectedPasswordType = 'Real PIN (4-digit)'; // Default selection
   bool _isLoading = false;
   bool _showCurrentPassword = false;
   bool _showNewPassword = false;
@@ -36,6 +39,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       final securityBox = Hive.box('securityBox');
       _currentRealPin = securityBox.get('realPin', defaultValue: '');
       _currentDecoyPin = securityBox.get('decoyPin', defaultValue: '');
+      _currentUnlockPattern = securityBox.get('unlockPattern', defaultValue: '4-digit');
 
       if (_currentRealPin.isEmpty || _currentDecoyPin.isEmpty) {
 
@@ -51,6 +55,18 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
           _currentDecoyPin = response['decoy_pin'] ?? '';
         }
       }
+      
+      // Set default based on current pattern
+      if (mounted) {
+        setState(() {
+          if (_currentUnlockPattern == 'pattern') {
+            _selectedPasswordType = 'Real Pattern';
+          } else {
+            final pinLength = _currentRealPin.length;
+            _selectedPasswordType = pinLength == 6 ? 'Real PIN (6-digit)' : 'Real PIN (4-digit)';
+          }
+        });
+      }
     } catch (error) {
       debugPrint('Error loading current pins: $error');
       if (mounted) {
@@ -62,6 +78,42 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
         );
       }
     }
+  }
+
+  List<String> _getPasswordTypeOptions() {
+    return [
+      'Real PIN (4-digit)',
+      'Real PIN (6-digit)',
+      'Real Pattern',
+      'Decoy PIN (4-digit)',
+      'Decoy PIN (6-digit)',
+      'Decoy Pattern',
+    ];
+  }
+
+  String _getPasswordTypeLabel(String type) {
+    if (type.contains('Pattern')) {
+      return type; // "Real Pattern" or "Decoy Pattern"
+    } else if (type.contains('4-digit')) {
+      return type; // "Real PIN (4-digit)" or "Decoy PIN (4-digit)"
+    } else {
+      return type; // "Real PIN (6-digit)" or "Decoy PIN (6-digit)"
+    }
+  }
+
+  bool _isPatternType() {
+    return _selectedPasswordType.contains('Pattern');
+  }
+
+  bool _isRealPin() {
+    return _selectedPasswordType.startsWith('Real');
+  }
+
+  int _getExpectedPinLength() {
+    if (_selectedPasswordType.contains('6-digit')) {
+      return 6;
+    }
+    return 4;
   }
 
   Future<void> _changePassword() async {
@@ -86,8 +138,10 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       return;
     }
 
-    if (_newPasswordController.text.length < 4) {
-      _showErrorSnackBar('Password must be at least 4 characters');
+    // Validate PIN length
+    final expectedLength = _getExpectedPinLength();
+    if (_newPasswordController.text.length != expectedLength) {
+      _showErrorSnackBar('Password must be exactly $expectedLength digits');
       return;
     }
 
@@ -103,7 +157,8 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       final userId = await UserIdentifierService.getUserId();
       final newPassword = _newPasswordController.text;
 
-      bool isUpdatingRealPin = _currentPasswordController.text == _currentRealPin;
+      // Determine if updating real or decoy PIN based on selection
+      bool isUpdatingRealPin = _isRealPin();
 
       final securityBox = Hive.box('securityBox');
       if (isUpdatingRealPin) {
@@ -225,7 +280,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
             ),
             const SizedBox(height: 24),
             Text(
-              'Current Password',
+              'Select Password Type',
               style: TextStyle(
                 color: ThemeConfig.textPrimary(context),
                 fontSize: 14,
@@ -233,135 +288,242 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
               ),
             ),
             const SizedBox(height: 8),
-            TextField(
-              controller: _currentPasswordController,
-              obscureText: !_showCurrentPassword,
-              decoration: InputDecoration(
-                hintText: 'Enter current password',
-                hintStyle: TextStyle(color: ThemeConfig.textSecondary(context)),
-                filled: true,
-                fillColor: ThemeConfig.inputBackground(context),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide.none,
-                ),
-                suffixIcon: IconButton(
-                  icon: Icon(
-                    _showCurrentPassword
-                        ? Icons.visibility
-                        : Icons.visibility_off,
-                    color: ThemeConfig.accentColor(context),
-                  ),
-                  onPressed: () => setState(
-                      () => _showCurrentPassword = !_showCurrentPassword),
-                ),
+            Container(
+              decoration: BoxDecoration(
+                color: ThemeConfig.inputBackground(context),
+                border: Border.all(color: ThemeConfig.borderColor(context)),
+                borderRadius: BorderRadius.circular(10),
               ),
-              style: TextStyle(color: ThemeConfig.textPrimary(context)),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              'New Password',
-              style: TextStyle(
-                color: ThemeConfig.textPrimary(context),
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: DropdownButton<String>(
+                value: _selectedPasswordType,
+                isExpanded: true,
+                underline: const SizedBox(),
+                dropdownColor: ThemeConfig.surfaceColor(context),
+                style: TextStyle(color: ThemeConfig.textPrimary(context)),
+                items: _getPasswordTypeOptions()
+                    .map((String value) {
+                  return DropdownMenuItem<String>(
+                    value: value,
+                    child: Text(_getPasswordTypeLabel(value)),
+                  );
+                }).toList(),
+                onChanged: (String? newValue) {
+                  if (newValue != null) {
+                    setState(() {
+                      _selectedPasswordType = newValue;
+                      _currentPasswordController.clear();
+                      _newPasswordController.clear();
+                      _confirmPasswordController.clear();
+                    });
+                  }
+                },
               ),
             ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _newPasswordController,
-              obscureText: !_showNewPassword,
-              decoration: InputDecoration(
-                hintText: 'Enter new password',
-                hintStyle: TextStyle(color: ThemeConfig.textSecondary(context)),
-                filled: true,
-                fillColor: ThemeConfig.inputBackground(context),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide.none,
-                ),
-                suffixIcon: IconButton(
-                  icon: Icon(
-                    _showNewPassword ? Icons.visibility : Icons.visibility_off,
-                    color: ThemeConfig.accentColor(context),
-                  ),
-                  onPressed: () =>
-                      setState(() => _showNewPassword = !_showNewPassword),
-                ),
-              ),
-              style: TextStyle(color: ThemeConfig.textPrimary(context)),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              'Confirm New Password',
-              style: TextStyle(
-                color: ThemeConfig.textPrimary(context),
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _confirmPasswordController,
-              obscureText: !_showConfirmPassword,
-              decoration: InputDecoration(
-                hintText: 'Confirm new password',
-                hintStyle: TextStyle(color: ThemeConfig.textSecondary(context)),
-                filled: true,
-                fillColor: ThemeConfig.inputBackground(context),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide.none,
-                ),
-                suffixIcon: IconButton(
-                  icon: Icon(
-                    _showConfirmPassword
-                        ? Icons.visibility
-                        : Icons.visibility_off,
-                    color: ThemeConfig.accentColor(context),
-                  ),
-                  onPressed: () => setState(
-                      () => _showConfirmPassword = !_showConfirmPassword),
-                ),
-              ),
-              style: TextStyle(color: ThemeConfig.textPrimary(context)),
-            ),
-            const SizedBox(height: 32),
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                onPressed: _isLoading ? null : _changePassword,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: ThemeConfig.accentColor(context),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-                child: _isLoading
-                    ? SizedBox(
-                        height: 24,
-                        width: 24,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            ThemeConfig.textPrimary(context),
-                          ),
-                        ),
-                      )
-                    : Text(
-                        'Change Password',
-                        style: TextStyle(
-                          color: ThemeConfig.textPrimary(context),
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-              ),
-            ),
+            const SizedBox(height: 24),
+            if (!_isPatternType())
+              ..._buildPinChangeForm()
+            else
+              _buildPatternChangeForm(),
           ],
         ),
       ),
+    );
+  }
+
+  List<Widget> _buildPinChangeForm() {
+    return [
+      Text(
+        'Current Password',
+        style: TextStyle(
+          color: ThemeConfig.textPrimary(context),
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      const SizedBox(height: 8),
+      TextField(
+        controller: _currentPasswordController,
+        obscureText: !_showCurrentPassword,
+        decoration: InputDecoration(
+          hintText: 'Enter current password',
+          hintStyle: TextStyle(color: ThemeConfig.textSecondary(context)),
+          filled: true,
+          fillColor: ThemeConfig.inputBackground(context),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: BorderSide.none,
+          ),
+          suffixIcon: IconButton(
+            icon: Icon(
+              _showCurrentPassword
+                  ? Icons.visibility
+                  : Icons.visibility_off,
+              color: ThemeConfig.accentColor(context),
+            ),
+            onPressed: () => setState(
+                () => _showCurrentPassword = !_showCurrentPassword),
+          ),
+        ),
+        style: TextStyle(color: ThemeConfig.textPrimary(context)),
+      ),
+      const SizedBox(height: 20),
+      Text(
+        'New Password',
+        style: TextStyle(
+          color: ThemeConfig.textPrimary(context),
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      const SizedBox(height: 8),
+      TextField(
+        controller: _newPasswordController,
+        obscureText: !_showNewPassword,
+        decoration: InputDecoration(
+          hintText: 'Enter new password',
+          hintStyle: TextStyle(color: ThemeConfig.textSecondary(context)),
+          filled: true,
+          fillColor: ThemeConfig.inputBackground(context),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: BorderSide.none,
+          ),
+          suffixIcon: IconButton(
+            icon: Icon(
+              _showNewPassword ? Icons.visibility : Icons.visibility_off,
+              color: ThemeConfig.accentColor(context),
+            ),
+            onPressed: () =>
+                setState(() => _showNewPassword = !_showNewPassword),
+          ),
+        ),
+        style: TextStyle(color: ThemeConfig.textPrimary(context)),
+      ),
+      const SizedBox(height: 20),
+      Text(
+        'Confirm New Password',
+        style: TextStyle(
+          color: ThemeConfig.textPrimary(context),
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      const SizedBox(height: 8),
+      TextField(
+        controller: _confirmPasswordController,
+        obscureText: !_showConfirmPassword,
+        decoration: InputDecoration(
+          hintText: 'Confirm new password',
+          hintStyle: TextStyle(color: ThemeConfig.textSecondary(context)),
+          filled: true,
+          fillColor: ThemeConfig.inputBackground(context),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: BorderSide.none,
+          ),
+          suffixIcon: IconButton(
+            icon: Icon(
+              _showConfirmPassword
+                  ? Icons.visibility
+                  : Icons.visibility_off,
+              color: ThemeConfig.accentColor(context),
+            ),
+            onPressed: () => setState(
+                () => _showConfirmPassword = !_showConfirmPassword),
+          ),
+        ),
+        style: TextStyle(color: ThemeConfig.textPrimary(context)),
+      ),
+      const SizedBox(height: 32),
+      SizedBox(
+        width: double.infinity,
+        height: 50,
+        child: ElevatedButton(
+          onPressed: _isLoading ? null : _changePassword,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: ThemeConfig.accentColor(context),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+          child: _isLoading
+              ? SizedBox(
+                  height: 24,
+                  width: 24,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      ThemeConfig.textPrimary(context),
+                    ),
+                  ),
+                )
+              : Text(
+                  'Change Password',
+                  style: TextStyle(
+                    color: ThemeConfig.textPrimary(context),
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+        ),
+      ),
+    ];
+  }
+
+  Widget _buildPatternChangeForm() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: ThemeConfig.infoColor(context).withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: ThemeConfig.infoColor(context)),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.info, size: 18, color: ThemeConfig.infoColor(context)),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'To change your pattern, go to Password Type settings.',
+                  style: TextStyle(
+                    color: ThemeConfig.textSecondary(context),
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 20),
+        SizedBox(
+          width: double.infinity,
+          height: 50,
+          child: ElevatedButton(
+            onPressed: () => Navigator.pushNamed(
+              context,
+              '/password-type',
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: ThemeConfig.accentColor(context),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            child: Text(
+              'Go to Password Type',
+              style: TextStyle(
+                color: ThemeConfig.textPrimary(context),
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
