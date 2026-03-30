@@ -904,7 +904,7 @@ class AppLockActivity : FragmentActivity() {
             Log.d(TAG, " TIME LOCK ACTIVE - BLOCKING ALL PATTERN ATTEMPTS")
             blockAccessDueToTimeLock()  
             errorText.visibility = View.VISIBLE
-            errorText.text = "⏰ Time locked. Try again outside lock window."
+            errorText.text = " Time locked. Try again outside lock window."
             errorText.textSize = 13f
             patternView.reset()
             failedAttempts = 0
@@ -1036,14 +1036,17 @@ class AppLockActivity : FragmentActivity() {
 
             val intruderDir = java.io.File(filesDir, "intruder_logs")
             if (!intruderDir.exists()) {
-                intruderDir.mkdirs()
+                val created = intruderDir.mkdirs()
+                Log.d(TAG, " Intruder directory created: $created at ${intruderDir.absolutePath}")
+            } else {
+                Log.d(TAG, " Intruder directory already exists at ${intruderDir.absolutePath}")
             }
 
             val imageFileName = "intruder_${System.currentTimeMillis()}.jpg"
             val imageFile = java.io.File(intruderDir, imageFileName)
             val imagePath = imageFile.absolutePath
-
-            Log.d(TAG, " Attempting to capture intruder selfie: $imagePath")
+            
+            Log.d(TAG, " Will save intruder image to: $imagePath")
 
             val captureComplete = java.util.concurrent.CountDownLatch(1)
             var imageCaptured = false
@@ -1058,7 +1061,11 @@ class AppLockActivity : FragmentActivity() {
                             android.hardware.camera2.CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP
                         )
 
-                        val size = streamConfigMap!!.getOutputSizes(android.graphics.ImageFormat.JPEG)[0]
+                        // Select highest resolution for best quality
+                        val sizes = streamConfigMap!!.getOutputSizes(android.graphics.ImageFormat.JPEG)
+                        val size = sizes.maxByOrNull { it.width * it.height } ?: sizes[0]
+                        
+                        Log.d(TAG, " Selected camera resolution: ${size.width}x${size.height}")
 
                         val imageReader = android.media.ImageReader.newInstance(
                             size.width,
@@ -1076,8 +1083,10 @@ class AppLockActivity : FragmentActivity() {
                                 buffer.get(bytes)
 
                                 imageFile.writeBytes(bytes)
+                                imageFile.setReadable(true, false)  // Ensure readable
 
-                                Log.d(TAG, " Image saved: ${imageFile.length()} bytes")
+                                val savedSize = imageFile.length()
+                                Log.d(TAG, " Camera image saved: ${imageFile.absolutePath}, Size: $savedSize bytes")
 
                                 imageCaptured = true
                                 image.close()
@@ -1098,6 +1107,26 @@ class AppLockActivity : FragmentActivity() {
                             android.hardware.camera2.CaptureRequest.CONTROL_AE_MODE,
                             android.hardware.camera2.CaptureRequest.CONTROL_AE_MODE_ON
                         )
+                        // Enable autofocus for better image quality
+                        captureRequestBuilder.set(
+                            android.hardware.camera2.CaptureRequest.CONTROL_AF_MODE,
+                            android.hardware.camera2.CaptureRequest.CONTROL_AF_MODE_AUTO
+                        )
+                        // Set exposure precapture trigger
+                        captureRequestBuilder.set(
+                            android.hardware.camera2.CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER,
+                            android.hardware.camera2.CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER_START
+                        )
+                        // Set JPEG quality to maximum (95) for best image
+                        captureRequestBuilder.set(
+                            android.hardware.camera2.CaptureRequest.JPEG_QUALITY,
+                            95.toByte()
+                        )
+                        // Set thumbnail quality
+                        captureRequestBuilder.set(
+                            android.hardware.camera2.CaptureRequest.JPEG_THUMBNAIL_QUALITY,
+                            90.toByte()
+                        )
 
                         camera.createCaptureSession(
                             listOf(imageReader.surface),
@@ -1105,6 +1134,28 @@ class AppLockActivity : FragmentActivity() {
 
                                 override fun onConfigured(session: android.hardware.camera2.CameraCaptureSession) {
 
+                                    // Build preview request first for autofocus
+                                    val previewRequestBuilder = camera.createCaptureRequest(
+                                        android.hardware.camera2.CameraDevice.TEMPLATE_PREVIEW
+                                    )
+                                    previewRequestBuilder.addTarget(imageReader.surface)
+                                    previewRequestBuilder.set(
+                                        android.hardware.camera2.CaptureRequest.CONTROL_AF_MODE,
+                                        android.hardware.camera2.CaptureRequest.CONTROL_AF_MODE_AUTO
+                                    )
+
+                                    // Start preview to let camera autofocus
+                                    try {
+                                        session.setRepeatingRequest(
+                                            previewRequestBuilder.build(),
+                                            null,
+                                            null
+                                        )
+                                    } catch (e: Exception) {
+                                        Log.e(TAG, "Error setting preview request: ${e.message}")
+                                    }
+
+                                    // Wait longer for autofocus before capture
                                     Handler(Looper.getMainLooper()).postDelayed({
 
                                         session.capture(
@@ -1113,7 +1164,7 @@ class AppLockActivity : FragmentActivity() {
                                             null
                                         )
 
-                                    }, 300)
+                                    }, 1500)  // Wait 1.5 seconds for proper autofocus and exposure
                                 }
 
                                 override fun onConfigureFailed(session: android.hardware.camera2.CameraCaptureSession) {
@@ -1144,7 +1195,7 @@ class AppLockActivity : FragmentActivity() {
             try {
                 cameraManager.openCamera(frontCameraId, cameraStateCallback, Handler(Looper.getMainLooper()))
 
-                captureComplete.await(5, java.util.concurrent.TimeUnit.SECONDS)
+                captureComplete.await(8, java.util.concurrent.TimeUnit.SECONDS)
 
                 if (!imageCaptured) {
                     createPlaceholderImage(imagePath, enteredPin)
@@ -1168,26 +1219,32 @@ class AppLockActivity : FragmentActivity() {
     private fun createPlaceholderImage(imagePath: String, enteredPin: String) {
         val imageFile = java.io.File(imagePath)
         try {
-            val bitmap = android.graphics.Bitmap.createBitmap(320, 240, android.graphics.Bitmap.Config.ARGB_8888)
+            Log.d(TAG, " Creating placeholder image at: $imagePath")
+            
+            val bitmap = android.graphics.Bitmap.createBitmap(640, 480, android.graphics.Bitmap.Config.ARGB_8888)
             val canvas = android.graphics.Canvas(bitmap)
             canvas.drawColor(android.graphics.Color.BLACK)
             val paint = android.graphics.Paint().apply {
                 color = android.graphics.Color.WHITE
-                textSize = 16f
+                textSize = 20f
+                isAntiAlias = true
             }
             val timeStr = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US).format(java.util.Date())
-            canvas.drawText(" Intruder Detected", 10f, 80f, paint)
-            canvas.drawText("Unauthorized Access", 10f, 110f, paint)
-            canvas.drawText("PIN: $enteredPin", 10f, 130f, paint)
-            canvas.drawText("Time: $timeStr", 10f, 160f, paint)
-            canvas.drawText("App: $lockedPackage", 10f, 190f, paint)
+            canvas.drawText("⚠ Intruder Detected", 20f, 100f, paint)
+            canvas.drawText("Unauthorized Access", 20f, 150f, paint)
+            canvas.drawText("PIN: $enteredPin", 20f, 200f, paint)
+            canvas.drawText("Time: $timeStr", 20f, 250f, paint)
+            canvas.drawText("App: $lockedPackage", 20f, 300f, paint)
             
+            // Write to file and flush
             imageFile.outputStream().use { output ->
                 bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 90, output)
+                output.flush()
             }
             bitmap.recycle()
             
-            Log.d(TAG, " Placeholder image created: $imagePath")
+            val fileSizeBytes = imageFile.length()
+            Log.d(TAG, " Placeholder image created: $imagePath, Size: $fileSizeBytes bytes")
 
             val prefs = getSharedPreferences("stealthseal_prefs", Context.MODE_PRIVATE)
             val existingLogs = prefs.getString("intruderLogs", "") ?: ""

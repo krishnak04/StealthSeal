@@ -317,7 +317,7 @@ class _IntruderLogsScreenState extends State<IntruderLogsScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (imageExists && imagePath != null)
+                if (imageExists)
                   Container(
                     margin: const EdgeInsets.only(bottom: 12),
                     decoration: BoxDecoration(
@@ -429,7 +429,7 @@ class _IntruderLogsScreenState extends State<IntruderLogsScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
 
-                      if (imageExists && imagePath != null)
+                      if (imageExists)
                         Container(
                           margin: const EdgeInsets.only(bottom: 16),
                           decoration: BoxDecoration(

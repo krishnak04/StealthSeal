@@ -22,7 +22,6 @@ class StealthModeSettingsScreen extends StatefulWidget {
 class _StealthModeSettingsScreenState extends State<StealthModeSettingsScreen> {
   late Box _securityBox;
   late String _selectedMode;
-  late String _selectedAppPackage;
   late String _selectedAppLabel;
   List<InstalledApp> _installedApps = [];
   bool _isLoadingApps = false;
@@ -42,7 +41,6 @@ class _StealthModeSettingsScreenState extends State<StealthModeSettingsScreen> {
 if (_selectedMode == 'settings') {
   _selectedMode = 'normal';
 }
-    _selectedAppPackage = _securityBox.get('selectedAppPackage', defaultValue: '');
     _selectedAppLabel = _securityBox.get('selectedAppLabel', defaultValue: '');
   }
 
@@ -109,7 +107,6 @@ if (_selectedMode == 'settings') {
   void _selectApp(InstalledApp app) {
     setState(() {
       _selectedMode = 'settings';
-      _selectedAppPackage = app.packageName;
       _selectedAppLabel = app.label;
     });
 

@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/theme/theme_config.dart';
 import '../../core/services/user_identifier_service.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import '../../widgets/pattern_lock_widget.dart';
 
 class ChangePasswordScreen extends StatefulWidget {
   const ChangePasswordScreen({super.key});
@@ -27,6 +28,12 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   bool _showCurrentPassword = false;
   bool _showNewPassword = false;
   bool _showConfirmPassword = false;
+  
+  // Pattern-related variables
+  String _newPattern = '';
+  String _patternStatus = '';
+  Color _patternStatusColor = Colors.white70;
+  bool _isVerifyingPattern = true; // true = verify current, false = set new
 
   @override
   void initState() {
@@ -315,6 +322,11 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                       _currentPasswordController.clear();
                       _newPasswordController.clear();
                       _confirmPasswordController.clear();
+                      // Reset pattern state when switching password types
+                      _newPattern = '';
+                      _patternStatus = '';
+                      _patternStatusColor = Colors.white70;
+                      _isVerifyingPattern = true;
                     });
                   }
                 },
@@ -472,59 +484,225 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   }
 
   Widget _buildPatternChangeForm() {
+    // Show initial instruction if no status is set
+    String displayStatus = _patternStatus;
+    if (_patternStatus.isEmpty && _isVerifyingPattern) {
+      displayStatus = 'Draw your current pattern to verify';
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: ThemeConfig.infoColor(context).withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: ThemeConfig.infoColor(context)),
-          ),
-          child: Row(
-            children: [
-              Icon(Icons.info, size: 18, color: ThemeConfig.infoColor(context)),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'To change your pattern, go to Password Type settings.',
-                  style: TextStyle(
-                    color: ThemeConfig.textSecondary(context),
-                    fontSize: 12,
+        // Status message
+        if (displayStatus.isNotEmpty)
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: _patternStatusColor.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: _patternStatusColor),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  _patternStatus.contains('successfully') ? Icons.check_circle : 
+                  _patternStatus.contains('verified') ? Icons.verified :
+                  Icons.info,
+                  size: 18,
+                  color: _patternStatusColor,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    displayStatus,
+                    style: TextStyle(
+                      color: _patternStatusColor,
+                      fontSize: 12,
+                    ),
                   ),
                 ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 20),
-        SizedBox(
-          width: double.infinity,
-          height: 50,
-          child: ElevatedButton(
-            onPressed: () => Navigator.pushNamed(
-              context,
-              '/password-type',
-            ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: ThemeConfig.accentColor(context),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-            child: Text(
-              'Go to Password Type',
-              style: TextStyle(
-                color: ThemeConfig.textPrimary(context),
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              ),
+              ],
             ),
           ),
+        
+        if (displayStatus.isNotEmpty) const SizedBox(height: 20),
+
+        // Title
+        Text(
+          _isVerifyingPattern ? 'Verify Current Pattern' : (_newPattern.isEmpty ? 'Draw New Pattern' : 'Confirm Pattern'),
+          style: TextStyle(
+            color: ThemeConfig.textPrimary(context),
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+          ),
         ),
+        const SizedBox(height: 8),
+        Text(
+          _isVerifyingPattern
+              ? 'Draw your current pattern to verify access'
+              : (_newPattern.isEmpty
+                  ? 'Draw your new pattern (connect at least 4 dots)'
+                  : 'Draw the same pattern again to confirm'),
+          style: TextStyle(
+            color: ThemeConfig.textSecondary(context),
+            fontSize: 12,
+          ),
+        ),
+        const SizedBox(height: 24),
+
+        // Pattern widget
+        Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(
+              maxWidth: 320,
+              maxHeight: 320,
+            ),
+            child: PatternLockWidget(
+              onPatternCompleted: _onPatternCompleted,
+              dotColor: ThemeConfig.textSecondary(context),
+              selectedColor: ThemeConfig.accentColor(context),
+              showLines: true,
+              minDots: 4,
+            ),
+          ),
+        ),
+        const SizedBox(height: 24),
+
+        // Reset/back button
+        if (!_isVerifyingPattern)
+          SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: ElevatedButton(
+              onPressed: () => setState(() {
+                _newPattern = '';
+                _isVerifyingPattern = true;
+                _patternStatus = '';
+              }),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.grey.shade600,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              child: Text(
+                'Back to Verify',
+                style: TextStyle(
+                  color: ThemeConfig.textPrimary(context),
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ),
       ],
     );
+  }
+
+  void _onPatternCompleted(String pattern) {
+    // Get the current pattern to verify against based on selected type
+    String currentPatternToVerify = '';
+    if (_isRealPin()) {
+      currentPatternToVerify = _currentRealPin;
+    } else {
+      currentPatternToVerify = _currentDecoyPin;
+    }
+
+    if (_isVerifyingPattern) {
+      // Verify current pattern
+      if (pattern == currentPatternToVerify) {
+        setState(() {
+          _isVerifyingPattern = false;
+          _newPattern = '';
+          _patternStatus = 'Pattern verified! Now draw your new pattern.';
+          _patternStatusColor = Colors.green;
+        });
+      } else {
+        setState(() {
+          _patternStatus = 'Wrong pattern. Please try again.';
+          _patternStatusColor = Colors.red;
+        });
+      }
+    } else {
+      // Set new pattern
+      if (_newPattern.isEmpty) {
+        setState(() {
+          _newPattern = pattern;
+          _patternStatus = 'Pattern saved. Draw it again to confirm.';
+          _patternStatusColor = Colors.blue;
+        });
+      } else {
+        // Confirm pattern
+        if (pattern == _newPattern) {
+          _saveNewPattern(pattern);
+        } else {
+          setState(() {
+            _patternStatus = 'Patterns do not match. Draw again.';
+            _patternStatusColor = Colors.red;
+            _newPattern = '';
+          });
+        }
+      }
+    }
+  }
+
+  Future<void> _saveNewPattern(String pattern) async {
+    setState(() => _isLoading = true);
+
+    try {
+      final userId = await UserIdentifierService.getUserId();
+      final securityBox = Hive.box('securityBox');
+      
+      // Determine which PIN to update
+      bool isUpdatingRealPin = _isRealPin();
+      
+      if (isUpdatingRealPin) {
+        await securityBox.put('realPin', pattern);
+        _currentRealPin = pattern;
+      } else {
+        await securityBox.put('decoyPin', pattern);
+        _currentDecoyPin = pattern;
+      }
+
+      try {
+        await Supabase.instance.client
+            .from('user_security')
+            .upsert(
+              {
+                'id': userId,
+                'real_pin': isUpdatingRealPin ? pattern : _currentRealPin,
+                'decoy_pin': isUpdatingRealPin ? _currentDecoyPin : pattern,
+              },
+              onConflict: 'id',
+            );
+      } catch (supabaseError) {
+        debugPrint('WARNING: Supabase sync failed: $supabaseError');
+      }
+
+      if (mounted) {
+        setState(() {
+          _patternStatus = 'Pattern changed successfully!';
+          _patternStatusColor = Colors.green;
+          _newPattern = '';
+        });
+      }
+
+      Future.delayed(const Duration(seconds: 2), () {
+        if (mounted) {
+          Navigator.pop(context);
+        }
+      });
+    } catch (error) {
+      debugPrint('Error saving pattern: $error');
+      if (mounted) {
+        setState(() {
+          _patternStatus = 'Failed to save pattern: $error';
+          _patternStatusColor = Colors.red;
+        });
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   @override
