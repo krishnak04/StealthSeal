@@ -114,7 +114,7 @@ class MainActivity : FlutterFragmentActivity() {
                     "setStealthDisguise" -> {
                         val mode = call.argument<String>("mode") ?: "normal"
                         val packageName = call.argument<String>("packageName") ?: ""
-                        handleSetStealthDisguise(mode, packageName, result)
+                        handleSetStealthDisguise(mode, result) 
                     }
                     else -> result.notImplemented()
                 }
@@ -403,45 +403,42 @@ class MainActivity : FlutterFragmentActivity() {
         }
     }
 
-  private fun handleSetStealthDisguise(mode: String, result: MethodChannel.Result) {
+ private fun handleSetStealthDisguise(mode: String, result: MethodChannel.Result) {
     try {
         val pm = packageManager
 
-        val aliases = listOf(
-            "com.example.stealthseal.MainActivity",
-            "com.example.stealthseal.AliasSettings",
-            "com.example.stealthseal.AliasPlayStore",
-            "com.example.stealthseal.AliasYouTube"
-        )
+        val main = ComponentName(this, "com.example.stealthseal.MainActivity")
+        val settings = ComponentName(this, "com.example.stealthseal.AliasSettings")
+        val playstore = ComponentName(this, "com.example.stealthseal.AliasPlayStore")
+        val youtube = ComponentName(this, "com.example.stealthseal.AliasYouTube")
 
-        // 🔴 Disable ALL first
-        for (alias in aliases) {
-            pm.setComponentEnabledSetting(
-                ComponentName(this, alias),
-                PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
-                PackageManager.DONT_KILL_APP
-            )
+        // Disable all aliases
+        pm.setComponentEnabledSetting(settings, PackageManager.COMPONENT_ENABLED_STATE_DISABLED, 0)
+        pm.setComponentEnabledSetting(playstore, PackageManager.COMPONENT_ENABLED_STATE_DISABLED, 0)
+        pm.setComponentEnabledSetting(youtube, PackageManager.COMPONENT_ENABLED_STATE_DISABLED, 0)
+
+        // Enable main by default
+        pm.setComponentEnabledSetting(main, PackageManager.COMPONENT_ENABLED_STATE_ENABLED, 0)
+
+        // Enable selected alias
+        when (mode) {
+            "settings" -> {
+                pm.setComponentEnabledSetting(main, PackageManager.COMPONENT_ENABLED_STATE_DISABLED, 0)
+                pm.setComponentEnabledSetting(settings, PackageManager.COMPONENT_ENABLED_STATE_ENABLED, 0)
+            }
+            "playstore" -> {
+                pm.setComponentEnabledSetting(main, PackageManager.COMPONENT_ENABLED_STATE_DISABLED, 0)
+                pm.setComponentEnabledSetting(playstore, PackageManager.COMPONENT_ENABLED_STATE_ENABLED, 0)
+            }
+            "youtube" -> {
+                pm.setComponentEnabledSetting(main, PackageManager.COMPONENT_ENABLED_STATE_DISABLED, 0)
+                pm.setComponentEnabledSetting(youtube, PackageManager.COMPONENT_ENABLED_STATE_ENABLED, 0)
+            }
         }
 
-        // 🟢 Enable selected
-        val selected = when (mode) {
-            "settings" -> "com.example.stealthseal.AliasSettings"
-            "playstore" -> "com.example.stealthseal.AliasPlayStore"
-            "youtube" -> "com.example.stealthseal.AliasYouTube"
-            else -> "com.example.stealthseal.MainActivity"
-        }
-
-        pm.setComponentEnabledSetting(
-            ComponentName(this, selected),
-            PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
-            PackageManager.DONT_KILL_APP
-        )
-
-        Log.d("Stealth", "✅ Switched to $mode disguise")
         result.success(true)
 
     } catch (e: Exception) {
-        Log.e("Stealth", "❌ Error: ${e.message}")
         result.error("ERROR", e.message, null)
     }
 }

@@ -38,6 +38,11 @@ class _StealthModeSettingsScreenState extends State<StealthModeSettingsScreen> {
 
   void _loadSettings() {
     _selectedMode = _securityBox.get('stealthMode', defaultValue: 'normal');
+
+// 🔥 FIX: convert old value
+if (_selectedMode == 'settings') {
+  _selectedMode = 'normal';
+}
     _selectedAppPackage = _securityBox.get('selectedAppPackage', defaultValue: '');
     _selectedAppLabel = _securityBox.get('selectedAppLabel', defaultValue: '');
   }
@@ -105,17 +110,16 @@ class _StealthModeSettingsScreenState extends State<StealthModeSettingsScreen> {
 
   void _selectApp(InstalledApp app) {
     setState(() {
-      _selectedMode = 'disguise';
+      _selectedMode = 'settings';
       _selectedAppPackage = app.packageName;
       _selectedAppLabel = app.label;
     });
 
-    _securityBox.put('stealthMode', 'disguise');
+    _securityBox.put('stealthMode', _selectedMode);
     _securityBox.put('selectedAppPackage', app.packageName);
     _securityBox.put('selectedAppLabel', app.label);
 
-    // Call native method to create the fake shortcut
-    _createFakeShortcut(app);
+    
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -128,17 +132,6 @@ class _StealthModeSettingsScreenState extends State<StealthModeSettingsScreen> {
     Navigator.pop(context);
   }
 
-  Future<void> _createFakeShortcut(InstalledApp app) async {
-    try {
-      await platform.invokeMethod('setStealthDisguise', {
-        'mode': 'disguise',
-        'packageName': app.packageName,
-      });
-      debugPrint('✅ Fake shortcut created: ${app.label}');
-    } catch (e) {
-      debugPrint('⚠️ Error creating shortcut: $e');
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -201,6 +194,41 @@ class _StealthModeSettingsScreenState extends State<StealthModeSettingsScreen> {
                 ),
               ),
               const SizedBox(height: 24),
+              DropdownButtonFormField<String>(
+  dropdownColor: Colors.black,
+  value: ['normal', 'settings', 'playstore', 'youtube']
+        .contains(_selectedMode)
+    ? _selectedMode
+    : 'normal',
+  items: const [
+    DropdownMenuItem(value: 'normal', child: Text('Normal')),
+    DropdownMenuItem(value: 'settings', child: Text('Settings')),
+    DropdownMenuItem(value: 'playstore', child: Text('Play Store')),
+    DropdownMenuItem(value: 'youtube', child: Text('YouTube')),
+  ],
+  onChanged: (value) async {
+    if (value == null) return;
+
+    setState(() => _selectedMode = value);
+    _securityBox.put('stealthMode', value);
+
+    try {
+      await platform.invokeMethod('setStealthDisguise', {
+        'mode': value,
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Switched to $value')),
+      );
+    } catch (e) {
+      debugPrint('Error: $e');
+    }
+  },
+  decoration: const InputDecoration(
+    labelText: 'Select Disguise',
+    labelStyle: TextStyle(color: Colors.white),
+  ),
+),
 
               // Normal Mode Option
               GestureDetector(
@@ -265,7 +293,7 @@ class _StealthModeSettingsScreenState extends State<StealthModeSettingsScreen> {
               // App Disguise Option
               GestureDetector(
                 onTap: () {
-                  if (_selectedMode != 'disguise') {
+                  if (_selectedMode != 'settings') {
                     _fetchInstalledApps();
                     _showAppListDialog();
                   } else {
@@ -277,10 +305,10 @@ class _StealthModeSettingsScreenState extends State<StealthModeSettingsScreen> {
                     color: ThemeConfig.surfaceColor(context),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: _selectedMode == 'disguise'
+                      color: _selectedMode == 'settings'
                           ? ThemeConfig.accentColor(context)
                           : ThemeConfig.borderColor(context),
-                      width: _selectedMode == 'disguise' ? 2 : 1,
+                      width: _selectedMode == 'settings' ? 2 : 1,
                     ),
                   ),
                   padding: const EdgeInsets.all(16),
@@ -305,7 +333,7 @@ class _StealthModeSettingsScreenState extends State<StealthModeSettingsScreen> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            _selectedMode == 'disguise' && _selectedAppLabel.isNotEmpty
+                            _selectedMode == 'settings' && _selectedAppLabel.isNotEmpty
                                 ? 'Disguised as: $_selectedAppLabel'
                                 : 'Select an app to disguise as',
                             style: TextStyle(
@@ -317,7 +345,7 @@ class _StealthModeSettingsScreenState extends State<StealthModeSettingsScreen> {
                       ),
                       const Spacer(),
                       Radio<String>(
-                        value: 'disguise',
+                        value: 'settings',
                         groupValue: _selectedMode,
                         activeColor: ThemeConfig.accentColor(context),
                         fillColor: WidgetStateProperty.all(

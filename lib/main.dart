@@ -18,6 +18,7 @@ import 'screens/dashboard/real_dashboard.dart';
 import 'screens/dashboard/fake_dashboard.dart';
 import 'screens/settings/settings_screen.dart';
 import 'screens/debug/debug_screen.dart';
+import 'screens/security/stealth_mode_settings_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -82,6 +83,7 @@ class _StealthSealAppState extends State<StealthSealApp> {
       darkTheme: AppTheme.darkTheme,
       initialRoute: AppRoutes.splash,
       routes: {
+        AppRoutes.stealth: (_) => const StealthModeSettingsScreen(),
         AppRoutes.splash: (_) => const SplashScreen(),
         AppRoutes.setup: (_) => const SetupScreen(),
         AppRoutes.biometricSetup: (_) => const BiometricSetupScreen(),

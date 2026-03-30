@@ -7,6 +7,7 @@ import '../../core/security/panic_service.dart';
 import '../../core/security/app_lock_service.dart';
 import '../../core/routes/app_routes.dart';
 import '../../core/theme/theme_config.dart';
+import '../security/stealth_mode_settings_screen.dart';
 
 class RealDashboard extends StatefulWidget {
   const RealDashboard({super.key});
@@ -322,6 +323,21 @@ class _RealDashboardState extends State<RealDashboard> {
               fontWeight: FontWeight.w600,
             ),
           ),
+          const SizedBox(height: 10),
+
+_buildActionButton(
+  icon: Icons.visibility_off,
+  label: "Stealth Mode",
+  onTap: () {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const StealthModeSettingsScreen(),
+      ),
+    );
+  },
+  context: context,
+),
           const SizedBox(height: 12),
           _buildActionButton(
             icon: Icons.apps,

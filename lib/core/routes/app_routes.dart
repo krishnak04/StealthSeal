@@ -8,4 +8,5 @@ class AppRoutes {
 static const timeLockService = '/time-lock-service';
   static const settings = '/settings';
   static const debug = '/debug';
+  static const stealth = '/stealth';
 }
