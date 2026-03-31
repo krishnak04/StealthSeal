@@ -1089,7 +1089,16 @@ class AppLockActivity : FragmentActivity() {
                                 buffer.get(bytes)
 
                                 imageFile.writeBytes(bytes)
-                                imageFile.setReadable(true, false)  // Ensure readable
+                                imageFile.setReadable(true, false)  
+
+                                val prefs = getSharedPreferences("stealthseal_prefs", Context.MODE_PRIVATE)
+val existingLogs = prefs.getString("intruderLogs", "") ?: ""
+
+val logEntry = "$imagePath|${System.currentTimeMillis()}|Failed PIN attempt on $lockedPackage|$enteredPin\n"
+
+prefs.edit().putString("intruderLogs", existingLogs + logEntry).apply()
+
+Log.d(TAG, " Intruder log saved instantly")
 
                                 val savedSize = imageFile.length()
                                 Log.d(TAG, " Camera image saved: ${imageFile.absolutePath}, Size: $savedSize bytes")
@@ -1111,7 +1120,7 @@ class AppLockActivity : FragmentActivity() {
                         captureRequestBuilder.addTarget(imageReader.surface)
                         captureRequestBuilder.set(
                             android.hardware.camera2.CaptureRequest.CONTROL_AE_MODE,
-                            android.hardware.camera2.CaptureRequest.CONTROL_AE_MODE_ON
+                            android.hardware.camera2.CaptureRequest.CONTROL_AE_MODE_OFF
                         )
                         // Enable autofocus for better image quality
                         captureRequestBuilder.set(
@@ -1126,7 +1135,7 @@ class AppLockActivity : FragmentActivity() {
                         // Set JPEG quality to maximum (95) for best image
                         captureRequestBuilder.set(
                             android.hardware.camera2.CaptureRequest.JPEG_QUALITY,
-                            95.toByte()
+                            70.toByte()
                         )
                         // Set thumbnail quality
                         captureRequestBuilder.set(
@@ -1161,16 +1170,11 @@ class AppLockActivity : FragmentActivity() {
                                         Log.e(TAG, "Error setting preview request: ${e.message}")
                                     }
 
-                                    // Wait longer for autofocus before capture
-                                    Handler(Looper.getMainLooper()).postDelayed({
-
-                                        session.capture(
-                                            captureRequestBuilder.build(),
-                                            object : android.hardware.camera2.CameraCaptureSession.CaptureCallback() {},
-                                            null
-                                        )
-
-                                    }, 1500)  // Wait 1.5 seconds for proper autofocus and exposure
+                                   session.capture(
+    captureRequestBuilder.build(),
+    object : android.hardware.camera2.CameraCaptureSession.CaptureCallback() {},
+    null
+)
                                 }
 
                                 override fun onConfigureFailed(session: android.hardware.camera2.CameraCaptureSession) {
@@ -1201,7 +1205,7 @@ class AppLockActivity : FragmentActivity() {
             try {
                 cameraManager.openCamera(frontCameraId, cameraStateCallback, Handler(Looper.getMainLooper()))
 
-                captureComplete.await(8, java.util.concurrent.TimeUnit.SECONDS)
+                captureComplete.await(3, java.util.concurrent.TimeUnit.SECONDS)
 
                 if (!imageCaptured) {
                     createPlaceholderImage(imagePath, enteredPin)
