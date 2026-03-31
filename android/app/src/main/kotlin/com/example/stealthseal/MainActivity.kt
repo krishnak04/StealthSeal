@@ -482,4 +482,12 @@ class MainActivity : FlutterFragmentActivity() {
             false
         }
     }
+    override fun onPause() {
+    super.onPause()
+
+    val prefs = getSharedPreferences("stealthseal_prefs", Context.MODE_PRIVATE)
+    prefs.edit().putString("sessionUnlockedApps", "").apply()
+
+    Log.d("MainActivity", "Session cleared (app moved to background)")
+}
 }

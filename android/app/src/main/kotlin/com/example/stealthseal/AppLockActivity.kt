@@ -1387,6 +1387,10 @@ class AppLockActivity : FragmentActivity() {
 
     override fun onUserLeaveHint() {
         super.onUserLeaveHint()
+        isShowing = false
+currentlyBlockedPackage = null
+
+Log.d(TAG, "User left app → reset lock state")
         
         if (pinCorrect || isFinishing || isDestroyed) return
 
@@ -1403,6 +1407,10 @@ class AppLockActivity : FragmentActivity() {
         super.onPause()
         
         if (!pinCorrect) {
+            isShowing = false
+        currentlyBlockedPackage = null
+
+        Log.d(TAG, "AppLockActivity paused → reset isShowing = false")
 
         } else {
             
