@@ -160,9 +160,9 @@ class _BiometricSetupScreenState extends State<BiometricSetupScreen> {
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                const Color(0xFF0a0e27).withValues(alpha: 0.98),
-                const Color(0xFF1a1a3e).withValues(alpha: 0.98),
-                const Color(0xFF0f0f2e).withValues(alpha: 0.98),
+                const Color.fromARGB(255, 19, 19, 19).withValues(alpha: 0.98),
+                const Color.fromARGB(255, 22, 22, 23).withValues(alpha: 0.98),
+                const Color.fromARGB(255, 21, 21, 21).withValues(alpha: 0.98),
               ],
             ),
           ),
@@ -309,18 +309,18 @@ class _BiometricSetupScreenState extends State<BiometricSetupScreen> {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            Colors.cyan.withValues(alpha: 0.1),
-            Colors.blue.withValues(alpha: 0.05),
+            const Color.fromARGB(255, 236, 238, 239).withValues(alpha: 0.1),
+            const Color.fromARGB(255, 242, 244, 245).withValues(alpha: 0.05),
           ],
         ),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: Colors.cyan.withValues(alpha: 0.2),
+          color: const Color.fromARGB(255, 234, 240, 240).withValues(alpha: 0.2),
           width: 1.5,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.cyan.withValues(alpha: 0.1),
+            color: const Color.fromARGB(255, 244, 247, 247).withValues(alpha: 0.1),
             blurRadius: 15,
             spreadRadius: 0,
           ),

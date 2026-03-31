@@ -318,7 +318,7 @@ class _SetupScreenState extends State<SetupScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF050505),
+      backgroundColor: const Color.fromARGB(255, 241, 239, 239),
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24),
         child: Column(
@@ -331,11 +331,11 @@ class _SetupScreenState extends State<SetupScreen> {
               style: const TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.bold,
-                color: Colors.white,
+                color: Color.fromARGB(255, 19, 19, 19),
               ),
             ),
             const SizedBox(height: 8),
-            Text(subtitle, style: const TextStyle(color: Colors.white70)),
+            Text(subtitle, style: const TextStyle(color: Color.fromARGB(179, 18, 18, 18))),
             const SizedBox(height: 30),
 
             Row(

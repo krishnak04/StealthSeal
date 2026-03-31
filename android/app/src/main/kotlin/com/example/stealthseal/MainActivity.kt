@@ -398,30 +398,23 @@ class MainActivity : FlutterFragmentActivity() {
     try {
         val pm = packageManager
 
-        val main = ComponentName(this, "com.example.stealthseal.MainActivity")
+        val defaultAlias = ComponentName(this, "com.example.stealthseal.DefaultAlias")
         val settings = ComponentName(this, "com.example.stealthseal.AliasSettings")
         val playstore = ComponentName(this, "com.example.stealthseal.AliasPlayStore")
         val youtube = ComponentName(this, "com.example.stealthseal.AliasYouTube")
 
-        pm.setComponentEnabledSetting(settings, PackageManager.COMPONENT_ENABLED_STATE_DISABLED, 0)
-        pm.setComponentEnabledSetting(playstore, PackageManager.COMPONENT_ENABLED_STATE_DISABLED, 0)
-        pm.setComponentEnabledSetting(youtube, PackageManager.COMPONENT_ENABLED_STATE_DISABLED, 0)
+        // Disable ALL
+        pm.setComponentEnabledSetting(defaultAlias, PackageManager.COMPONENT_ENABLED_STATE_DISABLED, PackageManager.DONT_KILL_APP)
+        pm.setComponentEnabledSetting(settings, PackageManager.COMPONENT_ENABLED_STATE_DISABLED, PackageManager.DONT_KILL_APP)
+        pm.setComponentEnabledSetting(playstore, PackageManager.COMPONENT_ENABLED_STATE_DISABLED, PackageManager.DONT_KILL_APP)
+        pm.setComponentEnabledSetting(youtube, PackageManager.COMPONENT_ENABLED_STATE_DISABLED, PackageManager.DONT_KILL_APP)
 
-        pm.setComponentEnabledSetting(main, PackageManager.COMPONENT_ENABLED_STATE_ENABLED, 0)
-
+        // Enable selected
         when (mode) {
-            "settings" -> {
-                pm.setComponentEnabledSetting(main, PackageManager.COMPONENT_ENABLED_STATE_DISABLED, 0)
-                pm.setComponentEnabledSetting(settings, PackageManager.COMPONENT_ENABLED_STATE_ENABLED, 0)
-            }
-            "playstore" -> {
-                pm.setComponentEnabledSetting(main, PackageManager.COMPONENT_ENABLED_STATE_DISABLED, 0)
-                pm.setComponentEnabledSetting(playstore, PackageManager.COMPONENT_ENABLED_STATE_ENABLED, 0)
-            }
-            "youtube" -> {
-                pm.setComponentEnabledSetting(main, PackageManager.COMPONENT_ENABLED_STATE_DISABLED, 0)
-                pm.setComponentEnabledSetting(youtube, PackageManager.COMPONENT_ENABLED_STATE_ENABLED, 0)
-            }
+            "settings" -> pm.setComponentEnabledSetting(settings, PackageManager.COMPONENT_ENABLED_STATE_ENABLED, PackageManager.DONT_KILL_APP)
+            "playstore" -> pm.setComponentEnabledSetting(playstore, PackageManager.COMPONENT_ENABLED_STATE_ENABLED, PackageManager.DONT_KILL_APP)
+            "youtube" -> pm.setComponentEnabledSetting(youtube, PackageManager.COMPONENT_ENABLED_STATE_ENABLED, PackageManager.DONT_KILL_APP)
+            else -> pm.setComponentEnabledSetting(defaultAlias, PackageManager.COMPONENT_ENABLED_STATE_ENABLED, PackageManager.DONT_KILL_APP)
         }
 
         result.success(true)

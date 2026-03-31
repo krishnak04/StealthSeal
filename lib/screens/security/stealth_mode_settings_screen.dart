@@ -27,6 +27,16 @@ class _StealthModeSettingsScreenState extends State<StealthModeSettingsScreen> {
   bool _isLoadingApps = false;
 
   static const platform = MethodChannel('com.stealthseal.app/applock');
+Future<void> setStealthMode(String mode) async {
+  try {
+    await platform.invokeMethod('setStealthDisguise', {
+      "mode": mode,
+    });
+    print("Stealth mode changed to: $mode");
+  } catch (e) {
+    print("Error: $e");
+  }
+}
 
   @override
   void initState() {
@@ -37,10 +47,6 @@ class _StealthModeSettingsScreenState extends State<StealthModeSettingsScreen> {
 
   void _loadSettings() {
     _selectedMode = _securityBox.get('stealthMode', defaultValue: 'normal');
-
-if (_selectedMode == 'settings') {
-  _selectedMode = 'normal';
-}
     _selectedAppLabel = _securityBox.get('selectedAppLabel', defaultValue: '');
   }
 
@@ -71,7 +77,7 @@ if (_selectedMode == 'settings') {
     }
   }
 
-  void _setStealthMode(String mode) {
+  Future<void> _setStealthMode(String mode) async {
     setState(() => _selectedMode = mode);
     _securityBox.put('stealthMode', mode);
 
@@ -80,7 +86,7 @@ if (_selectedMode == 'settings') {
         : 'Switched to App Disguise';
 
     if (mode == 'normal') {
-      _applyNormalMode();
+      await _applyNormalMode();
     }
     
     ScaffoldMessenger.of(context).showSnackBar(
@@ -98,9 +104,16 @@ if (_selectedMode == 'settings') {
         'mode': 'normal',
         'packageName': '',
       });
-      debugPrint(' Normal mode applied');
+      debugPrint('Normal mode applied successfully');
     } catch (e) {
-      debugPrint(' Error applying normal mode: $e');
+      debugPrint('Error applying normal mode: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Error switching to Normal Mode'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 2),
+        ),
+      );
     }
   }
 
@@ -123,6 +136,124 @@ if (_selectedMode == 'settings') {
     );
 
     Navigator.pop(context);
+  }
+
+  Widget _buildAppOption(BuildContext context, String appName, String packageName) {
+    String mode = _getStealthModeFromPackage(packageName);
+    return GestureDetector(
+      onTap: () {
+        _selectAppByName(appName, packageName);
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        decoration: BoxDecoration(
+          color: ThemeConfig.backgroundColor(context),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: ThemeConfig.borderColor(context),
+            width: 1,
+          ),
+        ),
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          children: [
+            Icon(
+              Icons.apps,
+              color: ThemeConfig.accentColor(context),
+              size: 20,
+            ),
+            const SizedBox(width: 12),
+            Text(
+              appName,
+              style: TextStyle(
+                color: ThemeConfig.textPrimary(context),
+                fontSize: 14,
+              ),
+            ),
+            const Spacer(),
+            Radio<String>(
+              value: mode,
+              groupValue: _selectedMode,
+              activeColor: ThemeConfig.accentColor(context),
+              fillColor: WidgetStateProperty.all(
+                ThemeConfig.accentColor(context),
+              ),
+              onChanged: (value) {
+                _selectAppByName(appName, packageName);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _selectAppByName(String appName, String packageName) async {
+  String mode = _getStealthModeFromPackage(packageName);
+
+  setState(() {
+    _selectedMode = mode;
+    _selectedAppLabel = appName;
+  });
+
+  _securityBox.put('stealthMode', mode);
+  _securityBox.put('selectedAppPackage', packageName);
+  _securityBox.put('selectedAppLabel', appName);
+
+  
+  await _applyStealthDisguise(mode, packageName);
+
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text(' Shortcut created: "$appName"\nTap and pin it to home screen'),
+      backgroundColor: const Color(0xFF00BCD4),
+      duration: const Duration(seconds: 3),
+    ),
+  );
+}
+
+  String _getStealthModeFromPackage(String packageName) {
+    switch (packageName) {
+      case 'com.android.settings':
+        return 'settings';
+      case 'com.android.vending':
+        return 'playstore';
+      case 'com.google.android.youtube':
+        return 'youtube';
+      default:
+        return 'settings';
+    }
+  }
+
+  Future<void> _applyStealthDisguise(String mode, String packageName) async {
+    try {
+    await platform.invokeMethod('setStealthDisguise', {
+  'mode': mode,
+  'packageName': packageName,
+});
+      debugPrint('Stealth disguise applied for $mode');
+    } catch (e) {
+      debugPrint('Error applying stealth disguise: $e');
+    }
+  }
+
+  void _applyStealthDisguiseSync(String mode, String packageName) {
+    // Fire and forget - don't wait for the platform call
+    platform.invokeMethod('setStealthDisguise', {
+      'mode': mode,
+      'packageName': packageName,
+    }).then((_) {
+      debugPrint('Stealth disguise applied for $mode');
+    }).catchError((e) {
+      debugPrint('Error applying stealth disguise: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Error applying stealth disguise'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 2),
+        ),
+      );
+    });
   }
 
   @override
@@ -186,41 +317,6 @@ if (_selectedMode == 'settings') {
                 ),
               ),
               const SizedBox(height: 24),
-              DropdownButtonFormField<String>(
-  dropdownColor: Colors.black,
-  value: ['normal', 'settings', 'playstore', 'youtube']
-        .contains(_selectedMode)
-    ? _selectedMode
-    : 'normal',
-  items: const [
-    DropdownMenuItem(value: 'normal', child: Text('Normal')),
-    DropdownMenuItem(value: 'settings', child: Text('Settings')),
-    DropdownMenuItem(value: 'playstore', child: Text('Play Store')),
-    DropdownMenuItem(value: 'youtube', child: Text('YouTube')),
-  ],
-  onChanged: (value) async {
-    if (value == null) return;
-
-    setState(() => _selectedMode = value);
-    _securityBox.put('stealthMode', value);
-
-    try {
-      await platform.invokeMethod('setStealthDisguise', {
-        'mode': value,
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Switched to $value')),
-      );
-    } catch (e) {
-      debugPrint('Error: $e');
-    }
-  },
-  decoration: const InputDecoration(
-    labelText: 'Select Disguise',
-    labelStyle: TextStyle(color: Colors.white),
-  ),
-),
 
               GestureDetector(
                 onTap: () => _setStealthMode('normal'),
@@ -281,73 +377,61 @@ if (_selectedMode == 'settings') {
               ),
               const SizedBox(height: 16),
 
-              GestureDetector(
-                onTap: () {
-                  if (_selectedMode != 'settings') {
-                    _fetchInstalledApps();
-                    _showAppListDialog();
-                  } else {
-                    _showAppListDialog();
-                  }
-                },
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: ThemeConfig.surfaceColor(context),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: _selectedMode == 'settings'
-                          ? ThemeConfig.accentColor(context)
-                          : ThemeConfig.borderColor(context),
-                      width: _selectedMode == 'settings' ? 2 : 1,
-                    ),
+              Container(
+                decoration: BoxDecoration(
+                  color: ThemeConfig.surfaceColor(context),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: ThemeConfig.accentColor(context).withValues(alpha: 0.3),
+                    width: 1,
                   ),
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.app_shortcut,
-                        color: ThemeConfig.accentColor(context),
-                        size: 28,
-                      ),
-                      const SizedBox(width: 16),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'App Disguise',
-                            style: TextStyle(
-                              color: ThemeConfig.textPrimary(context),
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            _selectedMode == 'settings' && _selectedAppLabel.isNotEmpty
-                                ? 'Disguised as: $_selectedAppLabel'
-                                : 'Select an app to disguise as',
-                            style: TextStyle(
-                              color: ThemeConfig.textSecondary(context),
-                              fontSize: 13,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const Spacer(),
-                      Radio<String>(
-                        value: 'settings',
-                        groupValue: _selectedMode,
-                        activeColor: ThemeConfig.accentColor(context),
-                        fillColor: WidgetStateProperty.all(
-                          ThemeConfig.accentColor(context),
+                ),
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.app_shortcut,
+                          color: ThemeConfig.accentColor(context),
+                          size: 28,
                         ),
-                        onChanged: (value) {
-                          _fetchInstalledApps();
-                          _showAppListDialog();
-                        },
-                      ),
-                    ],
-                  ),
+                        const SizedBox(width: 16),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'App Disguise',
+                              style: TextStyle(
+                                color: ThemeConfig.textPrimary(context),
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              _selectedMode != 'normal' && _selectedAppLabel.isNotEmpty
+                                  ? 'Disguised as: $_selectedAppLabel'
+                                  : 'Select an app to disguise as',
+                              style: TextStyle(
+                                color: ThemeConfig.textSecondary(context),
+                                fontSize: 13,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Column(
+                      children: [
+                        _buildAppOption(context, 'Settings', 'com.android.settings'),
+                        _buildAppOption(context, 'Play Store', 'com.android.vending'),
+                        _buildAppOption(context, 'YouTube', 'com.google.android.youtube'),
+                      ],
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 24),

@@ -476,12 +476,14 @@ class AppLockActivity : FragmentActivity() {
     }
 
     private fun onAccessibilitySetupComplete() {
-        Log.d(TAG, "Accessibility setup complete")
+        Log.d(TAG, "🔓 onAccessibilitySetupComplete() called - UNLOCKING AND CLOSING LOCK SCREEN")
 
         AppLockForegroundService.start(this)
 
         isShowing = false
         currentlyBlockedPackage = null
+        
+        Log.d(TAG, "📵 Calling finish() to close lock screen")
         finish()
     }
 
@@ -825,7 +827,7 @@ class AppLockActivity : FragmentActivity() {
             
             failedAttempts = 0
             pinCorrect = true
-            Log.d(TAG, "Correct PIN entered for: $lockedPackage")
+            Log.d(TAG, "✅ CORRECT REAL PIN MATCHED - Preparing to unlock app: $lockedPackage")
 
             errorText.visibility = View.GONE
 
@@ -864,10 +866,12 @@ class AppLockActivity : FragmentActivity() {
 
             errorText.visibility = View.VISIBLE
             if (failedAttempts >= 3) {
+                Log.d(TAG, " *** INTRUDER ALERT: 3+ failed attempts - Capturing image ***")
                 errorText.text = "Multiple failed attempts detected"
                 
                 captureIntruderSelfie(enteredPin)
                 
+                Log.d(TAG, " *** Image capture initiated - Resetting attempt counter ***")
                 failedAttempts = 0
             } else {
                 errorText.text = "Wrong PIN (${3 - failedAttempts} attempts left)"
@@ -882,6 +886,7 @@ class AppLockActivity : FragmentActivity() {
             Handler(Looper.getMainLooper()).postDelayed({
                 enteredPin = ""
                 updateDots()
+                Log.d(TAG, " *** PIN cleared - App remains LOCKED awaiting next attempt ***")
             }, 300)
         }
     }
@@ -1047,6 +1052,7 @@ class AppLockActivity : FragmentActivity() {
             val imagePath = imageFile.absolutePath
             
             Log.d(TAG, " Will save intruder image to: $imagePath")
+            Log.d(TAG, " CAPTURING INTRUDER SELFIE - APP WILL REMAIN LOCKED")
 
             val captureComplete = java.util.concurrent.CountDownLatch(1)
             var imageCaptured = false
@@ -1211,6 +1217,7 @@ class AppLockActivity : FragmentActivity() {
         Log.e(TAG, "Error: ${e.message}")
     }
 }
+        Log.d(TAG, " ✓ captureIntruderSelfie COMPLETED - App remains LOCKED")
         } catch (e: Exception) {
             Log.e(TAG, " Exception in captureIntruderSelfie: ${e.message}")
         }

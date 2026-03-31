@@ -8,6 +8,7 @@ import '../../core/security/app_lock_service.dart';
 import '../../core/routes/app_routes.dart';
 import '../../core/theme/theme_config.dart';
 import '../security/stealth_mode_settings_screen.dart';
+import 'package:flutter/services.dart';
 
 class RealDashboard extends StatefulWidget {
   const RealDashboard({super.key});
