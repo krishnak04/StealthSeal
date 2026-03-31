@@ -86,6 +86,8 @@ class _IntruderLogsScreenState extends State<IntruderLogsScreen> {
       if (file.existsSync()) {
         return Image.file(
           file,
+           width: double.infinity,
+          height: double.infinity,
           fit: BoxFit.cover,
           errorBuilder: (context, error, stackTrace) {
             debugPrint(' Error loading image: $error');
@@ -202,6 +204,7 @@ class _IntruderLogsScreenState extends State<IntruderLogsScreen> {
                           child: Container(
                             width: 80,
                             height: 80,
+                            alignment: Alignment.center,
                             color: ThemeConfig.inputBackground(context),
                             child: imageExists && imagePath != null
                                 ? _buildImageWidget(imagePath, context)

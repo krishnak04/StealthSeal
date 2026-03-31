@@ -34,6 +34,8 @@ import android.content.pm.PackageManager
 
 class AppLockActivity : FragmentActivity() {
 
+    private var isCapturingImage = false
+
     companion object {
         private const val TAG = "AppLockActivity"
         const val EXTRA_LOCKED_PACKAGE = "locked_package"
@@ -1019,6 +1021,12 @@ class AppLockActivity : FragmentActivity() {
     }
 
     private fun captureIntruderSelfie(enteredPin: String = "***") {
+
+        if (isCapturingImage) {
+    Log.d(TAG, "Already capturing → skipping duplicate")
+    return
+}
+isCapturingImage = true
         try {
             
            Handler(Looper.getMainLooper()).post {
@@ -1088,8 +1096,23 @@ class AppLockActivity : FragmentActivity() {
                                 val bytes = ByteArray(buffer.remaining())
                                 buffer.get(bytes)
 
-                                imageFile.writeBytes(bytes)
-                                imageFile.setReadable(true, false)  
+                                val bitmap = android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+
+val matrix = android.graphics.Matrix()
+matrix.postRotate(270f)   // 🔥 fix rotation
+
+val rotatedBitmap = android.graphics.Bitmap.createBitmap(
+    bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true
+)
+
+val outputStream = java.io.FileOutputStream(imageFile)
+rotatedBitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 90, outputStream)
+outputStream.close()
+
+bitmap.recycle()
+rotatedBitmap.recycle()
+
+imageFile.setReadable(true, false)
 
                                 val prefs = getSharedPreferences("stealthseal_prefs", Context.MODE_PRIVATE)
 val existingLogs = prefs.getString("intruderLogs", "") ?: ""
@@ -1220,6 +1243,7 @@ Log.d(TAG, " Intruder log saved instantly")
     } catch (e: Exception) {
         Log.e(TAG, "Error: ${e.message}")
     }
+    isCapturingImage = false   
 }
         Log.d(TAG, " ✓ captureIntruderSelfie COMPLETED - App remains LOCKED")
         } catch (e: Exception) {
@@ -1438,4 +1462,6 @@ Log.d(TAG, "User left app → reset lock state")
             Log.d(TAG, " Lock screen destroyed after correct PIN for: $lockedPackage")
         }
     }
+    
+    
 }
